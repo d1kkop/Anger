@@ -1,0 +1,9 @@
+﻿################################################################################
+# This .gitignore file was automatically created by Microsoft(R) Visual Studio.
+################################################################################
+
+/Release
+/GameConn/x64
+/GameConn/Debug
+/GameConn/Release/GameConn.tlog
+/x64/Release
