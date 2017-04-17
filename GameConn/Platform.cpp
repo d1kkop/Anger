@@ -46,7 +46,30 @@ namespace Motor
 #if _WIN32
 			WSACleanup();
 #endif
+			name2RpcFunction.clear();
 		}
 
+		void* Platform::getPtrFromName(const char* name)
+		{
+			std::lock_guard<std::mutex> lock(mapMutex);
+			auto it = name2RpcFunction.find( name );
+			if ( it == name2RpcFunction.end() )
+			{
+#if _WIN32
+				HMODULE hModule = ::GetModuleHandle(NULL);
+				auto* pf = ::GetProcAddress( hModule, name );
+				if ( pf )
+				{
+					name2RpcFunction.insert( std::make_pair( name, pf ) );
+					return pf;
+				}
+#endif
+				return nullptr;
+			}
+			return it->second;
+		}
+
+		std::mutex Platform::mapMutex;
+		std::map<std::string, void*> Platform::name2RpcFunction;
 	}
 }

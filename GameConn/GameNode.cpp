@@ -2,6 +2,7 @@
 #include "GameConnection.h"
 #include "Socket.h"
 #include "EndPoint.h"
+#include "RpcMacros.h"
 
 
 namespace Motor
@@ -143,6 +144,11 @@ namespace Motor
 					g->onReceiveKeepAliveAnswer();
 				}
 				break;
+				case EGameNodePacketType::Rpc:
+				{
+					handleRpcPacket(pack, g);
+				}
+				break;
 				default:
 				{
 					forEachCallback( m_CustomDataCallbacks, [g, &pack] (auto& fcb) 
@@ -152,6 +158,23 @@ namespace Motor
 					});
 				}
 				break;
+			}
+		}
+
+		void GameNode::handleRpcPacket(struct Packet& pack, class GameConnection* g)
+		{
+			static const int kBuffSize=RPC_NAME_MAX_LENGTH*4;
+			char name[kBuffSize];
+			::memcpy( name, pack.data+1, RPC_NAME_MAX_LENGTH );
+			char fname[kBuffSize];
+			sprintf_s(fname, kBuffSize, "__rpc_deserialize_%s", name);
+			void* pf = Platform::getPtrFromName( fname );
+			if ( pf )
+			{
+				// function signature
+				void (*pfunc)(const char*, int);
+				pfunc = (decltype(pfunc)) pf;
+				pfunc( pack.data + (1+RPC_NAME_MAX_LENGTH), pack.len-(1+RPC_NAME_MAX_LENGTH) ); // + 1 for id
 			}
 		}
 

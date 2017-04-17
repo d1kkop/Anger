@@ -34,7 +34,7 @@ namespace Motor
 			virtual void run() override;
 		};
 
-		struct RunMassConnections: public BaseTest
+		struct RpcTest: public BaseTest
 		{
 			virtual void initialize() override;
 			virtual void run() override;

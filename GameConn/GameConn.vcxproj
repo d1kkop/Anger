@@ -117,6 +117,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="RpcMacros.cpp" />
     <ClCompile Include="UnitTest.cpp" />
     <ClCompile Include="GameConnection.cpp" />
     <ClCompile Include="Platform.cpp" />
@@ -129,6 +130,7 @@
     <ClCompile Include="GameNode.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="RpcMacros.h" />
     <ClInclude Include="UnitTest.h" />
     <ClInclude Include="GameConnection.h" />
     <ClInclude Include="Platform.h" />
@@ -138,6 +140,9 @@
     <ClInclude Include="Socket.h" />
     <ClInclude Include="Netvar.h" />
     <ClInclude Include="GameNode.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\README.md" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

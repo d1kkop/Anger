@@ -9,6 +9,7 @@
 #include "GameConnection.h"
 #include "Platform.h"
 #include "UnitTest.h"
+#include "RpcMacros.h"
 
 #include <cassert>
 #include <chrono>
@@ -18,23 +19,37 @@ using namespace Anger;
 using namespace std::chrono_literals;
 
 
+struct myGameStruct
+{
+	char namePlayer1[64];
+	char namePlayer2[64];
+	char namePlayer3[64];
+	char namePlayer4[64];
+	char namePlayer5[64];
+};
+
+
+RPC_FUNC_3( myRcpTest, int, tank, char, henk, bool, bert )
+{
+	printf("tank = %d, henk = %c, bert = %d\n", tank, henk, bert );
+}
+
+RPC_FUNC_3( myRcpTest2, myGameStruct, gs, int, d1, int, d2 )
+{
+	printf( "%s %s %s %s %s\n", gs.namePlayer1, gs.namePlayer2, gs.namePlayer3, gs.namePlayer4, gs.namePlayer5 );
+}
+
+
 class MyGameNetwork
 {
 public:
 	MyGameNetwork(const std::string& name):
 		m_Name(name),
 		m_GameNode(new GameNode())
-	{
+	{	
 		m_GameNode->bindOnConnectResult( [this] (const auto* c, auto e) { onConnectectResult(c, e); } );
 		m_GameNode->bindOnDisconnect( [this] (const auto* c, auto e) { onDisconnect(c, e); } );
 		m_GameNode->bindOnNewConnection( [this] (const auto* c) { onNewConnection(c); } );
-
-		//// send value 3 and 2
-		//char name [] = "bartje";
-		//m_GameNode->rpc( 2, nullptr, false, 2, 
-		//				3,  // first arg data
-		//				3.23f, 
-		//				name ); // send arg data
 	}
 
 	~MyGameNetwork()
@@ -132,17 +147,12 @@ public:
 };
 
 
-void test_fake_connection()
-{
-}
-
 int main(int argc, char** argv)
 {
 	if ( 0 == Platform::initialize() )
 	{
 		NetworkTests::RunAll();
 		system("pause");
-
 		Platform::shutdown();
 	}
 	return 0;

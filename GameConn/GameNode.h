@@ -9,25 +9,6 @@
 #include <memory>
 
 
-//#define RPC_UNPACK_3( name, a, b, c ) \
-//	void sync_##name( const char* data, int len ) \
-//	{ \
-//		struct temp { \
-//			a _a; \
-//			b _b; \
-//			c _c; \	
-//		}; \
-//		name( temp._a, temp._b, temp._c ); \
-//	} \
-//	void name(  a _a, b _b, c _c )
-//
-//
-//RPC_UNPACK_3( name, int, char, bool );
-//{
-//
-//}
-
-
 namespace Motor
 {
 	namespace Anger
@@ -37,7 +18,8 @@ namespace Motor
 			ConnectRequest,
 			ConnectAccept,
 			KeepAliveRequest,
-			KeepAliveAnswer
+			KeepAliveAnswer,
+			Rpc
 		};
 
 		enum class EConnectCallResult
@@ -84,9 +66,6 @@ namespace Motor
 			virtual class IConnection* createNewConnection( const EndPoint& endPoint ) const override;
 
 		public:
-			template<class... Args>
-			void rpc( unsigned char id, const EndPoint* specific, bool exclude, char channel, Args... args );
-
 			EConnectCallResult connect( const EndPoint& endPoint );
 			EConnectCallResult connect( const std::string& name, int port );
 			EListenCallResult listenOn( int port );
@@ -107,6 +86,7 @@ namespace Motor
 		private:
 			// Game thread
 			void handlePacket( struct Packet& pack, class GameConnection* g );
+			void handleRpcPacket( struct Packet& pack, class GameConnection* g );
 			void updateConnecting( class GameConnection* g );
 			void updateKeepAlive( class GameConnection* g );
 			bool openSocket();
@@ -128,25 +108,6 @@ namespace Motor
 			std::vector<IConnection*> m_DeadConnections;
 		};
 
-	#pragma pack(push, 1) 
-		template<class ...Args> struct value_holder
-		{
-			unsigned char rpcId;
-			template<Args... Values> // expands to a non-type template parameter 
-			struct apply { };     // list, such as <int, char, int(&)[5]>
-		};
-	#pragma pack(pop)
-
-		template<class ...Args>
-		void Motor::Anger::GameNode::rpc(unsigned char id, const EndPoint* specific, bool exclude, char channel, Args... args)
-		{
-			value_holder<Args...> vh; 
-			vh.rpcId = id;
-			int kSize = sizeof(vh);
-			this->beginSend( specific, exclude );
-			this->send( (const char*)&vh, sizeof(vh), EPacketType::Reliable_Ordered, channel );
-			this->endSend();
-		}
 
 		template <typename List, typename Callback>
 		void Motor::Anger::GameNode::bindCallback(List& list, Callback cb)
