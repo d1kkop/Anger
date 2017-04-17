@@ -5,6 +5,7 @@ Anger is a network library that is aimed to be lightweight, cross platform and f
 	Current Features:
 		* Reliable UDP
 		* Connection layer on top of RUDP
+		* RPC calls
 
 
 	Anger includes tests on Performance, memory leaks and reliability.
