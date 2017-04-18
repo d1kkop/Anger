@@ -21,11 +21,6 @@ namespace Motor
 		{
 		}
 
-		class IConnection* GameNode::createNewConnection(const EndPoint& endPoint) const
-		{
-			return new GameConnection( endPoint, 12 );
-		}
-
 		EConnectCallResult GameNode::connect(const std::string& name, int port)
 		{
 			EndPoint endPoint;
@@ -91,11 +86,47 @@ namespace Motor
 			return EListenCallResult::Succes;
 		}
 
+		EDisconnectCallResult GameNode::disconnect(const EndPoint& endPoint)
+		{
+			GameConnection* conn = nullptr;
+			{
+				std::lock_guard<std::mutex> lock(m_ConnectionListMutex);
+				auto& it = m_Connections.find( endPoint );
+				if ( it != m_Connections.end() )
+				{
+					conn = dynamic_cast<GameConnection*>(it->second);
+				}
+			}
+			if ( conn )
+			{
+				if ( conn->disconnect() )
+				{
+					return EDisconnectCallResult::Succes;
+				}
+				return EDisconnectCallResult::AlreadyCalled;
+			}
+			return EDisconnectCallResult::UnknownEndpoint;
+		}
+
+		void GameNode::disconnectAll()
+		{
+			m_TempConnections.clear();
+			copyConnectionsTo( m_TempConnections );
+			for ( auto* conn : m_TempConnections )
+			{
+				GameConnection* gc = dynamic_cast<GameConnection*>(conn);
+				if ( gc )
+				{
+					gc->disconnect();
+				}
+			}
+		}
+
 		void GameNode::update()
 		{
 			m_TempConnections.clear();
 			copyConnectionsTo( m_TempConnections );
-			std::for_each(m_TempConnections.begin(), m_TempConnections.end(), [this] (auto& conn)
+			for ( auto* conn : m_TempConnections )
 			{
 				GameConnection* gc = dynamic_cast<GameConnection*>(conn);
 				if ( gc )
@@ -104,39 +135,104 @@ namespace Motor
 					Packet pack;
 					while ( gc->poll(pack) )
 					{
-						handlePacket( pack, gc );
+						recvPacket( pack, gc );
 						delete [] pack.data;
 					}
 					gc->endPoll();
 					updateConnecting( gc );
 					updateKeepAlive( gc );
+					updateDisconnecting( gc );
 				}
-			});
+			}
 			removeConnectionsFrom( m_DeadConnections );
 			m_DeadConnections.clear();
 		}
 
-		void GameNode::handlePacket(struct Packet& pack, class GameConnection* g)
+		class IConnection* GameNode::createNewConnection(const EndPoint& endPoint) const
+		{
+			return new GameConnection( endPoint, 12 );
+		}
+
+		void GameNode::sendRemoteAccepted(const GameConnection* g)
+		{
+			auto& etp = g->getEndPoint();
+			beginSend( &etp, true );
+			char buff[128];
+			int offs = etp.write( buff, 128 );
+			if ( offs >= 0 )
+			{
+				send( (unsigned char)EGameNodePacketType::RemoteConnected, buff, offs );
+			}
+			endSend();
+		}
+
+		void GameNode::sendRemoteDisconnected(const GameConnection* g, EDisconnectReason reason)
+		{
+			auto& etp = g->getEndPoint();
+			beginSend( &etp, true );
+			char buff[128];
+			int offs = etp.write( buff, 128 );
+			if ( offs >= 0 )
+			{
+				buff[offs] = (unsigned char)reason;
+				send( (unsigned char)EGameNodePacketType::RemoteDisconnected, buff, offs+1 );
+			}
+			endSend();
+		}
+
+		void GameNode::recvPacket(struct Packet& pack, class GameConnection* g)
 		{
 			EGameNodePacketType packType = (EGameNodePacketType)pack.data[0];
+			char* payload  = pack.data+1;
+			int payloadLen = pack.len-1;
 			switch (packType)
 			{
 				case EGameNodePacketType::ConnectAccept:
 				{
-					g->onReceiveConnectAccept();
-					forEachCallback( m_ConnectResultCallbacks, [g] (auto& fcb) 
+					if ( g->onReceiveConnectAccept() )
 					{
-						(fcb)( g, EConnectResult::Succes );
-					});
+						forEachCallback( m_ConnectResultCallbacks, [g] (auto& fcb) 
+						{
+							(fcb)( g, EConnectResult::Succes );
+						});
+					}
+				}
+				break;
+				case EGameNodePacketType::RemoteConnected:
+				{
+					EndPoint etp;
+					if ( g->onReceiveRemoteConnected( payload, payloadLen, etp ) )
+					{
+						forEachCallback( m_NewConnectionCallbacks, [&] (auto& fcb)
+						{
+							(fcb)( g, etp );
+						});
+					}
+				}
+				break;
+				case EGameNodePacketType::RemoteDisconnected:
+				{
+					EndPoint etp;
+					EDisconnectReason reason;
+					if ( g->onReceiveRemoteDisconnected( payload, payloadLen, etp, reason ) )
+					{
+						forEachCallback( m_DisconnectCallbacks, [&] (auto& fcb)
+						{
+							(fcb)( g, etp, reason );
+						});
+					}
 				}
 				break;
 				case EGameNodePacketType::ConnectRequest:
 				{
-					g->sendConnectAccept();
-					forEachCallback( m_NewConnectionCallbacks, [g] (auto& fcb)
+					if ( g->sendConnectAccept() )
 					{
-						(fcb)( g );
-					});
+						sendRemoteAccepted( g );
+						forEachCallback( m_NewConnectionCallbacks, [g] (auto& fcb)
+						{
+							(fcb)( g, g->getEndPoint() );
+						});
+					}
 				}
 				break;
 				case EGameNodePacketType::KeepAliveAnswer:
@@ -146,22 +242,22 @@ namespace Motor
 				break;
 				case EGameNodePacketType::Rpc:
 				{
-					handleRpcPacket(pack, g);
+					recvRpcPacket(pack, g);
 				}
 				break;
-				default:
+				default: // custom user data
 				{
-					forEachCallback( m_CustomDataCallbacks, [g, &pack] (auto& fcb) 
+					forEachCallback( m_CustomDataCallbacks, [&] (auto& fcb) 
 					{ 
 						// subtract -1 as id is included i the payload
-						(fcb) (g, pack.data[0], pack.data + 1, pack.len-1, pack.channel);
+						(fcb) (g, pack.data[0], payload, payloadLen, pack.channel);
 					});
 				}
 				break;
 			}
 		}
 
-		void GameNode::handleRpcPacket(struct Packet& pack, class GameConnection* g)
+		void GameNode::recvRpcPacket(struct Packet& pack, class GameConnection* g)
 		{
 			static const int kBuffSize=RPC_NAME_MAX_LENGTH*4;
 			char name[kBuffSize];
@@ -180,7 +276,7 @@ namespace Motor
 
 		void GameNode::updateConnecting(class GameConnection* g)
 		{
-			if ( !g->updateConnecting(m_ConnectTimeoutMs) )
+			if ( !g->updateConnecting(m_ConnectTimeoutMs) ) // invalid state
 				return;
 			if ( g->getState() == EConnectionState::ConnectingTimedOut )
 			{
@@ -195,15 +291,27 @@ namespace Motor
 
 		void GameNode::updateKeepAlive(class GameConnection* g)
 		{
-			if ( !g->updateKeepAlive() )
+			if ( !g->updateKeepAlive() ) // invalid state
 				return;
 			if ( g->getState() == EConnectionState::ConnectionTimedOut )
 			{
+				sendRemoteDisconnected( g, EDisconnectReason::Lost );
 				forEachCallback( m_DisconnectCallbacks, [g] (auto& fcb)
 				{
-					(fcb)( g, EDisconnectReason::Lost );
+					(fcb)( g, g->getEndPoint(), EDisconnectReason::Lost );
 				});
 				// get rid of this connection, connection timed out
+				m_DeadConnections.emplace_back( g );
+			}
+		}
+
+		void GameNode::updateDisconnecting(class GameConnection* g)
+		{
+			if ( !g->updateDisconnecting() ) // invalid state
+				return;
+			// If linger time is passed, state is changed to disconnected
+			if ( g->getState() == EConnectionState::Disconnected )
+			{
 				m_DeadConnections.emplace_back( g );
 			}
 		}

@@ -92,5 +92,28 @@ namespace Motor
 			if ( a.getLowLevelAddrSize() > b.getLowLevelAddrSize() ) return 1;
 			return ::memcmp( a.getLowLevelAddr(), b.getLowLevelAddr(), a.getLowLevelAddrSize() ) ;
 		}
+
+		int EndPoint::write(char* buff, int len) const
+		{
+			int addrSize = getLowLevelAddrSize();
+			if ( len >= addrSize )
+			{
+				memcpy_s( buff, addrSize, getLowLevelAddr(), addrSize );
+				return addrSize;
+			}
+			return -1;
+		}
+
+		int EndPoint::read(const char* buff, int len)
+		{
+			int addrSize = getLowLevelAddrSize();
+			if ( len >= addrSize )
+			{
+				memcpy_s( &m_SockAddr, addrSize, buff, addrSize );
+				return addrSize;
+			}
+			return -1;
+		}
+
 	}
 }

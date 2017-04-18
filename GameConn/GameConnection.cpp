@@ -5,9 +5,10 @@ namespace Motor
 {
 	namespace Anger
 	{
-		GameConnection::GameConnection(const EndPoint& endPoint, int keepAliveIntervalSeconds):
+		GameConnection::GameConnection(const EndPoint& endPoint, int keepAliveIntervalSeconds, int lingerTimeMs):
 			RUDPConnection(endPoint),
 			m_KeepAliveIntervalMs(keepAliveIntervalSeconds*1000),
+			m_LingerTimeMs(lingerTimeMs),
 			m_StartConnectingTS(-1),
 			m_KeepAliveRequestTS(-1),
 			m_KeepAliveAnswerTS(-1),
@@ -18,6 +19,16 @@ namespace Motor
 
 		GameConnection::~GameConnection()
 		{
+		}
+
+		bool GameConnection::disconnect()
+		{
+			if ( m_State != EConnectionState::Connected )
+				return false;
+			m_State = EConnectionState::Disconnecting;
+			m_DisconnectTS = ::clock();
+			sendSystemMessage( EGameNodePacketType::Disconnect );
+			return true;
 		}
 
 		bool GameConnection::sendConnectRequest()
@@ -66,6 +77,26 @@ namespace Motor
 			return true;
 		}
 
+		bool GameConnection::onReceiveRemoteConnected(const char* data, int len, EndPoint& ept)
+		{
+			if ( m_State != EConnectionState::Connected )
+				return false;
+			return ept.read( data, len ) > 0;
+		}
+
+		bool GameConnection::onReceiveRemoteDisconnected(const char* data, int len, EndPoint& etp, EDisconnectReason& reason)
+		{
+			if ( m_State != EConnectionState::Connected )
+				return false;
+			int offs = etp.read(data, len);
+			if ( offs >= 0 )
+			{
+				reason = (EDisconnectReason)data[offs];
+				return true;
+			}
+			return false;
+		}
+
 		bool GameConnection::onReceiveKeepAliveAnswer()
 		{
 			if ( m_State != EConnectionState::Connected )
@@ -98,6 +129,18 @@ namespace Motor
 			else if ( getTimeSince( m_KeepAliveRequestTS ) > 3000 ) // 3 seconds is rediculous ping, so considere it lost
 			{
 				m_State = EConnectionState::ConnectionTimedOut;
+			}
+			return true;
+		}
+
+		bool GameConnection::updateDisconnecting()
+		{
+			if ( m_State != EConnectionState::Disconnecting )
+				return false;
+			if ( getTimeSince(m_DisconnectTS) > m_LingerTimeMs )
+			{
+				// assume afrer this time, that the message was received, otherwise just unlucky
+				m_State = EConnectionState::Disconnected;
 			}
 			return true;
 		}

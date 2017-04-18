@@ -48,8 +48,8 @@ public:
 		m_GameNode(new GameNode())
 	{	
 		m_GameNode->bindOnConnectResult( [this] (const auto* c, auto e) { onConnectectResult(c, e); } );
-		m_GameNode->bindOnDisconnect( [this] (const auto* c, auto e) { onDisconnect(c, e); } );
-		m_GameNode->bindOnNewConnection( [this] (const auto* c) { onNewConnection(c); } );
+		m_GameNode->bindOnDisconnect( [this] (const auto* c, const auto& etp, auto e) { onDisconnect(c, etp, e); } );
+		m_GameNode->bindOnNewConnection( [this] (const auto* c, const auto& etp) { onNewConnection(c, etp); } );
 	}
 
 	~MyGameNetwork()
@@ -121,23 +121,23 @@ public:
 		}
 	}
 
-	void onDisconnect( const GameConnection* conn, EDisconnectReason reason )
+	void onDisconnect( const GameConnection* conn, const EndPoint& etp, EDisconnectReason reason )
 	{
 		switch ( reason )
 		{
 			case EDisconnectReason::Closed:
-				printf ("%s conn %s closed\n", m_Name.c_str(), conn->getEndPoint().asString().c_str());
+				printf ("%s conn %s closed\n", m_Name.c_str(), etp.asString().c_str());
 				break;
 
 			case EDisconnectReason::Lost:
-				printf ("%s conn %s lost us... :-( \n", m_Name.c_str(), conn->getEndPoint().asString().c_str());
+				printf ("%s conn %s lost us... :-( \n", m_Name.c_str(), etp.asString().c_str());
 				break;
 		};
 	}
 
-	void onNewConnection( const GameConnection* conn )
+	void onNewConnection( const GameConnection* conn, const EndPoint& etp )
 	{
-		printf("%s new connection %s\n", m_Name.c_str(), conn->getEndPoint().asString().c_str());
+		printf("%s new connection %s\n", m_Name.c_str(), etp.asString().c_str());
 	}
 
 public:

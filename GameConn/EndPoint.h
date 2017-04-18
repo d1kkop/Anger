@@ -34,6 +34,9 @@ namespace Motor
 
 			static int compareLess( const EndPoint& a, const EndPoint& b );
 
+			int write( char* buff, int len ) const;
+			int read( const char* buff, int len );
+
 			const void* getLowLevelAddr() const { return &m_SockAddr; }
 			int   getLowLevelAddrSize() const { return sizeof(m_SockAddr); }
 
