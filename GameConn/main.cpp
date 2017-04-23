@@ -48,7 +48,7 @@ public:
 		m_GameNode(new GameNode())
 	{	
 		m_GameNode->bindOnConnectResult( [this] (const auto* c, auto e) { onConnectectResult(c, e); } );
-		m_GameNode->bindOnDisconnect( [this] (const auto* c, const auto& etp, auto e) { onDisconnect(c, etp, e); } );
+//		m_GameNode->bindOnDisconnect( [this] (const auto* c, const auto& etp, auto e) { onDisconnect(c, etp, e); } );
 		m_GameNode->bindOnNewConnection( [this] (const auto* c, const auto& etp) { onNewConnection(c, etp); } );
 	}
 

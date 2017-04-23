@@ -22,6 +22,7 @@ namespace Motor
 			RemoteDisconnected,
 			KeepAliveRequest,
 			KeepAliveAnswer,
+			IncorrectPassword,
 			Rpc
 		};
 
@@ -60,27 +61,33 @@ namespace Motor
 			Lost
 		};
 
+		enum class EInternalError
+		{
+			Succes,
+			BufferTooShort
+		};
+
 		class GameNode: public RecvPoint
 		{
-			typedef std::function<void (class GameConnection*, EConnectResult)>					ConnectResultCallback;
+			typedef std::function<void (class GameConnection*, EConnectResult)>		ConnectResultCallback;
 			typedef std::function<void (class GameConnection*, const EndPoint&, EDisconnectReason)>	DisconnectCallback;
-			typedef std::function<void (class GameConnection*, const EndPoint&)>					NewConnectionCallback;
+			typedef std::function<void (class GameConnection*, const EndPoint&)>	NewConnectionCallback;
 			typedef std::function<void (class GameConnection*, unsigned char, const char*, int, unsigned char)>	CustomDataCallback;
 
 		public:
-			GameNode(int connectTimeoutSeconds=12, int sendThreadSleepTimeMs=2, bool captureSocketErrors=true);
+			GameNode(int connectTimeoutSeconds=8, int sendThreadSleepTimeMs=2, int keepAliveIntervalSeconds=8, bool captureSocketErrors=true);
 			virtual ~GameNode();
 
 		public:
 			// Connect  to specific endpoint. 
 			// A succesful call does not mean a connection is established.
 			// To know if a connection is established, bindOnConnectResult.
-			EConnectCallResult connect( const EndPoint& endPoint );
-			EConnectCallResult connect( const std::string& name, int port );
+			EConnectCallResult connect( const EndPoint& endPoint, const std::string& pw="" );
+			EConnectCallResult connect( const std::string& name, int port, const std::string& pw="" );
 
 			// Listen on a specific port for incoming connections.
 			// Bind onNewConnection to do something with the new connections.
-			EListenCallResult listenOn( int port );
+			EListenCallResult listenOn( int port, const std::string& pw="" );
 
 			// Disconnect a specific endpoint.
 			EDisconnectCallResult disconnect( const EndPoint& endPoint );
@@ -93,6 +100,9 @@ namespace Motor
 			// To be called every update loop. 
 			// Calls all bound callback functions
 			void update();
+
+			void setIsTrueServer(bool is);
+			void setServerPassword( const std::string& pw );
 
 			// Callbacks ----------------------------------------------------------------------------------------------------------
 
@@ -119,11 +129,13 @@ namespace Motor
 			// Called by recv thread
 			virtual class IConnection* createNewConnection( const EndPoint& endPoint ) const override;
 			// sends
-			void sendRemoteAccepted( const GameConnection* g );
+			void sendRemoteConnected( const GameConnection* g );
 			void sendRemoteDisconnected( const GameConnection* g, EDisconnectReason reason );
 			// recvs (Game thread)
 			void recvPacket( struct Packet& pack, class GameConnection* g );
-			void recvRpcPacket( struct Packet& pack, class GameConnection* g );
+			void recvConnectPacket( const char* payload, int len, class GameConnection* g);
+			void recvDisconnectPacket( const char* payload, int len, class GameConnection* g );
+			void recvRpcPacket( const char* payload, int len, class GameConnection* g);
 			// updating
 			void updateConnecting( class GameConnection* g );
 			void updateKeepAlive( class GameConnection* g );
@@ -137,15 +149,19 @@ namespace Motor
 			template <typename List, typename Callback>
 			void forEachCallback( List& list, Callback cb );
 
-			int  m_ConnectTimeoutMs;
 			bool m_SocketIsOpened;
 			bool m_SocketIsBound;
+			int  m_ConnectTimeoutMs;
+			int	 m_KeepAliveIntervalSeconds;
+			bool m_IsServer;
+			std::string m_ServerPassword;
 			std::vector<ConnectResultCallback>	m_ConnectResultCallbacks;
 			std::vector<DisconnectCallback>		m_DisconnectCallbacks;
 			std::vector<NewConnectionCallback>	m_NewConnectionCallbacks;
 			std::vector<CustomDataCallback>		m_CustomDataCallbacks;
 			std::vector<IConnection*> m_TempConnections;
 			std::vector<IConnection*> m_DeadConnections;
+			EInternalError m_InternalError;
 		};
 
 

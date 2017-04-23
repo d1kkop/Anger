@@ -31,13 +31,21 @@ namespace Motor
 			return true;
 		}
 
-		bool GameConnection::sendConnectRequest()
+		bool GameConnection::acceptDisconnect()
+		{
+			if ( m_State != EConnectionState::Connected )
+				return false;
+			m_State = EConnectionState::Disconnected;
+			return true;
+		}
+
+		bool GameConnection::sendConnectRequest(const std::string& pw)
 		{
 			if ( m_State != EConnectionState::Idle )
 				return false;
 			m_State = EConnectionState::Connecting;
 			m_StartConnectingTS = ::clock();
-			sendSystemMessage( EGameNodePacketType::ConnectRequest );
+			sendSystemMessage( EGameNodePacketType::ConnectRequest, pw.c_str(), (int)pw.size()+1 );
 			return true;
 		}
 
@@ -65,6 +73,14 @@ namespace Motor
 			if ( m_State != EConnectionState::Connected )
 				return false;
 			sendSystemMessage( EGameNodePacketType::KeepAliveAnswer );
+			return true;
+		}
+
+		bool GameConnection::sendIncorrectPassword()
+		{
+			if ( m_State != EConnectionState::Connecting )
+				return false;
+			sendSystemMessage( EGameNodePacketType::IncorrectPassword );
 			return true;
 		}
 
@@ -111,13 +127,13 @@ namespace Motor
 			if ( m_State != EConnectionState::Connecting )
 				return false;
 			if ( getTimeSince( m_StartConnectingTS ) >= maxConnectTimeMs )
-				m_State = EConnectionState::ConnectingTimedOut;
-			return false;
+				m_State = EConnectionState::InitiateTimedOut;
+			return true;
 		}
 
 		bool GameConnection::updateKeepAlive()
 		{
-			if ( m_State != EConnectionState::Connected )
+			if ( m_State != EConnectionState::Connected || m_KeepAliveIntervalMs <= 0 )
 				return false;
 			if ( !m_IsWaitingForKeepAlive )
 			{
@@ -135,7 +151,7 @@ namespace Motor
 
 		bool GameConnection::updateDisconnecting()
 		{
-			if ( m_State != EConnectionState::Disconnecting )
+			if ( m_State != EConnectionState::Disconnecting ) // invalid state
 				return false;
 			if ( getTimeSince(m_DisconnectTS) > m_LingerTimeMs )
 			{
@@ -148,15 +164,15 @@ namespace Motor
 		int GameConnection::getTimeSince(int timestamp) const
 		{
 			clock_t now = ::clock();
-			float elapsedSeconds = float(now - m_StartConnectingTS) / (float)CLOCKS_PER_SEC;
+			float elapsedSeconds = float(now - timestamp) / (float)CLOCKS_PER_SEC;
 			return int(elapsedSeconds * 1000.f);
 		}
 
-		void GameConnection::sendSystemMessage( EGameNodePacketType packType )
+		void GameConnection::sendSystemMessage( EGameNodePacketType packType, const char* payload, int payloadLen )
 		{
 			//	static_assert( sizeof(EGameNodePacketType)==1 );
 			beginAddToSendQueue();
-			addToSendQueue( (unsigned char)packType, nullptr, 0, EPacketType::Reliable_Ordered );
+			addToSendQueue( (unsigned char)packType, payload, payloadLen, EPacketType::Reliable_Ordered );
 			endAddToSendQueue();
 		}
 	}

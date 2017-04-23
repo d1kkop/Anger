@@ -38,26 +38,38 @@ namespace Motor
 		void ConnectionLayerTest::run()
 		{
 			bool connected = false;
+			bool timedOut  = false;
 			bool foundNewConn = false;
 			GameNode* g1 = new GameNode();
 			GameNode* g2 = new GameNode();
-			g1->bindOnConnectResult( [&] (auto* c, auto res) {
-				printf("connect result: %s %d\n", c->getEndPoint().asString().c_str(), (int)res);
-				if ( res == EConnectResult::Succes )
-					connected = true;
+			g1->bindOnConnectResult( [&] (auto* c, auto res) 
+			{
+				std::string resStr;
+				switch ( res )
+				{
+					case EConnectResult::Succes:
+						resStr = "succes";
+						break;
+
+					case EConnectResult::Timedout:
+						resStr = "timed out";
+						break;
+				}
+				printf( "connect result: %s %s\n", c->getEndPoint().asString().c_str(), resStr.c_str() );
 			});
-			g2->bindOnNewConnection( [&] (auto* c) { 
-				printf("new connection: %s\n", c->getEndPoint().asString().c_str());
+			g2->bindOnNewConnection( [&] (auto* c, const auto& etp)
+			{ 
+				printf("new connection: %s\n", etp.asString().c_str());
 				foundNewConn = true;
 			});
-			auto discLamda = [] (auto* c, auto res) 
+			auto discLamda = [] (auto* c, const auto& etp, auto eReason)
 			{
-				printf("disconnected: %s, reason: %d\n", c->getEndPoint().asString().c_str(), (int)res);
+				printf("disconnected: %s, reason: %d\n", etp.asString().c_str(), (int)eReason);
 			};
 			g1->bindOnDisconnect( discLamda );
-			g2->bindOnDisconnect( discLamda );
+	//		g2->bindOnDisconnect( discLamda );
 			g1->connect("localhost",27000);
-			g2->listenOn(27000);
+		//	g2->listenOn(27000);
 
 			volatile bool bClose = false;
 			std::thread t( [&] () {
@@ -73,7 +85,10 @@ namespace Motor
 			bClose = true;
 			if ( t.joinable() )
 				t.join();
-			Result = (foundNewConn && connected);
+			Result = (foundNewConn);
+
+			delete g1;
+			delete g2;
 		}
 
 		//////////////////////////////////////////////////////////////////////////
@@ -310,7 +325,7 @@ namespace Motor
 			std::vector<BaseTest*> tests;
 
 			// add tests
-	//		tests.emplace_back( new ConnectionLayerTest );
+			tests.emplace_back( new ConnectionLayerTest );
 			tests.emplace_back( new ReliableOrderTest );
 			tests.emplace_back( new RpcTest );
 			

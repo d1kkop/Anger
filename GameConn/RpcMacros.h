@@ -2,6 +2,7 @@
 
 #define RPC_NAME_MAX_LENGTH 32
 
+
 #ifdef _WIN32
 #define RPC_EXPORT __declspec(dllexport)
 #else

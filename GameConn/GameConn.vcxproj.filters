@@ -22,6 +22,9 @@
     <Filter Include="Source Files\Core\tests">
       <UniqueIdentifier>{928423d4-f2f1-4329-8aab-5f57565a90fd}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\User">
+      <UniqueIdentifier>{d7583bd1-b17e-4a8a-9ad9-4aaf803bddf0}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">

@@ -107,17 +107,12 @@ namespace Motor
 			}
 		}
 
-		void RecvPoint::removeConnectionsFrom(const std::vector<class IConnection*>& srcList)
+		void RecvPoint::markIsPendingDelete(const std::vector<class IConnection*>& srcList)
 		{
 			std::lock_guard<std::mutex> lock(m_ConnectionListMutex);
 			for (auto& it : srcList)
 			{
-				auto connIt = m_Connections.find( it->getEndPoint() );
-				if ( connIt != m_Connections.end() )
-				{
-					connIt->second->setIsPendingDelete();
-					m_Connections.erase( connIt );
-				}
+				it->setIsPendingDelete();
 			}
 		}
 

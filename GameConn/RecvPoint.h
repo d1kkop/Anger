@@ -52,7 +52,7 @@ namespace Motor
 		protected:
 			void startThreads();
 			void copyConnectionsTo( std::vector<class IConnection*>& dstList );
-			void removeConnectionsFrom( const std::vector<class IConnection*>& srcList );
+			void markIsPendingDelete( const std::vector<class IConnection*>& srcList );
 
 		private:
 			template <typename Callback>

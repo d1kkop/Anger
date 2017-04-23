@@ -10,6 +10,32 @@ namespace Motor
 			return new BSDSocket();
 		}
 
+		bool ISocket::readString(char* buff, int buffSize, const char* buffIn, int buffInSize)
+		{
+			if ( !buff || !buffIn )
+				return false;
+			int k = 0;
+			while ((*buffIn != '\0') && (k < buffSize-1) && (k < buffInSize))
+			{
+				*buff++ = *buffIn++;
+				++k;
+			}
+			if ( buffSize > 0 )
+			{
+				*buff = '\0';
+				return true;
+			}
+			return false;
+		}
+
+		bool ISocket::readFixed(char* dst, int dstSize, const char* buffIn, int buffInSize)
+		{
+			if ( !dst || !buffIn || buffInSize < dstSize )
+				return false;
+			memcpy( dst, buffIn, dstSize );
+			return true;
+		}
+
 #ifdef MOTOR_NETWORK_DEBUG
 
 		//////////////////////////////////////////////////////////////////////////

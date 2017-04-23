@@ -48,6 +48,9 @@ namespace Motor
 			virtual int getUnderlayingSocketError() const = 0;
 			virtual bool isBlocking() const = 0;
 
+			static bool readString( char* dst, int dstSize, const char* buffIn, int buffInSize );
+			static bool readFixed( char* dst, int dstSize, const char* buffIn, int buffInSize );
+
 		protected:
 			IPProto m_IpProto;
 		};

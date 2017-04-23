@@ -12,7 +12,7 @@ namespace Motor
 		{
 			Idle,
 			Connecting,
-			ConnectingTimedOut,
+			InitiateTimedOut,
 			Connected,
 			ConnectionTimedOut,
 			Disconnecting,
@@ -28,12 +28,14 @@ namespace Motor
 			GameConnection( const struct EndPoint& endPoint, int keepAliveIntervalSeconds=-1, int lingerTimeMs = 300 );
 			virtual ~GameConnection();
 			bool disconnect();
+			bool acceptDisconnect();
 
 			// -- sends
-			bool sendConnectRequest();
+			bool sendConnectRequest(const std::string& pw);
 			bool sendConnectAccept();
 			bool sendKeepAliveRequest();
 			bool sendKeepAliveAnswer();
+			bool sendIncorrectPassword();
 			// -- receives
 			bool onReceiveConnectAccept();
 			bool onReceiveRemoteConnected(const char* data, int len, EndPoint& ept);
@@ -48,7 +50,7 @@ namespace Motor
 			EConnectionState getState() const { return m_State; }
 
 		private:
-			void sendSystemMessage(EGameNodePacketType type);
+			void sendSystemMessage( EGameNodePacketType type, const char* payload=nullptr, int payloadLen=0 );
 
 			int m_KeepAliveIntervalMs;
 			int m_LingerTimeMs;
