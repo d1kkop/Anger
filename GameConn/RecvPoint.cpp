@@ -150,6 +150,19 @@ namespace Motor
 				{
 					std::lock_guard<std::mutex> lock(m_ConnectionListMutex);
 
+					// Delete (memory wise) dead connections
+					{
+						for ( auto& kvp : m_Connections )
+						{
+							if ( kvp.second->isPendingDelete() )
+							{
+								delete kvp.second;
+								m_Connections.erase(kvp.first);
+								break;
+							}
+						}
+					}
+
 					// Add new connections
 					{
 						auto it = m_Connections.find( endPoint );
@@ -163,23 +176,13 @@ namespace Motor
 							conn = it->second;
 						}
 					}
-
-					// Delete (memory wise) dead connections
-					{
-						for ( auto& kvp : m_Connections )
-						{
-							if ( kvp.second->isPendingDelete() )
-							{
-								auto* dc = kvp.second;
-								m_Connections.erase(kvp.first);
-								delete dc;
-							}
-						}
-					}
 				}
 
 				// let the connection recv and process the data
-				conn->recvData( buff, rawSize );
+				if ( conn )
+				{
+					conn->recvData( buff, rawSize );
+				}
 			}
 		}
 

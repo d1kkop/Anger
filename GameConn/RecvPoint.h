@@ -20,8 +20,6 @@ namespace Motor
 			Ack
 		};
 
-		#define ID_USER_OFFSET EPacketType::Ack+1
-
 		struct Packet 
 		{
 			char* data;

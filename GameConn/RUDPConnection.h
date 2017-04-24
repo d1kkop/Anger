@@ -47,14 +47,14 @@ namespace Motor
 		class RUDPConnection: public IConnection
 		{
 			// Packet layout offsets
-			static const int off_Type = 0;
-			static const int off_Ack_Chan = 1;
-			static const int off_Ack_Num = 2;
-			static const int off_Ack_Seq = 6;
-			static const int off_Norm_Chan = 1;
-			static const int off_Norm_Seq  = 2;
-			static const int off_Norm_Id   = 6;
-			static const int off_Norm_Data = 7;
+			static const int off_Type = 0;	// Reliable, Unreliable or Ack
+			static const int off_Ack_Chan = 1; // In case of ack, the channel
+			static const int off_Ack_Num = 2;  // In case of ack, ther number of acks in one packet cluttered together
+			static const int off_Ack_Seq = 6;  // In case of ack, the sequence numb
+			static const int off_Norm_Chan = 1;	// Normal, Channel
+			static const int off_Norm_Seq  = 2; // Normal, Seq numb
+			static const int off_Norm_Id   = 6;	// Normal, Packet Id
+			static const int off_Norm_Data = 7; // Normal, Payload
 
 			static const int sm_NumChannels  = 8;
 

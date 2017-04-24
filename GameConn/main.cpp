@@ -47,9 +47,9 @@ public:
 		m_Name(name),
 		m_GameNode(new GameNode())
 	{	
-		m_GameNode->bindOnConnectResult( [this] (const auto* c, auto e) { onConnectectResult(c, e); } );
+		m_GameNode->bindOnConnectResult( [this] (const auto& etp, auto e) { onConnectectResult(etp, e); } );
 //		m_GameNode->bindOnDisconnect( [this] (const auto* c, const auto& etp, auto e) { onDisconnect(c, etp, e); } );
-		m_GameNode->bindOnNewConnection( [this] (const auto* c, const auto& etp) { onNewConnection(c, etp); } );
+		m_GameNode->bindOnNewConnection( [this] (const auto& etp) { onNewConnection( etp); } );
 	}
 
 	~MyGameNetwork()
@@ -106,22 +106,22 @@ public:
 		m_GameNode->update();
 	}
 
-	void onConnectectResult( const GameConnection* conn, EConnectResult connResult )
+	void onConnectectResult( const EndPoint& etp, EConnectResult connResult )
 	{
 		switch ( connResult )
 		{
 			case EConnectResult::Succes:
-				printf ("%s conn %s connected succesfully\n", m_Name.c_str(), conn->getEndPoint().asString().c_str());
-				this->m_RemoteEpt = conn->getEndPoint();
+				printf ("%s conn %s connected succesfully\n", m_Name.c_str(), etp.asString().c_str());
+				this->m_RemoteEpt =etp;
 				break;
 
 			case EConnectResult::Timedout:
-				printf ("%s conn %s could not connect (timed out)\n", m_Name.c_str(), conn->getEndPoint().asString().c_str());
+				printf ("%s conn %s could not connect (timed out)\n", m_Name.c_str(), etp.asString().c_str());
 				break;
 		}
 	}
 
-	void onDisconnect( const GameConnection* conn, const EndPoint& etp, EDisconnectReason reason )
+	void onDisconnect( bool isThisConnection, const EndPoint& etp, EDisconnectReason reason )
 	{
 		switch ( reason )
 		{
@@ -135,7 +135,7 @@ public:
 		};
 	}
 
-	void onNewConnection( const GameConnection* conn, const EndPoint& etp )
+	void onNewConnection( const EndPoint& etp )
 	{
 		printf("%s new connection %s\n", m_Name.c_str(), etp.asString().c_str());
 	}

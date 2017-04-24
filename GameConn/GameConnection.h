@@ -13,6 +13,7 @@ namespace Motor
 			Idle,
 			Connecting,
 			InitiateTimedOut,
+			InvalidPassword,
 			Connected,
 			ConnectionTimedOut,
 			Disconnecting,
@@ -29,6 +30,7 @@ namespace Motor
 			virtual ~GameConnection();
 			bool disconnect();
 			bool acceptDisconnect();
+			bool setInvalidPassword();
 
 			// -- sends
 			bool sendConnectRequest(const std::string& pw);

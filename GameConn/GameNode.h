@@ -26,6 +26,9 @@ namespace Motor
 			Rpc
 		};
 
+		#define  USER_ID_OFFSET (unsigned char)(EGameNodePacketType::Rpc)+1
+
+
 		enum class EConnectCallResult
 		{
 			Succes,
@@ -52,7 +55,8 @@ namespace Motor
 		enum class EConnectResult
 		{
 			Succes,
-			Timedout
+			Timedout,
+			InvalidPassword
 		};
 
 		enum class EDisconnectReason : unsigned char
@@ -64,15 +68,16 @@ namespace Motor
 		enum class EInternalError
 		{
 			Succes,
-			BufferTooShort
+			BufferTooShort,
+			InvalidState
 		};
 
 		class GameNode: public RecvPoint
 		{
-			typedef std::function<void (class GameConnection*, EConnectResult)>		ConnectResultCallback;
-			typedef std::function<void (class GameConnection*, const EndPoint&, EDisconnectReason)>	DisconnectCallback;
-			typedef std::function<void (class GameConnection*, const EndPoint&)>	NewConnectionCallback;
-			typedef std::function<void (class GameConnection*, unsigned char, const char*, int, unsigned char)>	CustomDataCallback;
+			typedef std::function<void (const EndPoint&, EConnectResult)>					ConnectResultCallback;
+			typedef std::function<void (bool, const EndPoint&, EDisconnectReason)>			DisconnectCallback;
+			typedef std::function<void (const EndPoint&)>									NewConnectionCallback;
+			typedef std::function<void (const EndPoint&, unsigned char, const char*, int, unsigned char)>	CustomDataCallback;
 
 		public:
 			GameNode(int connectTimeoutSeconds=8, int sendThreadSleepTimeMs=2, int keepAliveIntervalSeconds=8, bool captureSocketErrors=true);
@@ -129,13 +134,18 @@ namespace Motor
 			// Called by recv thread
 			virtual class IConnection* createNewConnection( const EndPoint& endPoint ) const override;
 			// sends
-			void sendRemoteConnected( const GameConnection* g );
-			void sendRemoteDisconnected( const GameConnection* g, EDisconnectReason reason );
+			void sendRemoteConnected( const class GameConnection* g );
+			void sendRemoteDisconnected( const class GameConnection* g, EDisconnectReason reason );
 			// recvs (Game thread)
 			void recvPacket( struct Packet& pack, class GameConnection* g );
-			void recvConnectPacket( const char* payload, int len, class GameConnection* g);
+			void recvConnectPacket(const char* payload, int len, class GameConnection* g);
+			void recvConnectAccept(class GameConnection* g);
 			void recvDisconnectPacket( const char* payload, int len, class GameConnection* g );
+			void recvRemoteConnected(class GameConnection* g, const char* payload, int payloadLen);
+			void recvRemoteDisconnected(class GameConnection* g, const char* payload, int payloadLen);
+			void recvInvalidPassword(class GameConnection* g, const char* payload, int payloadLen);
 			void recvRpcPacket( const char* payload, int len, class GameConnection* g);
+			void recvUserPacket(class GameConnection* g, const char* payload, int payloadLen, unsigned char channel);
 			// updating
 			void updateConnecting( class GameConnection* g );
 			void updateKeepAlive( class GameConnection* g );

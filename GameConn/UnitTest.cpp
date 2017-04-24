@@ -42,34 +42,38 @@ namespace Motor
 			bool foundNewConn = false;
 			GameNode* g1 = new GameNode();
 			GameNode* g2 = new GameNode();
-			g1->bindOnConnectResult( [&] (auto* c, auto res) 
+			g1->bindOnConnectResult( [&] (auto etp, auto res) 
 			{
 				std::string resStr;
 				switch ( res )
 				{
 					case EConnectResult::Succes:
 						resStr = "succes";
+						g1->disconnect( etp );
 						break;
 
 					case EConnectResult::Timedout:
 						resStr = "timed out";
 						break;
+					case EConnectResult::InvalidPassword:
+						resStr = "invalid password";
+						break;
 				}
-				printf( "connect result: %s %s\n", c->getEndPoint().asString().c_str(), resStr.c_str() );
+				printf( "connect result: %s %s\n", etp.asString().c_str(), resStr.c_str() );
 			});
-			g2->bindOnNewConnection( [&] (auto* c, const auto& etp)
+			g2->bindOnNewConnection( [&] (auto& etp)
 			{ 
 				printf("new connection: %s\n", etp.asString().c_str());
 				foundNewConn = true;
 			});
-			auto discLamda = [] (auto* c, const auto& etp, auto eReason)
+			auto discLamda = [] (bool isThisConnection, auto& etp, auto eReason)
 			{
 				printf("disconnected: %s, reason: %d\n", etp.asString().c_str(), (int)eReason);
 			};
 			g1->bindOnDisconnect( discLamda );
 	//		g2->bindOnDisconnect( discLamda );
 			g1->connect("localhost",27000);
-		//	g2->listenOn(27000);
+			g2->listenOn(27000);
 
 			volatile bool bClose = false;
 			std::thread t( [&] () {
@@ -81,7 +85,7 @@ namespace Motor
 				}
 			});
 
-			std::this_thread::sleep_for(5000ms);
+			std::this_thread::sleep_for(15000ms);
 			bClose = true;
 			if ( t.joinable() )
 				t.join();
@@ -148,7 +152,7 @@ namespace Motor
 			for ( int i=0; i<8; i++)
 				expSeq[i]=0;
 
-			g2->bindOnCustomData( [&] (auto* c, auto id, auto* data, int len, unsigned char channel)
+			g2->bindOnCustomData( [&] (auto& etp, auto id, auto* data, int len, unsigned char channel)
 			{
 				switch ( id )
 				{
@@ -342,7 +346,9 @@ namespace Motor
 			}
 
 			for ( auto* t : tests )
+			{
 				delete t;
+			}
 		}
 	}
 }

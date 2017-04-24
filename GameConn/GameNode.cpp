@@ -99,6 +99,10 @@ namespace Motor
 				if ( it != m_Connections.end() )
 				{
 					conn = dynamic_cast<GameConnection*>(it->second);
+					if ( conn->isPendingDelete() ) // dont allow a pending for delete connection to work on
+					{
+						conn = nullptr;
+					}
 				}
 			}
 			if ( conn )
@@ -169,6 +173,8 @@ namespace Motor
 
 		void GameNode::sendRemoteConnected(const GameConnection* g)
 		{
+			if ( !m_IsServer )
+				return; // only if is true server, relay message
 			auto& etp = g->getEndPoint();
 			char buff[128];
 			int offs = etp.write( buff, 128 );
@@ -177,13 +183,15 @@ namespace Motor
 				m_InternalError = EInternalError::BufferTooShort;
 				return;
 			}
-			beginSend( &etp, true );
+			beginSend( &etp, true ); // to all except
 			send( (unsigned char)EGameNodePacketType::RemoteConnected, buff, offs );
 			endSend();
 		}
 
 		void GameNode::sendRemoteDisconnected(const GameConnection* g, EDisconnectReason reason)
 		{
+			if ( !m_IsServer )
+				return; // only if is true server, relay message
 			auto& etp = g->getEndPoint();
 			char buff[128];
 			int offs = etp.write( buff, 128 );
@@ -196,7 +204,7 @@ namespace Motor
 				m_InternalError = EInternalError::BufferTooShort;
 				return;
 			}
-			beginSend( &etp, true );
+			beginSend( &etp, true ); // to all except
 			send( (unsigned char)EGameNodePacketType::RemoteDisconnected, buff, offs+1 );
 			endSend();
 		}
@@ -204,73 +212,36 @@ namespace Motor
 		void GameNode::recvPacket(struct Packet& pack, class GameConnection* g)
 		{
 			EGameNodePacketType packType = (EGameNodePacketType)pack.data[0];
-			char* payload  = pack.data+1; // first byte is PacketType
+			const char* payload  = pack.data+1; // first byte is PacketType
 			int payloadLen = pack.len-1;  // len includes the packetType byte
 			switch (packType)
 			{
-				case EGameNodePacketType::ConnectAccept:
-				{
-					if ( g->onReceiveConnectAccept() )
-					{
-						forEachCallback( m_ConnectResultCallbacks, [&] (auto& fcb)
-						{
-							(fcb)( g, EConnectResult::Succes );
-						});
-					}
-				}
+			case EGameNodePacketType::ConnectRequest:
+				recvConnectPacket(payload, payloadLen, g);
 				break;
-				case EGameNodePacketType::RemoteConnected:
-				{
-					EndPoint etp;
-					if ( g->onReceiveRemoteConnected( payload, payloadLen, etp ) )
-					{
-						forEachCallback( m_NewConnectionCallbacks, [&] (auto& fcb)
-						{
-							(fcb)( g, etp );
-						});
-					}
-				}
+			case EGameNodePacketType::ConnectAccept:
+				recvConnectAccept(g);
 				break;
-				case EGameNodePacketType::RemoteDisconnected:
-				{
-					EndPoint etp;
-					EDisconnectReason reason;
-					if ( g->onReceiveRemoteDisconnected( payload, payloadLen, etp, reason ) )
-					{
-						forEachCallback( m_DisconnectCallbacks, [&] (auto& fcb)
-						{
-							(fcb)( g, etp, reason );
-						});
-					}
-				}
+			case EGameNodePacketType::Disconnect:
+				recvDisconnectPacket(payload, payloadLen, g);
 				break;
-				case EGameNodePacketType::ConnectRequest:
-				{
-					recvConnectPacket(payload, payloadLen, g);
-				}
+			case EGameNodePacketType::RemoteConnected:
+				recvRemoteConnected(g, payload, payloadLen);
 				break;
-				case EGameNodePacketType::Disconnect:
-				{
-					recvDisconnectPacket(payload, payloadLen, g);
-				}
+			case EGameNodePacketType::RemoteDisconnected:
+				recvRemoteDisconnected(g, payload, payloadLen);
 				break;
-				case EGameNodePacketType::KeepAliveAnswer:
-				{
-					g->onReceiveKeepAliveAnswer();
-				}
+			case EGameNodePacketType::KeepAliveAnswer:
+				g->onReceiveKeepAliveAnswer();
 				break;
-				case EGameNodePacketType::Rpc:
-				{
-					recvRpcPacket(payload, payloadLen, g);
-				}
+			case EGameNodePacketType::IncorrectPassword:
+				recvInvalidPassword(g, payload, payloadLen);
 				break;
-				default: // custom user data
-				{
-					forEachCallback( m_CustomDataCallbacks, [&] (auto& fcb) 
-					{
-						(fcb) (g, pack.data[0], payload, payloadLen, pack.channel);
-					});
-				}
+			case EGameNodePacketType::Rpc:
+				recvRpcPacket(payload, payloadLen, g);
+				break;
+			default:
+				recvUserPacket(g, payload, payloadLen, pack.channel);
 				break;
 			}
 		}
@@ -287,21 +258,79 @@ namespace Motor
 			if ( strcmp( m_ServerPassword.c_str(), pw ) != 0 )
 			{
 				g->sendIncorrectPassword();
+				m_DeadConnections.emplace_back( g );
 			}
 			else
 			{
-				if (g->sendConnectAccept() && m_IsServer )
+				if (g->sendConnectAccept())
 				{
+					forEachCallback(m_NewConnectionCallbacks, [&](auto& fcb)
+					{
+						(fcb)(g->getEndPoint());
+					});
 					sendRemoteConnected( g );
 				}
+			}
+		}
+
+		void GameNode::recvConnectAccept(class GameConnection* g)
+		{
+			if (g->onReceiveConnectAccept())
+			{
+				forEachCallback(m_ConnectResultCallbacks, [&](auto& fcb)
+				{
+					(fcb)(g->getEndPoint(), EConnectResult::Succes);
+				});
 			}
 		}
 
 		void GameNode::recvDisconnectPacket(const char* payload, int len, class GameConnection* g)
 		{
 			if ( !g->acceptDisconnect() )
+			{
+				m_InternalError = EInternalError::InvalidState;
 				return; // invalid state
-			sendRemoteDisconnected( g, EDisconnectReason::Closed );
+			}
+			if ( m_IsServer )
+			{	// if true server, relay message to all
+				sendRemoteDisconnected( g, EDisconnectReason::Closed );
+			}
+		}
+
+		void GameNode::recvRemoteConnected(class GameConnection* g, const char* payload, int payloadLen)
+		{
+			EndPoint etp;
+			if (g->onReceiveRemoteConnected(payload, payloadLen, etp))
+			{
+				forEachCallback(m_NewConnectionCallbacks, [&](auto& fcb)
+				{
+					(fcb)(etp);
+				});
+			}
+		}
+
+		void GameNode::recvRemoteDisconnected(class GameConnection* g, const char* payload, int payloadLen)
+		{
+			EndPoint etp;
+			EDisconnectReason reason;
+			if (g->onReceiveRemoteDisconnected(payload, payloadLen, etp, reason))
+			{
+				forEachCallback(m_DisconnectCallbacks, [&](auto& fcb)
+				{
+					(fcb)(g->getEndPoint() == etp, etp, reason);
+				});
+			}
+		}
+
+		void GameNode::recvInvalidPassword(class GameConnection* g, const char* payload, int payloadLen)
+		{
+			if ( g->setInvalidPassword() )
+			{
+				forEachCallback(m_ConnectResultCallbacks, [&](auto& fcb)
+				{
+					(fcb)(g->getEndPoint(), EConnectResult::InvalidPassword);
+				});
+			}
 		}
 
 		void GameNode::recvRpcPacket(const char* payload, int len, class GameConnection* g)
@@ -324,6 +353,14 @@ namespace Motor
 			}
 		}
 
+		void GameNode::recvUserPacket(class GameConnection* g, const char* payload, int payloadLen, unsigned char channel)
+		{
+			forEachCallback(m_CustomDataCallbacks, [&](auto& fcb)
+			{
+				(fcb)(g->getEndPoint(), *(payload-1), payload, payloadLen, channel);
+			});
+		}
+
 		void GameNode::updateConnecting(class GameConnection* g)
 		{
 			if ( !g->updateConnecting(m_ConnectTimeoutMs) ) // invalid state
@@ -332,7 +369,7 @@ namespace Motor
 			{
 				forEachCallback( m_ConnectResultCallbacks, [g] (auto& fcb)
 				{
-					(fcb)( g, EConnectResult::Timedout );
+					(fcb)( g->getEndPoint(), EConnectResult::Timedout );
 				});
 				// get rid of this connection, connecting timed out
 				m_DeadConnections.emplace_back( g );
@@ -348,7 +385,7 @@ namespace Motor
 				sendRemoteDisconnected( g, EDisconnectReason::Lost );
 				forEachCallback( m_DisconnectCallbacks, [g] (auto& fcb)
 				{
-					(fcb)( g, g->getEndPoint(), EDisconnectReason::Lost );
+					(fcb)( true, g->getEndPoint(), EDisconnectReason::Lost );
 				});
 				// get rid of this connection, connection timed out
 				m_DeadConnections.emplace_back( g );
