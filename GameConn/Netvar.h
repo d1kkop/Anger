@@ -5,24 +5,8 @@
 #include <mutex>
 
 
-namespace Motor
+namespace Zeroone
 {
-	namespace Anger
-	{
-		template <typename T>
-		class Netvar
-		{
-		public:
-			Netvar();
 
-			T m_Data;
-		};
 
-		template <typename T>
-		Motor::Anger::Netvar<T>::Netvar()
-		{
-
-		}
-
-	}
 }

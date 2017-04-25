@@ -1,6 +1,6 @@
 
 
-Anger is a network library that is aimed to be lightweight, cross platform and fast.
+Zero-one is a network gaming library that is aimed to be lightweight, cross platform and fast.
 
 	Current Features:
 		* Reliable UDP
@@ -8,7 +8,7 @@ Anger is a network library that is aimed to be lightweight, cross platform and f
 		* RPC calls
 
 
-	Anger includes tests on Performance, memory leaks and reliability.
+	Zero-one includes tests on Performance, memory leaks and reliability.
 
 
 Developed by Bart Knuiman (bart[dot]knuiman[at]gmail[dot]com)
