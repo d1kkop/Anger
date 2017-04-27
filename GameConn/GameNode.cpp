@@ -5,7 +5,7 @@
 #include "RpcMacros.h"
 
 
-namespace Zeroone
+namespace Supernet
 {
 	GameNode::GameNode(int connectTimeoutSeconds, int sendThreadSleepTimeMs, int keepAliveIntervalSeconds, bool captureSocketErrors):
 		RecvPoint(captureSocketErrors, sendThreadSleepTimeMs),
@@ -13,7 +13,8 @@ namespace Zeroone
 		m_SocketIsBound(false),
 		m_ConnectTimeoutMs(connectTimeoutSeconds*1000),
 		m_KeepAliveIntervalSeconds(keepAliveIntervalSeconds),
-		m_IsServer(false)
+		m_IsServer(false),
+		m_MaxIncomingConnections(32)
 	{
 	}
 
@@ -28,7 +29,7 @@ namespace Zeroone
 		{
 			return EConnectCallResult::CannotResolveHost;
 		}
-		return connect( endPoint );
+		return connect( endPoint, pw );
 	}
 
 	EConnectCallResult GameNode::connect(const EndPoint& endPoint, const std::string& pw)
@@ -163,6 +164,11 @@ namespace Zeroone
 		m_ServerPassword = pw;
 	}
 
+	void GameNode::setMaxIncomingConnections(int maxNumConnections)
+	{
+		m_MaxIncomingConnections = maxNumConnections;
+	}
+
 	class IConnection* GameNode::createNewConnection(const EndPoint& endPoint) const
 	{
 		return new GameConnection( endPoint, m_KeepAliveIntervalSeconds );
@@ -253,6 +259,9 @@ namespace Zeroone
 		case EGameNodePacketType::IncorrectPassword:
 			recvInvalidPassword(g, payload, payloadLen);
 			break;
+		case EGameNodePacketType::MaxConnectionsReached:
+			recvMaxConnectionsReached(g, payload, payloadLen);
+			break;
 		case EGameNodePacketType::Rpc:
 			recvRpcPacket(payload, payloadLen, g);
 			break;
@@ -278,6 +287,18 @@ namespace Zeroone
 		}
 		else
 		{
+			int numConnections;
+			{
+				std::lock_guard<std::mutex> lock(m_ConnectionListMutex);
+				numConnections = (int)m_Connections.size();
+			}
+			if ( numConnections >= m_MaxIncomingConnections+1 )
+			{
+				g->sendMaxConnectionsReached();
+				removeConnection( g, "removing conn, max number of connections reached %s", __FUNCTION__ );
+				return;
+			}
+			// All fine..
 			if (g->sendConnectAccept())
 			{
 				forEachCallback(m_NewConnectionCallbacks, [&](auto& fcb)
@@ -316,7 +337,7 @@ namespace Zeroone
 			{	// if true server, relay message to all
 				sendRemoteDisconnected( g, EDisconnectReason::Closed );
 			}
-			removeConnection(g, nullptr);
+			removeConnection(g, "disconnect received, removing connecting..%s", g->getEndPoint().asString().c_str());
 		}
 		else
 		{
@@ -364,6 +385,21 @@ namespace Zeroone
 			forEachCallback(m_ConnectResultCallbacks, [&](auto& fcb)
 			{
 				(fcb)(g->getEndPoint(), EConnectResult::InvalidPassword);
+			});
+		}
+		else
+		{
+			removeConnection( g, "removing conn, unexpected state %s", __FUNCTION__ );
+		}
+	}
+
+	void GameNode::recvMaxConnectionsReached(class GameConnection* g, const char* payload, int payloadLen)
+	{
+		if ( g->setMaxConnectionsReached() )
+		{
+			forEachCallback(m_ConnectResultCallbacks, [&](auto& fcb)
+			{
+				(fcb)(g->getEndPoint(), EConnectResult::MaxConnectionsReached);
 			});
 		}
 		else

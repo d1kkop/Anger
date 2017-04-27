@@ -6,7 +6,7 @@
 #include <cassert>
 
 
-namespace Zeroone
+namespace Supernet
 {
 	RUDPConnection::RUDPConnection(const EndPoint& endPoint):
 		/* packet loss */
@@ -158,7 +158,7 @@ namespace Zeroone
 			case EPacketType::Reliable_Ordered:
 				// ack it (even if we already processed this packet)
 				addAckToAckQueue( buff[off_Norm_Chan], *(unsigned int*)&buff[off_Norm_Seq] );
-				receiveReliableOredered(buff, rawSize);	
+				receiveReliableOrdered(buff, rawSize);	
 				break;
 
 			case EPacketType::Unreliable_Sequenced:
@@ -226,7 +226,7 @@ namespace Zeroone
 		}
 	}
 
-	void RUDPConnection::receiveReliableOredered(const char * buff, int rawSize)
+	void RUDPConnection::receiveReliableOrdered(const char * buff, int rawSize)
 	{
 		char channel = buff[off_Norm_Chan];
 		unsigned int seq = *(unsigned int*)(buff + off_Norm_Seq);

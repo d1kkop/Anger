@@ -17,7 +17,7 @@
 #include <mutex>
 
 
-namespace Zeroone
+namespace Supernet
 {
 	class Platform
 	{

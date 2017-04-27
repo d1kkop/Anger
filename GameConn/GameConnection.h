@@ -4,7 +4,7 @@
 #include <ctime>
 
 
-namespace Zeroone
+namespace Supernet
 {
 	enum class EConnectionState
 	{
@@ -12,6 +12,7 @@ namespace Zeroone
 		Connecting,
 		InitiateTimedOut,
 		InvalidPassword,
+		MaxConnectionsReached,
 		Connected,
 		ConnectionTimedOut,
 		Disconnecting,
@@ -29,6 +30,7 @@ namespace Zeroone
 		bool disconnect();
 		bool acceptDisconnect();
 		bool setInvalidPassword();
+		bool setMaxConnectionsReached();
 
 		// -- sends
 		bool sendConnectRequest(const std::string& pw);
@@ -36,6 +38,7 @@ namespace Zeroone
 		bool sendKeepAliveRequest();
 		bool sendKeepAliveAnswer();
 		bool sendIncorrectPassword();
+		bool sendMaxConnectionsReached();
 		// -- receives
 		bool onReceiveConnectAccept();
 		bool onReceiveRemoteConnected(const char* data, int len, EndPoint& ept);

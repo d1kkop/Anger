@@ -3,7 +3,7 @@
 #include "Platform.h"
 
 
-namespace Zeroone
+namespace Supernet
 {
 	int Platform::initialize()
 	{

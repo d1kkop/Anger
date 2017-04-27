@@ -13,10 +13,10 @@
 
 using namespace std::literals::chrono_literals;
 
-using namespace Zeroone;
+using namespace Supernet;
 
 
-namespace Zeroone
+namespace Supernet
 {
 	BaseTest::BaseTest():
 		Result(true) 
@@ -37,24 +37,28 @@ namespace Zeroone
 		bool connected = false;
 		bool timedOut  = false;
 		bool foundNewConn = false;
-		GameNode* g1 = new GameNode();
+		GameNode* g1 = new GameNode();//8, 200, 8);
 		GameNode* g2 = new GameNode();
 		g1->bindOnConnectResult( [&] (auto etp, auto res) 
 		{
 			std::string resStr;
 			switch ( res )
 			{
-				case EConnectResult::Succes:
-					resStr = "succes";
-					g1->disconnectAll();
-					break;
+			case EConnectResult::Succes:
+				resStr = "succes";
+				std::this_thread::sleep_for(1000ms);
+				g1->disconnectAll();
+				break;
 
-				case EConnectResult::Timedout:
-					resStr = "timed out";
-					break;
-				case EConnectResult::InvalidPassword:
-					resStr = "invalid password";
-					break;
+			case EConnectResult::Timedout:
+				resStr = "timed out";
+				break;
+			case EConnectResult::InvalidPassword:
+				resStr = "invalid password";
+				break;
+			case EConnectResult::MaxConnectionsReached:
+				resStr = "max connections reached";
+				break;
 			}
 			printf( "connect result: %s %s\n", etp.asString().c_str(), resStr.c_str() );
 		});
@@ -69,8 +73,9 @@ namespace Zeroone
 		};
 		g1->bindOnDisconnect( discLamda );
 //		g2->bindOnDisconnect( discLamda );
-		g1->connect("localhost",27000);
-		g2->listenOn(27000);
+		g1->connect("localhost",27000,"lala");
+		g2->setMaxIncomingConnections(1);
+		g2->listenOn(27000, "lala");
 
 		volatile bool bClose = false;
 		std::thread t( [&] () {

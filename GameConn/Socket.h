@@ -8,7 +8,7 @@
 #include <atomic>
 
 
-namespace Zeroone
+namespace Supernet
 {
 	enum class IPProto
 	{

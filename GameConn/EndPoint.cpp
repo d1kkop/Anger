@@ -1,7 +1,7 @@
 #include "EndPoint.h"
 
 
-namespace Zeroone
+namespace Supernet
 {
 
 	bool EndPoint::operator==(const EndPoint& other) const

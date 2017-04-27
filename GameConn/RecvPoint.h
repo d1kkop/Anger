@@ -9,7 +9,7 @@
 #include <condition_variable>
 
 
-namespace Zeroone
+namespace Supernet
 {
 	enum class EPacketType : unsigned char
 	{

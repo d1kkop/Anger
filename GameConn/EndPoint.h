@@ -6,7 +6,7 @@
 #include <mutex>
 
 
-namespace Zeroone
+namespace Supernet
 {
 	struct EndPoint
 	{

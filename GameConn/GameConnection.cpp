@@ -3,7 +3,7 @@
 #include "Platform.h"
 
 
-namespace Zeroone
+namespace Supernet
 {
 #define Check_State( state ) \
 	if ( m_State != EConnectionState::##state ) \
@@ -58,6 +58,13 @@ namespace Zeroone
 		return true;
 	}
 
+	bool GameConnection::setMaxConnectionsReached()
+	{
+		Ensure_State( Connecting );
+		m_State = EConnectionState::MaxConnectionsReached;
+		return true;
+	}
+
 	bool GameConnection::sendConnectRequest(const std::string& pw)
 	{
 		Ensure_State( Idle );
@@ -97,6 +104,13 @@ namespace Zeroone
 	{
 		Ensure_State( Idle );
 		sendSystemMessage( EGameNodePacketType::IncorrectPassword );
+		return true;
+	}
+
+	bool GameConnection::sendMaxConnectionsReached()
+	{
+		Ensure_State( Idle );
+		sendSystemMessage( EGameNodePacketType::MaxConnectionsReached );
 		return true;
 	}
 

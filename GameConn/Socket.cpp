@@ -1,7 +1,7 @@
 #include "Socket.h"
 
 
-namespace Zeroone
+namespace Supernet
 {
 	ISocket* ISocket::create()
 	{

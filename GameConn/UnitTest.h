@@ -5,7 +5,7 @@
 #include <string>
 
 
-namespace Zeroone
+namespace Supernet
 {
 	struct BaseTest
 	{

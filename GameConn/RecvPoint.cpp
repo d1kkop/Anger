@@ -7,7 +7,7 @@
 using namespace std::chrono_literals;
 
 
-namespace Zeroone
+namespace Supernet
 {
 	RecvPoint::RecvPoint(bool captureSocketErrors, int sendThreadSleepTimeMs):
 		m_IsClosing(false),
@@ -198,10 +198,7 @@ namespace Zeroone
 			m_SendThreadCv.wait_for( lock, std::chrono::milliseconds(m_SendThreadSleepTimeMs) );
 			for (auto& kvp : m_Connections)
 			{
-				if ( !kvp.second->isPendingDelete() ) // not mandatory but it has no use to keep flushing the send queue on a connection that will no longer be active
-				{
-					kvp.second->flushSendQueue( m_Socket );
-				}
+				kvp.second->flushSendQueue( m_Socket );
 			}
 		}
 	}

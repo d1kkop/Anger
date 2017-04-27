@@ -13,7 +13,7 @@
 #include <unordered_set>
 
 
-namespace Zeroone
+namespace Supernet
 {
 	class IConnection
 	{
@@ -108,7 +108,7 @@ namespace Zeroone
 		void addAckToAckQueue( char channel, unsigned int seq );
 		void dispatchSendQueue(ISocket* socket);
 		void dispatchAckQueue(ISocket* socket);
-		void receiveReliableOredered(const char * buff, int rawSize);
+		void receiveReliableOrdered(const char * buff, int rawSize);
 		void receiveUnreliableOredered(const char * buff, int rawSize);
 		void receiveAck(const char* buff, int rawSize);
 		Packet extractPayload( const char* buff, int rawSize ) const;

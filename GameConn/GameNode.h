@@ -9,7 +9,7 @@
 #include <memory>
 
 
-namespace Zeroone
+namespace Supernet
 {
 	enum class EGameNodePacketType: unsigned char
 	{
@@ -21,6 +21,7 @@ namespace Zeroone
 		KeepAliveRequest,
 		KeepAliveAnswer,
 		IncorrectPassword,
+		MaxConnectionsReached,
 		Rpc
 	};
 
@@ -54,7 +55,8 @@ namespace Zeroone
 	{
 		Succes,
 		Timedout,
-		InvalidPassword
+		InvalidPassword,
+		MaxConnectionsReached
 	};
 
 	enum class EDisconnectReason : unsigned char
@@ -101,25 +103,32 @@ namespace Zeroone
 		void setIsTrueServer(bool is);
 		void setServerPassword( const std::string& pw );
 
+		// Max number of connections of all incoming connection attempts. 
+		// Thus if listening on multiple ports, this value is not per port!
+		// Default is 32.
+		void setMaxIncomingConnections(int maxNumConnections);
+
 		// Callbacks ----------------------------------------------------------------------------------------------------------
 
 		// For handling connect request results
 		// Function signature: 
-		// void (class GameConnection* conn, EConnectResult conResult)
+		// void (const EndPoint&, EConnectResult conResult)
 		void bindOnConnectResult(ConnectResultCallback cb)		{ bindCallback(m_ConnectResultCallbacks, cb); }
 
 		// For handling new incoming connections
 		// Function signature:
-		// void (class GameConnection* conn)
+		// void (const EndPoint&)
 		void bindOnNewConnection(NewConnectionCallback cb)		{ bindCallback(m_NewConnectionCallbacks, cb); }
 
 		// For when connection is closed or gets dropped.
 		// In case of client-server, the endpoint is different than the g->getEndPoint() when a remote connection disconnect or got lost.
 		// Function signature:
-		// void (class GameConnection* conn, Endpoint etp, EDisconnect reason)
+		// void (class GameConnection*, const Endpoint&, EDisconnect reason)
 		void bindOnDisconnect(DisconnectCallback cb)			{ bindCallback(m_DisconnectCallbacks, cb); }
 
 		// For all other data that is specific to the application
+		// Function signature:
+		// void (const EndPoint&, unsigned char, const char*, int, unsigned char)
 		void bindOnCustomData(CustomDataCallback cb)			{ bindCallback(m_CustomDataCallbacks, cb); }
 
 	private:
@@ -137,6 +146,7 @@ namespace Zeroone
 		void recvRemoteConnected(class GameConnection* g, const char* payload, int payloadLen);
 		void recvRemoteDisconnected(class GameConnection* g, const char* payload, int payloadLen);
 		void recvInvalidPassword(class GameConnection* g, const char* payload, int payloadLen);
+		void recvMaxConnectionsReached(class GameConnection* g, const char* payload, int payloadLen);
 		void recvRpcPacket( const char* payload, int len, class GameConnection* g);
 		void recvUserPacket(class GameConnection* g, const char* payload, int payloadLen, unsigned char channel);
 		// updating
@@ -157,6 +167,7 @@ namespace Zeroone
 		int  m_ConnectTimeoutMs;
 		int	 m_KeepAliveIntervalSeconds;
 		bool m_IsServer;
+		int  m_MaxIncomingConnections;
 		std::string m_ServerPassword;
 		std::vector<ConnectResultCallback>	m_ConnectResultCallbacks;
 		std::vector<DisconnectCallback>		m_DisconnectCallbacks;
