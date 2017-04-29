@@ -1,22 +1,18 @@
-#ifdef MOTOR_NETWORK_DEBUG
-
 #include "UnitTest.h"
-#include "EndPoint.h"
-#include "RUDPConnection.h"
-#include "GameNode.h"
-#include "GameConnection.h"
-#include "Socket.h"
+#include "Zerodelay.h"
 #include "RpcMacros.h"
 
+#include <windows.h>
+
+#include <vector>
 #include <thread>
 #include <chrono>
 
 using namespace std::literals::chrono_literals;
-
 using namespace Zerodelay;
 
 
-namespace Zerodelay
+namespace UnitTests
 {
 	BaseTest::BaseTest():
 		Result(true) 
@@ -37,8 +33,8 @@ namespace Zerodelay
 		bool connected = false;
 		bool timedOut  = false;
 		bool foundNewConn = false;
-		GameNode* g1 = new GameNode(8, 2, 0);
-		GameNode* g2 = new GameNode(8, 2, 0);
+		ZNode* g1 = new ZNode(8, 2, 0);
+		ZNode* g2 = new ZNode(8, 2, 0);
 		g1->bindOnConnectResult( [&] (auto etp, auto res) 
 		{
 			std::string resStr;
@@ -122,16 +118,16 @@ namespace Zerodelay
 			switch ( res )
 			{
 			case EConnectResult::Succes:
-			connSucc++;
+				connSucc++;
 			break;
 			case EConnectResult::Timedout:
-			connTimeout++;
+				connTimeout++;
 			break;
 			case EConnectResult::InvalidPassword:
-			connInvalidPw++;
+				connInvalidPw++;
 			break;
 			case EConnectResult::MaxConnectionsReached:
-			connMaxConnReached++;
+				connMaxConnReached++;
 			break;
 			}
 		};
@@ -150,11 +146,11 @@ namespace Zerodelay
 		};
 
 		int connsPerNode = NumConns / NumNodes;
-		GameNode** connNodes = new GameNode*[NumNodes];
+		ZNode** connNodes = new ZNode*[NumNodes];
 		std::string pw = "halooooooo123";
 		for ( int j=0; j<NumNodes; ++j )
 		{
-			connNodes[j] = new GameNode();
+			connNodes[j] = new ZNode();
 			auto* n = connNodes[j];
 			n->bindOnConnectResult( onConnectLamda );
 			n->bindOnDisconnect( onDisconnectLamda );
@@ -172,7 +168,7 @@ namespace Zerodelay
 			}
 		}
 
-		GameNode* listener = new GameNode();
+		ZNode* listener = new ZNode();
 		auto eRes = listener->listenOn(27001, pw);
 		if ( (int)eRes != 0 )
 		{
@@ -220,8 +216,8 @@ namespace Zerodelay
 
 	void ReliableOrderTest::run()
 	{
-		GameNode* g1 = new GameNode();
-		GameNode* g2 = new GameNode();
+		ZNode* g1 = new ZNode();
+		ZNode* g2 = new ZNode();
 		g2->simulatePacketLoss(PackLoss);
 
 		g1->connect( "localhost", 27000 );
@@ -319,121 +315,121 @@ namespace Zerodelay
 		delete g1;
 		delete g2;
 	}
-
-	//////////////////////////////////////////////////////////////////////////
-	/// RPC
-	//////////////////////////////////////////////////////////////////////////
-
-	int __high = ~0;
-	float __fltMax  = FLT_MAX;
-	float __fltMin  = FLT_MIN;
-	double __dblMax = DBL_MAX;
-	double __dblMin = DBL_MIN;
-	long __llong = LONG_MAX;
-	char __bb  = 127;
-	short __sk = 31535;
-
-	RPC_FUNC_0( unitRpcTest0 )
-	{
-//		printf(" unitRpcTest0 \n" );
-	}
-	RPC_FUNC_1( unitRpcTest1, int, a )
-	{
-//		printf(" unitRpcTest1 %d \n", a );
-		assert( a == __high );
-	}
-	RPC_FUNC_2( unitRpcTest2, int, a, float, b )
-	{
-//		printf(" unitRpcTest1 %d %.3f \n", a, b );
-		assert( a == __high && b==__fltMax );
-	}
-	RPC_FUNC_3( unitRpcTest3, int, a, float, b, double, c )
-	{
-//		printf(" unitRpcTest %d %.3f %.f \n", a, b, c );
-		assert( a == __high && b==__fltMax && c==__dblMax );
-	}
-	RPC_FUNC_4( unitRpcTest4, int, a, float, b, double, c, long, k )
-	{
-//		printf(" unitRpcTest %d %.3f %.f %d \n", a, b, c, k );
-		assert( a == __high && b==__fltMax && c==__dblMax && k == __llong );
-	}
-	RPC_FUNC_5( unitRpcTest5, int, a, float, b, double, c, long, k, char, bb )
-	{
-//		printf(" unitRpcTest %d %.3f %.f %d %d\n", a, b, c, k, bb );
-		assert( a == __high && b==__fltMax && c==__dblMax && k == __llong && bb==__bb );
-	}
-	RPC_FUNC_6( unitRpcTest6, int, a, float, b, double, c, long, k, char, bb, double, fj )
-	{
-//		printf(" unitRpcTest %d %.3f %.f %d %d %f\n", a, b, c, k, bb, fj );
-		assert( a == __high && b==__fltMax && c==__dblMax && k == __llong && bb==__bb && fj==__dblMin );
-	}
-	RPC_FUNC_7( unitRpcTest7, int, a, float, b, double, c, long, k, char, bb, double, fj, short, s )
-	{
-//		printf(" unitRpcTest %d %.3f %.f %d %d %f, %d\n", a, b, c, k, bb, fj, s );
-		assert( a == __high && b==__fltMax && c==__dblMax && k == __llong && bb==__bb && fj==__dblMin && s==__sk );
-	}
-	RPC_FUNC_8( unitRpcTest8, int, a, float, b, double, c, long, k, char, bb, double, fj, short, s, float, kt )
-	{
-//		printf(" unitRpcTest %d %.3f %.f %d %d %f, %d %.5f\n", a, b, c, k, bb, fj, s, kt );
-		assert( a == __high && b==__fltMax && c==__dblMax && k == __llong && bb==__bb && fj==__dblMin && s==__sk && kt==__fltMin );
-	}
-	RPC_FUNC_9( unitRpcTest9, int, a, float, b, double, c, long, k, char, bb, double, fj, short, s, float, kt, double, dt )
-	{
-//		printf(" unitRpcTest %d %.3f %.f %d %d %f, %d %.5f %f\n", a, b, c, k, bb, fj, s, kt, dt );
-		assert( a == __high && b==__fltMax && c==__dblMax && k == __llong && bb==__bb && fj==__dblMin && s==__sk && kt==__fltMin && dt == __dblMax );
-	}
-
-
-	void RpcTest::initialize()
-	{
-		Name = "RpcTest";
-	}
-
-	void RpcTest::run()
-	{
-		GameNode* g1 = new GameNode();
-		GameNode* g2 = new GameNode();
-
-		g1->connect( "localhost", 27000 );
-		g2->listenOn( 27000 );
-
-		volatile bool bThreadClose = false;
-		std::thread t( [&] () {
-			while ( !bThreadClose ) {
-				g1->update();
-				g2->update();
-			}
-		});
-
-		int k = 0; 
-		while ( k++ < 10 )
-		{
-
-			rpc_unitRpcTest0( g1 );
-			rpc_unitRpcTest1( g1, __high );
-			rpc_unitRpcTest2( g1, __high, __fltMax );
-			rpc_unitRpcTest3( g1, __high, __fltMax, __dblMax );
-			rpc_unitRpcTest4( g1, __high, __fltMax, __dblMax, __llong );
-			rpc_unitRpcTest5( g1, __high, __fltMax, __dblMax, __llong, __bb );
-			rpc_unitRpcTest6( g1, __high, __fltMax, __dblMax, __llong, __bb, __dblMin );
-			rpc_unitRpcTest7( g1, __high, __fltMax, __dblMax, __llong, __bb, __dblMin, __sk );
-			rpc_unitRpcTest8( g1, __high, __fltMax, __dblMax, __llong, __bb, __dblMin, __sk, __fltMin );
-			rpc_unitRpcTest9( g1, __high, __fltMax, __dblMax, __llong, __bb, __dblMin, __sk, __fltMin, __dblMax );
-
-			std::this_thread::sleep_for(100ms);
-		}
-
-		std::this_thread::sleep_for(300ms);
-		bThreadClose = true;
-
-		if ( t.joinable() )
-			t.join();
-
-		delete g1;
-		delete g2;
-		Result = true;
-	}
-
+//
+//	//////////////////////////////////////////////////////////////////////////
+//	/// RPC
+//	//////////////////////////////////////////////////////////////////////////
+//
+//	int __high = ~0;
+//	float __fltMax  = FLT_MAX;
+//	float __fltMin  = FLT_MIN;
+//	double __dblMax = DBL_MAX;
+//	double __dblMin = DBL_MIN;
+//	long __llong = LONG_MAX;
+//	char __bb  = 127;
+//	short __sk = 31535;
+//
+//	RPC_FUNC_0( unitRpcTest0 )
+//	{
+////		printf(" unitRpcTest0 \n" );
+//	}
+//	RPC_FUNC_1( unitRpcTest1, int, a )
+//	{
+////		printf(" unitRpcTest1 %d \n", a );
+//		assert( a == __high );
+//	}
+//	RPC_FUNC_2( unitRpcTest2, int, a, float, b )
+//	{
+////		printf(" unitRpcTest1 %d %.3f \n", a, b );
+//		assert( a == __high && b==__fltMax );
+//	}
+//	RPC_FUNC_3( unitRpcTest3, int, a, float, b, double, c )
+//	{
+////		printf(" unitRpcTest %d %.3f %.f \n", a, b, c );
+//		assert( a == __high && b==__fltMax && c==__dblMax );
+//	}
+//	RPC_FUNC_4( unitRpcTest4, int, a, float, b, double, c, long, k )
+//	{
+////		printf(" unitRpcTest %d %.3f %.f %d \n", a, b, c, k );
+//		assert( a == __high && b==__fltMax && c==__dblMax && k == __llong );
+//	}
+//	RPC_FUNC_5( unitRpcTest5, int, a, float, b, double, c, long, k, char, bb )
+//	{
+////		printf(" unitRpcTest %d %.3f %.f %d %d\n", a, b, c, k, bb );
+//		assert( a == __high && b==__fltMax && c==__dblMax && k == __llong && bb==__bb );
+//	}
+//	RPC_FUNC_6( unitRpcTest6, int, a, float, b, double, c, long, k, char, bb, double, fj )
+//	{
+////		printf(" unitRpcTest %d %.3f %.f %d %d %f\n", a, b, c, k, bb, fj );
+//		assert( a == __high && b==__fltMax && c==__dblMax && k == __llong && bb==__bb && fj==__dblMin );
+//	}
+//	RPC_FUNC_7( unitRpcTest7, int, a, float, b, double, c, long, k, char, bb, double, fj, short, s )
+//	{
+////		printf(" unitRpcTest %d %.3f %.f %d %d %f, %d\n", a, b, c, k, bb, fj, s );
+//		assert( a == __high && b==__fltMax && c==__dblMax && k == __llong && bb==__bb && fj==__dblMin && s==__sk );
+//	}
+//	RPC_FUNC_8( unitRpcTest8, int, a, float, b, double, c, long, k, char, bb, double, fj, short, s, float, kt )
+//	{
+////		printf(" unitRpcTest %d %.3f %.f %d %d %f, %d %.5f\n", a, b, c, k, bb, fj, s, kt );
+//		assert( a == __high && b==__fltMax && c==__dblMax && k == __llong && bb==__bb && fj==__dblMin && s==__sk && kt==__fltMin );
+//	}
+//	RPC_FUNC_9( unitRpcTest9, int, a, float, b, double, c, long, k, char, bb, double, fj, short, s, float, kt, double, dt )
+//	{
+////		printf(" unitRpcTest %d %.3f %.f %d %d %f, %d %.5f %f\n", a, b, c, k, bb, fj, s, kt, dt );
+//		assert( a == __high && b==__fltMax && c==__dblMax && k == __llong && bb==__bb && fj==__dblMin && s==__sk && kt==__fltMin && dt == __dblMax );
+//	}
+//
+//
+//	void RpcTest::initialize()
+//	{
+//		Name = "RpcTest";
+//	}
+//
+//	void RpcTest::run()
+//	{
+//		GameNode* g1 = new GameNode();
+//		GameNode* g2 = new GameNode();
+//
+//		g1->connect( "localhost", 27000 );
+//		g2->listenOn( 27000 );
+//
+//		volatile bool bThreadClose = false;
+//		std::thread t( [&] () {
+//			while ( !bThreadClose ) {
+//				g1->update();
+//				g2->update();
+//			}
+//		});
+//
+//		int k = 0; 
+//		while ( k++ < 10 )
+//		{
+//
+//			rpc_unitRpcTest0( g1 );
+//			rpc_unitRpcTest1( g1, __high );
+//			rpc_unitRpcTest2( g1, __high, __fltMax );
+//			rpc_unitRpcTest3( g1, __high, __fltMax, __dblMax );
+//			rpc_unitRpcTest4( g1, __high, __fltMax, __dblMax, __llong );
+//			rpc_unitRpcTest5( g1, __high, __fltMax, __dblMax, __llong, __bb );
+//			rpc_unitRpcTest6( g1, __high, __fltMax, __dblMax, __llong, __bb, __dblMin );
+//			rpc_unitRpcTest7( g1, __high, __fltMax, __dblMax, __llong, __bb, __dblMin, __sk );
+//			rpc_unitRpcTest8( g1, __high, __fltMax, __dblMax, __llong, __bb, __dblMin, __sk, __fltMin );
+//			rpc_unitRpcTest9( g1, __high, __fltMax, __dblMax, __llong, __bb, __dblMin, __sk, __fltMin, __dblMax );
+//
+//			std::this_thread::sleep_for(100ms);
+//		}
+//
+//		std::this_thread::sleep_for(300ms);
+//		bThreadClose = true;
+//
+//		if ( t.joinable() )
+//			t.join();
+//
+//		delete g1;
+//		delete g2;
+//		Result = true;
+//	}
+//
 	//////////////////////////////////////////////////////////////////////////
 	/// NetworkTests
 	//////////////////////////////////////////////////////////////////////////
@@ -466,5 +462,3 @@ namespace Zerodelay
 		}
 	}
 }
-
-#endif

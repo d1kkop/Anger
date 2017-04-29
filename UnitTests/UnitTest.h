@@ -1,11 +1,9 @@
-#ifdef MOTOR_NETWORK_DEBUG
-
 #pragma once
 
 #include <string>
 
 
-namespace Zerodelay
+namespace UnitTests
 {
 	struct BaseTest
 	{
@@ -57,5 +55,3 @@ namespace Zerodelay
 		static void RunAll();
 	};
 }
-
-#endif

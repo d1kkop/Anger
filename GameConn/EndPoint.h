@@ -6,7 +6,7 @@
 #include <mutex>
 
 
-namespace Supernet
+namespace Zerodelay
 {
 	struct EndPoint
 	{

@@ -3,7 +3,7 @@
 #include "Platform.h"
 
 
-namespace Supernet
+namespace Zerodelay
 {
 	int Platform::initialize()
 	{

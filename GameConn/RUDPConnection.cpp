@@ -6,7 +6,7 @@
 #include <cassert>
 
 
-namespace Supernet
+namespace Zerodelay
 {
 	RUDPConnection::RUDPConnection(const EndPoint& endPoint):
 		/* packet loss */
@@ -171,7 +171,7 @@ namespace Supernet
 	{
 		std::lock_guard<std::mutex> lock(m_AckMutex);
 		auto it = std::find( m_AckQueue[channel].begin(), m_AckQueue[channel].end(), seq );
-		if ( it != m_AckQueue[channel].end() )
+		if ( it == m_AckQueue[channel].end() )
 		{
 			m_AckQueue[channel].emplace_back( seq );
 		}

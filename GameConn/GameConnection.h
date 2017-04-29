@@ -4,7 +4,7 @@
 #include <ctime>
 
 
-namespace Supernet
+namespace Zerodelay
 {
 	enum class EConnectionState
 	{
@@ -45,9 +45,9 @@ namespace Supernet
 		bool onReceiveRemoteDisconnected(const char* data, int len, EndPoint& ept, EDisconnectReason& reason);
 		bool onReceiveKeepAliveAnswer();
 		// -- updates
-		void updateConnecting( int connectingTimeoutMs );
-		void updateKeepAlive();
-		void updateDisconnecting();
+		bool updateConnecting( int connectingTimeoutMs );	// Returns true if there is a state change
+		bool updateKeepAlive();								// same
+		bool updateDisconnecting();							// same
 		// -- getters
 		int getTimeSince(int timestamp) const;  // in milliseconds
 		EConnectionState getState() const { return m_State; }

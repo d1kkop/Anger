@@ -14,7 +14,7 @@
 #include <cassert>
 #include <chrono>
 
-using namespace Supernet;
+using namespace Zerodelay;
 using namespace std::chrono_literals;
 
 
@@ -150,7 +150,7 @@ int main(int argc, char** argv)
 {
 	if ( 0 == Platform::initialize() )
 	{
-		NetworkTests::RunAll();
+	//	NetworkTests::RunAll();
 		system("pause");
 		Platform::shutdown();
 	}

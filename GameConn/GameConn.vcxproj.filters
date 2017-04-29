@@ -19,9 +19,6 @@
     <Filter Include="Source Files\Core">
       <UniqueIdentifier>{3566f683-5bf3-49f3-9a6c-9e4f2314dd50}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source Files\Core\tests">
-      <UniqueIdentifier>{928423d4-f2f1-4329-8aab-5f57565a90fd}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Source Files\User">
       <UniqueIdentifier>{d7583bd1-b17e-4a8a-9ad9-4aaf803bddf0}</UniqueIdentifier>
     </Filter>
@@ -54,11 +51,11 @@
     <ClCompile Include="Platform.cpp">
       <Filter>Source Files\Core</Filter>
     </ClCompile>
-    <ClCompile Include="UnitTest.cpp">
-      <Filter>Source Files\Core\tests</Filter>
-    </ClCompile>
     <ClCompile Include="RpcMacros.cpp">
       <Filter>Source Files\Core</Filter>
+    </ClCompile>
+    <ClCompile Include="Zerodelay.cpp">
+      <Filter>Source Files\User</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -86,11 +83,11 @@
     <ClInclude Include="Platform.h">
       <Filter>Source Files\Core</Filter>
     </ClInclude>
-    <ClInclude Include="UnitTest.h">
-      <Filter>Source Files\Core\tests</Filter>
-    </ClInclude>
     <ClInclude Include="RpcMacros.h">
       <Filter>Source Files\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="Zerodelay.h">
+      <Filter>Source Files\User</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

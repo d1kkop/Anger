@@ -3,12 +3,12 @@
 #include "Platform.h"
 
 
-namespace Supernet
+namespace Zerodelay
 {
 #define Check_State( state ) \
 	if ( m_State != EConnectionState::##state ) \
 	{\
-		return;\
+		return false; \
 	}
 
 #define Ensure_State( state ) \
@@ -158,20 +158,22 @@ namespace Supernet
 		return true;
 	}
 
-	void GameConnection::updateConnecting( int maxConnectTimeMs )
+	bool GameConnection::updateConnecting( int maxConnectTimeMs )
 	{
 		Check_State( Connecting );
 		if ( getTimeSince( m_StartConnectingTS ) >= maxConnectTimeMs )
 		{
 			m_State = EConnectionState::InitiateTimedOut;
+			return true;
 		}
+		return false;
 	}
 
-	void GameConnection::updateKeepAlive()
+	bool GameConnection::updateKeepAlive()
 	{
 		Check_State( Connected );
 		if ( m_KeepAliveIntervalMs <= 0 )
-			return;
+			return false; // discard update
 		if ( !m_IsWaitingForKeepAlive )
 		{
 			if ( getTimeSince( m_KeepAliveAnswerTS ) > m_KeepAliveIntervalMs )
@@ -182,17 +184,21 @@ namespace Supernet
 		else if ( getTimeSince( m_KeepAliveRequestTS ) > 3000 ) // 3 seconds is rediculous ping, so consider it lost
 		{
 			m_State = EConnectionState::ConnectionTimedOut;
+			return true;
 		}
+		return false;
 	}
 
-	void GameConnection::updateDisconnecting()
+	bool GameConnection::updateDisconnecting()
 	{
 		Check_State( Disconnecting );
 		if ( getTimeSince(m_DisconnectTS) > m_LingerTimeMs )
 		{
 			// assume afrer this time, that the message was received, otherwise just unlucky
 			m_State = EConnectionState::Disconnected;
+			return true;
 		}
+		return false;
 	}
 
 	int GameConnection::getTimeSince(int timestamp) const

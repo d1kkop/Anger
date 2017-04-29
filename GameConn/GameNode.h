@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Zerodelay.h"
 #include "RecvPoint.h"
 
 #include <cassert>
@@ -9,7 +10,7 @@
 #include <memory>
 
 
-namespace Supernet
+namespace Zerodelay
 {
 	enum class EGameNodePacketType: unsigned char
 	{
@@ -26,44 +27,6 @@ namespace Supernet
 	};
 
 	#define  USER_ID_OFFSET (unsigned char)(EGameNodePacketType::Rpc)+1
-
-
-	enum class EConnectCallResult
-	{
-		Succes,
-		CannotResolveHost,
-		CannotBind,
-		AlreadyExists,
-		SocketError
-	};
-
-	enum class EListenCallResult
-	{
-		Succes,
-		CannotBind,
-		SocketError
-	};
-
-	enum class EDisconnectCallResult
-	{
-		Succes,
-		AlreadyCalled,
-		UnknownEndpoint
-	};
-
-	enum class EConnectResult
-	{
-		Succes,
-		Timedout,
-		InvalidPassword,
-		MaxConnectionsReached
-	};
-
-	enum class EDisconnectReason : unsigned char
-	{
-		Closed,
-		Lost
-	};
 
 
 	class GameNode: public RecvPoint

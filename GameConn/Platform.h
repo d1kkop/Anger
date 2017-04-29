@@ -17,7 +17,7 @@
 #include <mutex>
 
 
-namespace Supernet
+namespace Zerodelay
 {
 	class Platform
 	{

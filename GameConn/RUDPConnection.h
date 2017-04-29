@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Zerodelay.h"
 #include "EndPoint.h"
 #include "RecvPoint.h"
 
@@ -13,7 +14,7 @@
 #include <unordered_set>
 
 
-namespace Supernet
+namespace Zerodelay
 {
 	class IConnection
 	{

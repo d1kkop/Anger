@@ -7,7 +7,7 @@
 using namespace std::chrono_literals;
 
 
-namespace Supernet
+namespace Zerodelay
 {
 	RecvPoint::RecvPoint(bool captureSocketErrors, int sendThreadSleepTimeMs):
 		m_IsClosing(false),

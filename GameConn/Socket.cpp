@@ -1,7 +1,7 @@
 #include "Socket.h"
 
 
-namespace Supernet
+namespace Zerodelay
 {
 	ISocket* ISocket::create()
 	{

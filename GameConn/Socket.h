@@ -8,7 +8,7 @@
 #include <atomic>
 
 
-namespace Supernet
+namespace Zerodelay
 {
 	enum class IPProto
 	{

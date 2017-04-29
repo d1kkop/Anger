@@ -1,7 +1,7 @@
 #include "EndPoint.h"
 
 
-namespace Supernet
+namespace Zerodelay
 {
 
 	bool EndPoint::operator==(const EndPoint& other) const

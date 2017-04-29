@@ -5,7 +5,7 @@
 #include "RpcMacros.h"
 
 
-namespace Supernet
+namespace Zerodelay
 {
 	GameNode::GameNode(int connectTimeoutSeconds, int sendThreadSleepTimeMs, int keepAliveIntervalSeconds, bool captureSocketErrors):
 		RecvPoint(captureSocketErrors, sendThreadSleepTimeMs),
@@ -446,37 +446,47 @@ namespace Supernet
 
 	void GameNode::updateConnecting(class GameConnection* g)
 	{
-		g->updateConnecting(m_ConnectTimeoutMs);
-		if ( g->getState() == EConnectionState::InitiateTimedOut )
+		if ( g->updateConnecting(m_ConnectTimeoutMs) ) // Else, already connected or timed out
 		{
-			forEachCallback( m_ConnectResultCallbacks, [g] (auto& fcb)
+			if ( g->getState() == EConnectionState::InitiateTimedOut )
 			{
-				(fcb)( g->getEndPoint(), EConnectResult::Timedout );
-			});
-			removeConnection( g, "removing conn, connecting timed out %s", __FUNCTION__ );
+				forEachCallback( m_ConnectResultCallbacks, [g] (auto& fcb)
+				{
+					(fcb)( g->getEndPoint(), EConnectResult::Timedout );
+				});
+				removeConnection( g, "removing conn, connecting timed out %s", __FUNCTION__ );
+			}
 		}
 	}
 
 	void GameNode::updateKeepAlive(class GameConnection* g)
 	{
-		g->updateKeepAlive();
-		if ( g->getState() == EConnectionState::ConnectionTimedOut )
+		if ( g->updateKeepAlive() ) // Else arleady timed out, just not timed out, or no keep alive is managed
 		{
-			sendRemoteDisconnected( g, EDisconnectReason::Lost );
-			forEachCallback( m_DisconnectCallbacks, [g] (auto& fcb)
+			if ( g->getState() == EConnectionState::ConnectionTimedOut )
 			{
-				(fcb)( true, g->getEndPoint(), EDisconnectReason::Lost );
-			});
-			removeConnection( g, "removing conn, connection was lost %s", __FUNCTION__ );
+				sendRemoteDisconnected( g, EDisconnectReason::Lost );
+				forEachCallback( m_DisconnectCallbacks, [g] (auto& fcb)
+				{
+					(fcb)( true, g->getEndPoint(), EDisconnectReason::Lost );
+				});
+				removeConnection( g, "removing conn, connection was lost %s", __FUNCTION__ );
+			}
 		}
 	}
 
 	void GameNode::updateDisconnecting(class GameConnection* g)
 	{
-		g->updateDisconnecting();
-		if ( g->getState() == EConnectionState::Disconnected ) // if linger state is passed, state is set to disconnected
+		if ( g->updateDisconnecting() ) // Else, state already handled or not in disconnecting state
 		{
-			removeConnection( g, "removing conn, disonnected gracefully" );
+			if ( g->getState() == EConnectionState::Disconnected ) // if linger state is passed, state is set to disconnected
+			{
+				forEachCallback( m_DisconnectCallbacks, [g] (auto& fcb)
+				{
+					(fcb)( true, g->getEndPoint(), EDisconnectReason::Closed );
+				});
+				removeConnection( g, "removing conn, disonnected gracefully" );
+			}
 		}
 	}
 

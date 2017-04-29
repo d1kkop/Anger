@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Zerodelay.h"
 #include "EndPoint.h"
 
 #include <mutex>
@@ -9,15 +10,8 @@
 #include <condition_variable>
 
 
-namespace Supernet
+namespace Zerodelay
 {
-	enum class EPacketType : unsigned char
-	{
-		Reliable_Ordered,
-		Unreliable_Sequenced,
-		Ack
-	};
-
 	struct Packet 
 	{
 		char* data;
