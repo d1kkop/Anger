@@ -37,7 +37,7 @@ namespace Zerodelay
 		typedef std::function<void (const EndPoint&, unsigned char, const char*, int, unsigned char)>	CustomDataCallback;
 
 	public:
-		GameNode(int connectTimeoutSeconds=8, int sendThreadSleepTimeMs=2, int keepAliveIntervalSeconds=8, bool captureSocketErrors=true);
+		GameNode(int connectTimeoutSeconds=8, int sendThreadSleepTimeMs=10, int keepAliveIntervalSeconds=8, bool captureSocketErrors=true);
 		virtual ~GameNode();
 
 	public:

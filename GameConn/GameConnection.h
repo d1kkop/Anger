@@ -25,7 +25,7 @@ namespace Zerodelay
 	class GameConnection: public RUDPConnection
 	{
 	public:
-		GameConnection( const struct EndPoint& endPoint, int keepAliveIntervalSeconds=-1, int lingerTimeMs = 300 );
+		GameConnection( const struct EndPoint& endPoint, int keepAliveIntervalSeconds=8, int lingerTimeMs = 300 );
 		virtual ~GameConnection();
 		bool disconnect();
 		bool acceptDisconnect();

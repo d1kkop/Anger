@@ -1,6 +1,6 @@
 
 
-Zero-one is a network gaming library that is aimed to be lightweight, cross platform and fast.
+Zerodelay is a network gaming library that is aimed to be lightweight, cross platform and fast.
 
 	Current Features:
 		* Reliable UDP

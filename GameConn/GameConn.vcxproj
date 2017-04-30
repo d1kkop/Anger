@@ -81,7 +81,7 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>MOTOR_NETWORK_DEBUG;MOTOR_NETWORK_UNIT_TEST</PreprocessorDefinitions>
+      <PreprocessorDefinitions>ZDLL_EXPORTING</PreprocessorDefinitions>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <PrecompiledHeaderFile />
     </ClCompile>
@@ -109,7 +109,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>MOTOR_NETWORK_DEBUG;MOTOR_NETWORK_UNIT_TEST</PreprocessorDefinitions>
+      <PreprocessorDefinitions>ZDLL_EXPORTING</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>

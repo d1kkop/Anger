@@ -2,9 +2,13 @@
 
 
 #ifdef _WIN32
-#define ZDLL_EXPORT __declspec(dllexport)
+	#ifdef ZDLL_EXPORTING
+		#define ZDLL_DECLSPEC __declspec(dllexport)
+	#else
+		#define ZDLL_DECLSPEC __declspec(dllimport)
+	#endif
 #else
-#define ZDLL_EXPORt
+	#define ZDLL_DECLSPEC
 #endif
 
 
@@ -63,7 +67,7 @@ namespace Zerodelay
 		Endpoint is analogical to an address. It is either an Ipv4 or Ipv6 address.
 		Do not keep a pointer to the endpoint but copy the structure instead.
 		It works fine with std::map and std::unordered_map. */
-	struct ZDLL_EXPORT ZEndpoint
+	struct ZDLL_DECLSPEC ZEndpoint
 	{
 		ZEndpoint();
 
@@ -89,7 +93,7 @@ namespace Zerodelay
 		A node is the main class for creating and maintaining connections.
 		A connection is nothing more than a state machine built on top of Reliable UDP. 
 		Furthermore, the Node class provides functions for sending data the easy way. */
-	class ZDLL_EXPORT ZNode
+	class ZDLL_DECLSPEC ZNode
 	{
 	public:
 		ZNode(int connectTimeoutSeconds=8, int sendThreadSleepTimeMs=2, int keepAliveIntervalSeconds=8, bool captureSocketErrors=true);
