@@ -1,93 +1,76 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <Filter Include="Source Files">
-      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
-      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
-    </Filter>
-    <Filter Include="Header Files">
-      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
-      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
-    </Filter>
-    <Filter Include="Resource Files">
-      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
-      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
-    </Filter>
-    <Filter Include="Source Files\Game">
-      <UniqueIdentifier>{06205fc6-a340-4a2d-ad4a-327afa4979e1}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Source Files\Core">
+    <Filter Include="Core">
       <UniqueIdentifier>{3566f683-5bf3-49f3-9a6c-9e4f2314dd50}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source Files\User">
+    <Filter Include="ConnectionLayer">
+      <UniqueIdentifier>{06205fc6-a340-4a2d-ad4a-327afa4979e1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="User">
       <UniqueIdentifier>{d7583bd1-b17e-4a8a-9ad9-4aaf803bddf0}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="main.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="Netvar.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="GameNode.cpp">
-      <Filter>Source Files\Game</Filter>
+      <Filter>ConnectionLayer</Filter>
     </ClCompile>
     <ClCompile Include="GameConnection.cpp">
-      <Filter>Source Files\Game</Filter>
+      <Filter>ConnectionLayer</Filter>
     </ClCompile>
     <ClCompile Include="Socket.cpp">
-      <Filter>Source Files\Core</Filter>
+      <Filter>Core</Filter>
     </ClCompile>
     <ClCompile Include="RUDPConnection.cpp">
-      <Filter>Source Files\Core</Filter>
+      <Filter>Core</Filter>
     </ClCompile>
     <ClCompile Include="RecvPoint.cpp">
-      <Filter>Source Files\Core</Filter>
+      <Filter>Core</Filter>
     </ClCompile>
     <ClCompile Include="EndPoint.cpp">
-      <Filter>Source Files\Core</Filter>
+      <Filter>Core</Filter>
     </ClCompile>
     <ClCompile Include="Platform.cpp">
-      <Filter>Source Files\Core</Filter>
-    </ClCompile>
-    <ClCompile Include="RpcMacros.cpp">
-      <Filter>Source Files\Core</Filter>
+      <Filter>Core</Filter>
     </ClCompile>
     <ClCompile Include="Zerodelay.cpp">
-      <Filter>Source Files\User</Filter>
+      <Filter>User</Filter>
     </ClCompile>
+    <ClCompile Include="Netvar.cpp">
+      <Filter>User</Filter>
+    </ClCompile>
+    <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Netvar.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
     <ClInclude Include="GameNode.h">
-      <Filter>Source Files\Game</Filter>
+      <Filter>ConnectionLayer</Filter>
     </ClInclude>
     <ClInclude Include="GameConnection.h">
-      <Filter>Source Files\Game</Filter>
+      <Filter>ConnectionLayer</Filter>
     </ClInclude>
     <ClInclude Include="Socket.h">
-      <Filter>Source Files\Core</Filter>
+      <Filter>Core</Filter>
     </ClInclude>
     <ClInclude Include="RUDPConnection.h">
-      <Filter>Source Files\Core</Filter>
+      <Filter>Core</Filter>
     </ClInclude>
     <ClInclude Include="RecvPoint.h">
-      <Filter>Source Files\Core</Filter>
+      <Filter>Core</Filter>
     </ClInclude>
     <ClInclude Include="EndPoint.h">
-      <Filter>Source Files\Core</Filter>
+      <Filter>Core</Filter>
     </ClInclude>
     <ClInclude Include="Platform.h">
-      <Filter>Source Files\Core</Filter>
-    </ClInclude>
-    <ClInclude Include="RpcMacros.h">
-      <Filter>Source Files\Core</Filter>
+      <Filter>Core</Filter>
     </ClInclude>
     <ClInclude Include="Zerodelay.h">
-      <Filter>Source Files\User</Filter>
+      <Filter>User</Filter>
+    </ClInclude>
+    <ClInclude Include="RpcMacros.h">
+      <Filter>User</Filter>
+    </ClInclude>
+    <ClInclude Include="Netvar.h">
+      <Filter>User</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

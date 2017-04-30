@@ -117,7 +117,6 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="RpcMacros.cpp" />
     <ClCompile Include="GameConnection.cpp" />
     <ClCompile Include="Platform.cpp" />
     <ClCompile Include="RecvPoint.cpp" />
