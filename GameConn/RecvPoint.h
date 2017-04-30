@@ -52,7 +52,7 @@ namespace Zerodelay
 
 	protected:
 		volatile bool m_IsClosing;
-		class ISocket* m_Socket;
+		class ISocket* m_ListenSocket;
 		bool m_CaptureSocketErrors;
 		int  m_SendThreadSleepTimeMs;
 		const EndPoint* m_WasSpecific;
@@ -64,9 +64,9 @@ namespace Zerodelay
 		std::vector<int> m_SocketErrors;
 		std::map<EndPoint, class IConnection*, EndPoint::STLCompare> m_Connections;
 
-#if MOTOR_NETWORK_DEBUG
+#if ZNETWORK_DEBUG
 	public:
-		ISocket* dbg_getSocket() const { return m_Socket; }
+		ISocket* dbg_getSocket() const { return m_ListenSocket; }
 #endif
 	};
 

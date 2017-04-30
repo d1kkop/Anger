@@ -13,7 +13,7 @@ namespace Zerodelay
 		m_IsClosing(false),
 		m_CaptureSocketErrors(captureSocketErrors),
 		m_SendThreadSleepTimeMs(sendThreadSleepTimeMs),
-		m_Socket(ISocket::create()),
+		m_ListenSocket(ISocket::create()),
 		m_WasSpecific(nullptr),
 		m_WasExclude(false),
 		m_RecvThread(nullptr),
@@ -24,9 +24,9 @@ namespace Zerodelay
 	RecvPoint::~RecvPoint()
 	{
 		m_IsClosing = true;
-		if ( m_Socket )
+		if ( m_ListenSocket )
 		{
-			m_Socket->close();
+			m_ListenSocket->close();
 		}
 		if ( m_RecvThread && m_RecvThread->joinable() )
 		{
@@ -42,7 +42,7 @@ namespace Zerodelay
 		{
 			delete kvp.second;
 		}
-		delete m_Socket;
+		delete m_ListenSocket;
 	}
 
 	void RecvPoint::beginSend(const EndPoint* specific, bool exclude)
@@ -120,21 +120,21 @@ namespace Zerodelay
 		while ( !m_IsClosing )
 		{
 			// non blocking sockets for testing purposes
-			if ( !m_Socket->isBlocking() )
+			if ( !m_ListenSocket->isBlocking() )
 			{
 				std::this_thread::sleep_for(100ms);
 			}
 
 			char buff[RecvPoint::sm_MaxRecvBuffSize];
 			int  rawSize = sm_MaxRecvBuffSize;
-			auto eResult = m_Socket->recv( buff, rawSize, endPoint );
+			auto eResult = m_ListenSocket->recv( buff, rawSize, endPoint );
 
 			if ( eResult != ERecvResult::Succes || rawSize <= 0 )
 			{
 				// optionally capture the socket errors
 				if ( m_CaptureSocketErrors )
 				{
-					int err = m_Socket->getUnderlayingSocketError();
+					int err = m_ListenSocket->getUnderlayingSocketError();
 					if ( err != 0 )
 					{
 						std::lock_guard<std::mutex> lock(m_ConnectionListMutex);
@@ -198,7 +198,7 @@ namespace Zerodelay
 			m_SendThreadCv.wait_for( lock, std::chrono::milliseconds(m_SendThreadSleepTimeMs) );
 			for (auto& kvp : m_Connections)
 			{
-				kvp.second->flushSendQueue( m_Socket );
+				kvp.second->flushSendQueue( m_ListenSocket );
 			}
 		}
 	}

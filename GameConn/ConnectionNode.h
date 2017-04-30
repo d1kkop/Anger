@@ -12,23 +12,6 @@
 
 namespace Zerodelay
 {
-	enum class EGameNodePacketType: unsigned char
-	{
-		ConnectRequest,
-		ConnectAccept,
-		Disconnect,
-		RemoteConnected,
-		RemoteDisconnected,
-		KeepAliveRequest,
-		KeepAliveAnswer,
-		IncorrectPassword,
-		MaxConnectionsReached,
-		Rpc
-	};
-
-	#define  USER_ID_OFFSET (unsigned char)(EGameNodePacketType::Rpc)+1
-
-
 	class ConnectionNode: public RecvPoint
 	{
 		typedef std::function<void (const EndPoint&, EConnectResult)>					ConnectResultCallback;

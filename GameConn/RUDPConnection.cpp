@@ -175,7 +175,6 @@ namespace Zerodelay
 		{
 			m_AckQueue[channel].emplace_back( seq );
 		}
-		//m_AckQueue[channel].insert( seq );
 	}
 
 	void RUDPConnection::dispatchSendQueue(ISocket* socket)

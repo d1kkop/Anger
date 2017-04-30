@@ -43,6 +43,7 @@ namespace Zerodelay
 		bool onReceiveConnectAccept();
 		bool onReceiveRemoteConnected(const char* data, int len, EndPoint& ept);
 		bool onReceiveRemoteDisconnected(const char* data, int len, EndPoint& ept, EDisconnectReason& reason);
+		bool onReceiveKeepAliveRequest();
 		bool onReceiveKeepAliveAnswer();
 		// -- updates
 		bool updateConnecting( int connectingTimeoutMs );	// Returns true if there is a state change
@@ -58,8 +59,7 @@ namespace Zerodelay
 		int m_KeepAliveIntervalMs;
 		int m_LingerTimeMs;
 		clock_t m_StartConnectingTS;
-		clock_t m_KeepAliveRequestTS;
-		clock_t m_KeepAliveAnswerTS;
+		clock_t m_KeepAliveTS;
 		clock_t m_DisconnectTS;
 		bool m_IsWaitingForKeepAlive;
 		EConnectionState m_State;

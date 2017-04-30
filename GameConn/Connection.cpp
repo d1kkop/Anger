@@ -24,8 +24,7 @@ namespace Zerodelay
 		m_KeepAliveIntervalMs(keepAliveIntervalSeconds*1000),
 		m_LingerTimeMs(lingerTimeMs),
 		m_StartConnectingTS(-1),
-		m_KeepAliveRequestTS(-1),
-		m_KeepAliveAnswerTS(-1),
+		m_KeepAliveTS(-1),
 		m_IsWaitingForKeepAlive(false),
 		m_State(EConnectionState::Idle)
 	{
@@ -84,11 +83,8 @@ namespace Zerodelay
 
 	bool Connection::sendKeepAliveRequest()
 	{
-		if ( m_KeepAliveIntervalMs <= 0 ) // dont do keep alive requests
-			return false;
 		Ensure_State( Connected );
-		m_KeepAliveRequestTS = ::clock();
-		m_IsWaitingForKeepAlive = true;
+		m_KeepAliveTS = ::clock();
 		sendSystemMessage( EGameNodePacketType::KeepAliveRequest );
 		return true;
 	}
@@ -118,14 +114,14 @@ namespace Zerodelay
 	{
 		Ensure_State( Connecting );
 		m_State = EConnectionState::Connected;
-		m_KeepAliveRequestTS = ::clock();
+		m_KeepAliveTS = ::clock();
 		return true;
 	}
 
 	bool Connection::onReceiveRemoteConnected(const char* data, int len, EndPoint& ept)
 	{
 		// Deliberately no state ensurance
-		if (ept.read( data, len ) > 0)
+		if (ept.read( data, len ) < 0)
 		{
 			Platform::log("serialization fail in: %s\n", (__FUNCTION__));
 			return false;
@@ -150,12 +146,23 @@ namespace Zerodelay
 		return false;
 	}
 
+	bool Connection::onReceiveKeepAliveRequest()
+	{
+		Ensure_State( Connected );
+		sendSystemMessage( EGameNodePacketType::KeepAliveAnswer );
+		return true;
+	}
+
 	bool Connection::onReceiveKeepAliveAnswer()
 	{
-	//	Check_State( Connected ); // can be received after state switch to disconnect
-		m_IsWaitingForKeepAlive = false;
-		m_KeepAliveAnswerTS = ::clock();
-		return true;
+		if ( m_IsWaitingForKeepAlive )
+		{
+			m_IsWaitingForKeepAlive = false;
+			m_KeepAliveTS = ::clock();
+			// printf("alive response..\n"); // dbg
+			return true;
+		}
+		return false;
 	}
 
 	bool Connection::updateConnecting( int maxConnectTimeMs )
@@ -176,12 +183,14 @@ namespace Zerodelay
 			return false; // discard update
 		if ( !m_IsWaitingForKeepAlive )
 		{
-			if ( getTimeSince( m_KeepAliveAnswerTS ) > m_KeepAliveIntervalMs )
+			if ( getTimeSince( m_KeepAliveTS ) > m_KeepAliveIntervalMs )
 			{
 				sendKeepAliveRequest();
+				m_IsWaitingForKeepAlive = true;
+				// printf("alive request..\n"); // dbg
 			}
 		}
-		else if ( getTimeSince( m_KeepAliveRequestTS ) > 3000 ) // 3 seconds is rediculous ping, so consider it lost
+		else if ( getTimeSince( m_KeepAliveTS ) > 3000 ) // 3 seconds is rediculous ping, so consider it lost
 		{
 			m_State = EConnectionState::ConnectionTimedOut;
 			return true;

@@ -34,7 +34,7 @@ namespace Zerodelay
 
 	EConnectCallResult ConnectionNode::connect(const EndPoint& endPoint, const std::string& pw)
 	{
-		if ( !m_Socket )
+		if ( !m_ListenSocket )
 		{
 			return EConnectCallResult::SocketError;
 		}
@@ -68,7 +68,7 @@ namespace Zerodelay
 
 	EListenCallResult ConnectionNode::listenOn(int port, const std::string& pw)
 	{
-		if ( !m_Socket )
+		if ( !m_ListenSocket )
 		{
 			return EListenCallResult::SocketError;
 		}
@@ -252,6 +252,9 @@ namespace Zerodelay
 			break;
 		case EGameNodePacketType::RemoteDisconnected:
 			recvRemoteDisconnected(g, payload, payloadLen);
+			break;
+		case EGameNodePacketType::KeepAliveRequest:
+			g->onReceiveKeepAliveRequest();
 			break;
 		case EGameNodePacketType::KeepAliveAnswer:
 			g->onReceiveKeepAliveAnswer();
@@ -495,7 +498,7 @@ namespace Zerodelay
 		if ( m_SocketIsOpened )
 			return true;
 		// A node can connect to multiple addresses, but the socket should only open once
-		m_SocketIsOpened = m_Socket->open();
+		m_SocketIsOpened = m_ListenSocket->open();
 		return m_SocketIsOpened;
 	}
 
@@ -503,7 +506,7 @@ namespace Zerodelay
 	{
 		if ( m_SocketIsBound )
 			return true;
-		m_SocketIsBound = m_Socket->bind(port);
+		m_SocketIsBound = m_ListenSocket->bind(port);
 		return m_SocketIsBound;
 	}
 }

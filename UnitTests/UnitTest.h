@@ -28,7 +28,7 @@ namespace UnitTests
 		int PackLossRecv; // %
 		int SendThreadWaitMs;
 		int KeepAliveSeconds;
-		MassConnectTest() : NumConns(1000), NumNodes(10), PackLossSender(25), PackLossRecv(25), SendThreadWaitMs(200), KeepAliveSeconds(8) { }
+		MassConnectTest() : NumConns(10), NumNodes(10), PackLossSender(25), PackLossRecv(25), SendThreadWaitMs(200), KeepAliveSeconds(8) { }
 
 		virtual void initialize() override;
 		virtual void run() override;
