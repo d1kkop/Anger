@@ -1,5 +1,5 @@
-#include "GameNode.h"
-#include "GameConnection.h"
+#include "ConnectionNode.h"
+#include "Connection.h"
 #include "Socket.h"
 #include "EndPoint.h"
 #include "RpcMacros.h"
@@ -7,7 +7,7 @@
 
 namespace Zerodelay
 {
-	GameNode::GameNode(int connectTimeoutSeconds, int sendThreadSleepTimeMs, int keepAliveIntervalSeconds, bool captureSocketErrors):
+	ConnectionNode::ConnectionNode(int connectTimeoutSeconds, int sendThreadSleepTimeMs, int keepAliveIntervalSeconds, bool captureSocketErrors):
 		RecvPoint(captureSocketErrors, sendThreadSleepTimeMs),
 		m_SocketIsOpened(false),
 		m_SocketIsBound(false),
@@ -18,11 +18,11 @@ namespace Zerodelay
 	{
 	}
 
-	GameNode::~GameNode()
+	ConnectionNode::~ConnectionNode()
 	{
 	}
 
-	EConnectCallResult GameNode::connect(const std::string& name, int port, const std::string& pw)
+	EConnectCallResult ConnectionNode::connect(const std::string& name, int port, const std::string& pw)
 	{
 		EndPoint endPoint;
 		if ( !endPoint.resolve( name, port ) )
@@ -32,7 +32,7 @@ namespace Zerodelay
 		return connect( endPoint, pw );
 	}
 
-	EConnectCallResult GameNode::connect(const EndPoint& endPoint, const std::string& pw)
+	EConnectCallResult ConnectionNode::connect(const EndPoint& endPoint, const std::string& pw)
 	{
 		if ( !m_Socket )
 		{
@@ -50,14 +50,14 @@ namespace Zerodelay
 			return EConnectCallResult::CannotBind;
 		}
 
-		GameConnection* g;
+		Connection* g;
 		std::lock_guard<std::mutex> lock(m_ConnectionListMutex);
 		{
 			if ( m_Connections.find( endPoint ) != m_Connections.end() )
 			{
 				return EConnectCallResult::AlreadyExists;
 			}
-			g = new GameConnection( endPoint, m_KeepAliveIntervalSeconds );
+			g = new Connection( endPoint, m_KeepAliveIntervalSeconds );
 			m_Connections.insert( std::make_pair( endPoint, g ) );
 		}
 
@@ -66,7 +66,7 @@ namespace Zerodelay
 		return EConnectCallResult::Succes;
 	}
 
-	EListenCallResult GameNode::listenOn(int port, const std::string& pw)
+	EListenCallResult ConnectionNode::listenOn(int port, const std::string& pw)
 	{
 		if ( !m_Socket )
 		{
@@ -88,15 +88,15 @@ namespace Zerodelay
 		return EListenCallResult::Succes;
 	}
 
-	EDisconnectCallResult GameNode::disconnect(const EndPoint& endPoint)
+	EDisconnectCallResult ConnectionNode::disconnect(const EndPoint& endPoint)
 	{
-		GameConnection* conn = nullptr;
+		Connection* conn = nullptr;
 		{
 			std::lock_guard<std::mutex> lock(m_ConnectionListMutex);
 			auto& it = m_Connections.find( endPoint );
 			if ( it != m_Connections.end() )
 			{
-				conn = dynamic_cast<GameConnection*>(it->second);
+				conn = dynamic_cast<Connection*>(it->second);
 				if ( conn->isPendingDelete() ) // dont allow a pending for delete connection to work on
 				{
 					conn = nullptr;
@@ -114,13 +114,13 @@ namespace Zerodelay
 		return EDisconnectCallResult::UnknownEndpoint;
 	}
 
-	void GameNode::disconnectAll()
+	void ConnectionNode::disconnectAll()
 	{
 		m_TempConnections2.clear();
 		copyConnectionsTo( m_TempConnections2 );
 		for ( auto* conn : m_TempConnections2 )
 		{
-			GameConnection* gc = dynamic_cast<GameConnection*>(conn);
+			Connection* gc = dynamic_cast<Connection*>(conn);
 			if ( gc )
 			{
 				gc->disconnect();
@@ -128,13 +128,13 @@ namespace Zerodelay
 		}
 	}
 
-	void GameNode::update()
+	void ConnectionNode::update()
 	{
 		m_TempConnections.clear();
 		copyConnectionsTo( m_TempConnections );
 		for ( auto* conn : m_TempConnections )
 		{
-			GameConnection* gc = dynamic_cast<GameConnection*>(conn);
+			Connection* gc = dynamic_cast<Connection*>(conn);
 			if ( gc )
 			{
 				gc->beginPoll();
@@ -154,29 +154,29 @@ namespace Zerodelay
 		m_DeadConnections.clear();
 	}
 
-	void GameNode::setIsTrueServer(bool is)
+	void ConnectionNode::setIsTrueServer(bool is)
 	{
 		m_IsServer = is;
 	}
 
-	void GameNode::setServerPassword(const std::string& pw)
+	void ConnectionNode::setServerPassword(const std::string& pw)
 	{
 		m_ServerPassword = pw;
 	}
 
-	void GameNode::setMaxIncomingConnections(int maxNumConnections)
+	void ConnectionNode::setMaxIncomingConnections(int maxNumConnections)
 	{
 		m_MaxIncomingConnections = maxNumConnections;
 	}
 
-	class IConnection* GameNode::createNewConnection(const EndPoint& endPoint) const
+	class IConnection* ConnectionNode::createNewConnection(const EndPoint& endPoint) const
 	{
-		return new GameConnection( endPoint, m_KeepAliveIntervalSeconds );
+		return new Connection( endPoint, m_KeepAliveIntervalSeconds );
 	}
 
-	void GameNode::removeConnection(const class GameConnection* g, const char* fmt, ...)
+	void ConnectionNode::removeConnection(const class Connection* g, const char* fmt, ...)
 	{
-		m_DeadConnections.emplace_back( const_cast<GameConnection*>(g) );
+		m_DeadConnections.emplace_back( const_cast<Connection*>(g) );
 		if ( fmt )
 		{
 			char buff[2048];
@@ -193,7 +193,7 @@ namespace Zerodelay
 		}
 	}
 
-	void GameNode::sendRemoteConnected(const GameConnection* g)
+	void ConnectionNode::sendRemoteConnected(const Connection* g)
 	{
 		if ( !m_IsServer )
 			return; // only if is true server, relay message
@@ -210,7 +210,7 @@ namespace Zerodelay
 		endSend();
 	}
 
-	void GameNode::sendRemoteDisconnected(const GameConnection* g, EDisconnectReason reason)
+	void ConnectionNode::sendRemoteDisconnected(const Connection* g, EDisconnectReason reason)
 	{
 		if ( !m_IsServer )
 			return; // only if is true server, relay message
@@ -231,7 +231,7 @@ namespace Zerodelay
 		endSend();
 	}
 
-	void GameNode::recvPacket(struct Packet& pack, class GameConnection* g)
+	void ConnectionNode::recvPacket(struct Packet& pack, class Connection* g)
 	{
 		EGameNodePacketType packType = (EGameNodePacketType)pack.data[0];
 		const char* payload  = pack.data+1; // first byte is PacketType
@@ -271,7 +271,7 @@ namespace Zerodelay
 		}
 	}
 
-	void GameNode::recvConnectPacket(const char* payload, int payloadLen, class GameConnection* g)
+	void ConnectionNode::recvConnectPacket(const char* payload, int payloadLen, class Connection* g)
 	{
 		static const int kBuffSize=1024;
 		char pw[kBuffSize];
@@ -314,7 +314,7 @@ namespace Zerodelay
 		}
 	}
 
-	void GameNode::recvConnectAccept(class GameConnection* g)
+	void ConnectionNode::recvConnectAccept(class Connection* g)
 	{
 		if (g->onReceiveConnectAccept())
 		{
@@ -329,7 +329,7 @@ namespace Zerodelay
 		}
 	}
 
-	void GameNode::recvDisconnectPacket(const char* payload, int len, class GameConnection* g)
+	void ConnectionNode::recvDisconnectPacket(const char* payload, int len, class Connection* g)
 	{
 		if ( g->acceptDisconnect() )
 		{
@@ -345,7 +345,7 @@ namespace Zerodelay
 		}
 	}
 
-	void GameNode::recvRemoteConnected(class GameConnection* g, const char* payload, int payloadLen)
+	void ConnectionNode::recvRemoteConnected(class Connection* g, const char* payload, int payloadLen)
 	{
 		EndPoint etp;
 		if (g->onReceiveRemoteConnected(payload, payloadLen, etp))
@@ -361,7 +361,7 @@ namespace Zerodelay
 		}
 	}
 
-	void GameNode::recvRemoteDisconnected(class GameConnection* g, const char* payload, int payloadLen)
+	void ConnectionNode::recvRemoteDisconnected(class Connection* g, const char* payload, int payloadLen)
 	{
 		EndPoint etp;
 		EDisconnectReason reason;
@@ -378,7 +378,7 @@ namespace Zerodelay
 		}
 	}
 
-	void GameNode::recvInvalidPassword(class GameConnection* g, const char* payload, int payloadLen)
+	void ConnectionNode::recvInvalidPassword(class Connection* g, const char* payload, int payloadLen)
 	{
 		if ( g->setInvalidPassword() )
 		{
@@ -393,7 +393,7 @@ namespace Zerodelay
 		}
 	}
 
-	void GameNode::recvMaxConnectionsReached(class GameConnection* g, const char* payload, int payloadLen)
+	void ConnectionNode::recvMaxConnectionsReached(class Connection* g, const char* payload, int payloadLen)
 	{
 		if ( g->setMaxConnectionsReached() )
 		{
@@ -408,7 +408,7 @@ namespace Zerodelay
 		}
 	}
 
-	void GameNode::recvRpcPacket(const char* payload, int len, class GameConnection* g)
+	void ConnectionNode::recvRpcPacket(const char* payload, int len, class Connection* g)
 	{
 		char name[RPC_NAME_MAX_LENGTH];
 		if ( !ISocket::readFixed( name, RPC_NAME_MAX_LENGTH, payload, (RPC_NAME_MAX_LENGTH<len?RPC_NAME_MAX_LENGTH:len)) )
@@ -436,7 +436,7 @@ namespace Zerodelay
 		}
 	}
 
-	void GameNode::recvUserPacket(class GameConnection* g, const char* payload, int payloadLen, unsigned char channel)
+	void ConnectionNode::recvUserPacket(class Connection* g, const char* payload, int payloadLen, unsigned char channel)
 	{
 		forEachCallback(m_CustomDataCallbacks, [&](auto& fcb)
 		{
@@ -444,7 +444,7 @@ namespace Zerodelay
 		});
 	}
 
-	void GameNode::updateConnecting(class GameConnection* g)
+	void ConnectionNode::updateConnecting(class Connection* g)
 	{
 		if ( g->updateConnecting(m_ConnectTimeoutMs) ) // Else, already connected or timed out
 		{
@@ -459,7 +459,7 @@ namespace Zerodelay
 		}
 	}
 
-	void GameNode::updateKeepAlive(class GameConnection* g)
+	void ConnectionNode::updateKeepAlive(class Connection* g)
 	{
 		if ( g->updateKeepAlive() ) // Else arleady timed out, just not timed out, or no keep alive is managed
 		{
@@ -475,7 +475,7 @@ namespace Zerodelay
 		}
 	}
 
-	void GameNode::updateDisconnecting(class GameConnection* g)
+	void ConnectionNode::updateDisconnecting(class Connection* g)
 	{
 		if ( g->updateDisconnecting() ) // Else, state already handled or not in disconnecting state
 		{
@@ -490,7 +490,7 @@ namespace Zerodelay
 		}
 	}
 
-	bool GameNode::openSocket()
+	bool ConnectionNode::openSocket()
 	{
 		if ( m_SocketIsOpened )
 			return true;
@@ -499,7 +499,7 @@ namespace Zerodelay
 		return m_SocketIsOpened;
 	}
 
-	bool GameNode::bindSocket(unsigned short port)
+	bool ConnectionNode::bindSocket(unsigned short port)
 	{
 		if ( m_SocketIsBound )
 			return true;

@@ -12,12 +12,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="GameNode.cpp">
-      <Filter>ConnectionLayer</Filter>
-    </ClCompile>
-    <ClCompile Include="GameConnection.cpp">
-      <Filter>ConnectionLayer</Filter>
-    </ClCompile>
     <ClCompile Include="Socket.cpp">
       <Filter>Core</Filter>
     </ClCompile>
@@ -40,14 +34,14 @@
       <Filter>User</Filter>
     </ClCompile>
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="ConnectionNode.cpp">
+      <Filter>ConnectionLayer</Filter>
+    </ClCompile>
+    <ClCompile Include="Connection.cpp">
+      <Filter>ConnectionLayer</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="GameNode.h">
-      <Filter>ConnectionLayer</Filter>
-    </ClInclude>
-    <ClInclude Include="GameConnection.h">
-      <Filter>ConnectionLayer</Filter>
-    </ClInclude>
     <ClInclude Include="Socket.h">
       <Filter>Core</Filter>
     </ClInclude>
@@ -71,6 +65,12 @@
     </ClInclude>
     <ClInclude Include="Netvar.h">
       <Filter>User</Filter>
+    </ClInclude>
+    <ClInclude Include="ConnectionNode.h">
+      <Filter>ConnectionLayer</Filter>
+    </ClInclude>
+    <ClInclude Include="Connection.h">
+      <Filter>ConnectionLayer</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

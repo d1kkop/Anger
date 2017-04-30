@@ -53,7 +53,7 @@ namespace Zerodelay
 		IPProto m_IpProto;
 	};
 
-#ifdef MOTOR_NETWORK_DEBUG
+#ifdef ZNETWORK_DEBUG
 	class FakeSocket: public ISocket
 	{
 		struct FakePacket

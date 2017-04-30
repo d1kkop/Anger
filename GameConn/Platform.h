@@ -31,6 +31,7 @@ namespace Zerodelay
 		// Do thread safe logging
 		static void log(const char* format, ...);
 	private:
+		static bool wasInitialized;
 		static std::mutex mapMutex;
 		static std::mutex logMutex;
 		static std::map<std::string, void*> name2RpcFunction;

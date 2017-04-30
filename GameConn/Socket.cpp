@@ -1,10 +1,12 @@
 #include "Socket.h"
+#include "Platform.h"
 
 
 namespace Zerodelay
 {
 	ISocket* ISocket::create()
 	{
+		Platform::initialize();
 		return new BSDSocket();
 	}
 
@@ -34,7 +36,7 @@ namespace Zerodelay
 		return true;
 	}
 
-#ifdef MOTOR_NETWORK_DEBUG
+#ifdef ZNETWORK_DEBUG
 
 	//////////////////////////////////////////////////////////////////////////
 	// Fake Socket

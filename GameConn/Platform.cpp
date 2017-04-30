@@ -7,6 +7,9 @@ namespace Zerodelay
 {
 	int Platform::initialize()
 	{
+		if ( wasInitialized )
+			return 0;
+
 #if _WIN32
 
 		WORD wVersionRequested;
@@ -35,16 +38,21 @@ namespace Zerodelay
 		}
 #endif
 
-
+		wasInitialized = true;
 		return 0;
 	}
 
 	void Platform::shutdown()
 	{
+		if ( !wasInitialized )
+			return;
+
 #if _WIN32
 		WSACleanup();
 #endif
+
 		name2RpcFunction.clear();
+		wasInitialized = false;
 	}
 
 	void* Platform::getPtrFromName(const char* name)
@@ -97,6 +105,7 @@ namespace Zerodelay
 #endif
 	}
 
+	bool Platform::wasInitialized = false;
 	std::mutex Platform::mapMutex;
 	std::mutex Platform::logMutex;
 	std::map<std::string, void*> Platform::name2RpcFunction;

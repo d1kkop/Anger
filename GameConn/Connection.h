@@ -22,11 +22,11 @@ namespace Zerodelay
 	enum class EGameNodePacketType:unsigned char;
 	enum class EDisconnectReason:unsigned char;
 
-	class GameConnection: public RUDPConnection
+	class Connection: public RUDPConnection
 	{
 	public:
-		GameConnection( const struct EndPoint& endPoint, int keepAliveIntervalSeconds=8, int lingerTimeMs = 300 );
-		virtual ~GameConnection();
+		Connection( const struct EndPoint& endPoint, int keepAliveIntervalSeconds=8, int lingerTimeMs = 300 );
+		virtual ~Connection();
 		bool disconnect();
 		bool acceptDisconnect();
 		bool setInvalidPassword();

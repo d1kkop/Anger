@@ -1,5 +1,5 @@
 #include "Zerodelay.h"
-#include "GameNode.h"
+#include "ConnectionNode.h"
 
 
 namespace Zerodelay
@@ -76,7 +76,7 @@ namespace Zerodelay
 
 
 	ZNode::ZNode(int connectTimeoutSeconds, int sendThreadSleepTimeMs, int keepAliveIntervalSeconds, bool captureSocketErrors) :
-		p(new GameNode(connectTimeoutSeconds, sendThreadSleepTimeMs, keepAliveIntervalSeconds, captureSocketErrors))
+		p(new ConnectionNode(connectTimeoutSeconds, sendThreadSleepTimeMs, keepAliveIntervalSeconds, captureSocketErrors))
 	{
 	}
 

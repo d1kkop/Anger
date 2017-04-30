@@ -29,7 +29,7 @@ namespace Zerodelay
 	#define  USER_ID_OFFSET (unsigned char)(EGameNodePacketType::Rpc)+1
 
 
-	class GameNode: public RecvPoint
+	class ConnectionNode: public RecvPoint
 	{
 		typedef std::function<void (const EndPoint&, EConnectResult)>					ConnectResultCallback;
 		typedef std::function<void (bool, const EndPoint&, EDisconnectReason)>			DisconnectCallback;
@@ -37,8 +37,8 @@ namespace Zerodelay
 		typedef std::function<void (const EndPoint&, unsigned char, const char*, int, unsigned char)>	CustomDataCallback;
 
 	public:
-		GameNode(int connectTimeoutSeconds=8, int sendThreadSleepTimeMs=10, int keepAliveIntervalSeconds=8, bool captureSocketErrors=true);
-		virtual ~GameNode();
+		ConnectionNode(int connectTimeoutSeconds=8, int sendThreadSleepTimeMs=10, int keepAliveIntervalSeconds=8, bool captureSocketErrors=true);
+		virtual ~ConnectionNode();
 
 	public:
 		// Connect  to specific endpoint. 
@@ -86,7 +86,7 @@ namespace Zerodelay
 		// For when connection is closed or gets dropped.
 		// In case of client-server, the endpoint is different than the g->getEndPoint() when a remote connection disconnect or got lost.
 		// Function signature:
-		// void (class GameConnection*, const Endpoint&, EDisconnect reason)
+		// void (class Connection*, const Endpoint&, EDisconnect reason)
 		void bindOnDisconnect(DisconnectCallback cb)			{ bindCallback(m_DisconnectCallbacks, cb); }
 
 		// For all other data that is specific to the application
@@ -97,25 +97,25 @@ namespace Zerodelay
 	private:
 		// Called by recv thread
 		virtual class IConnection* createNewConnection( const EndPoint& endPoint ) const override;
-		void removeConnection( const class GameConnection* g, const char* frmtReason, ... );
+		void removeConnection( const class Connection* g, const char* frmtReason, ... );
 		// sends
-		void sendRemoteConnected( const class GameConnection* g );
-		void sendRemoteDisconnected( const class GameConnection* g, EDisconnectReason reason );
+		void sendRemoteConnected( const class Connection* g );
+		void sendRemoteDisconnected( const class Connection* g, EDisconnectReason reason );
 		// recvs (Game thread)
-		void recvPacket( struct Packet& pack, class GameConnection* g );
-		void recvConnectPacket(const char* payload, int len, class GameConnection* g);
-		void recvConnectAccept(class GameConnection* g);
-		void recvDisconnectPacket( const char* payload, int len, class GameConnection* g );
-		void recvRemoteConnected(class GameConnection* g, const char* payload, int payloadLen);
-		void recvRemoteDisconnected(class GameConnection* g, const char* payload, int payloadLen);
-		void recvInvalidPassword(class GameConnection* g, const char* payload, int payloadLen);
-		void recvMaxConnectionsReached(class GameConnection* g, const char* payload, int payloadLen);
-		void recvRpcPacket( const char* payload, int len, class GameConnection* g);
-		void recvUserPacket(class GameConnection* g, const char* payload, int payloadLen, unsigned char channel);
+		void recvPacket( struct Packet& pack, class Connection* g );
+		void recvConnectPacket(const char* payload, int len, class Connection* g);
+		void recvConnectAccept(class Connection* g);
+		void recvDisconnectPacket( const char* payload, int len, class Connection* g );
+		void recvRemoteConnected(class Connection* g, const char* payload, int payloadLen);
+		void recvRemoteDisconnected(class Connection* g, const char* payload, int payloadLen);
+		void recvInvalidPassword(class Connection* g, const char* payload, int payloadLen);
+		void recvMaxConnectionsReached(class Connection* g, const char* payload, int payloadLen);
+		void recvRpcPacket( const char* payload, int len, class Connection* g);
+		void recvUserPacket(class Connection* g, const char* payload, int payloadLen, unsigned char channel);
 		// updating
-		void updateConnecting( class GameConnection* g );
-		void updateKeepAlive( class GameConnection* g );
-		void updateDisconnecting( class GameConnection* g );
+		void updateConnecting( class Connection* g );
+		void updateKeepAlive( class Connection* g );
+		void updateDisconnecting( class Connection* g );
 		// socket
 		bool openSocket();
 		bool bindSocket(unsigned short port);
@@ -143,13 +143,13 @@ namespace Zerodelay
 
 
 	template <typename List, typename Callback>
-	void GameNode::bindCallback(List& list, Callback cb)
+	void ConnectionNode::bindCallback(List& list, Callback cb)
 	{
 		list.emplace_back( cb );
 	}
 
 	template <typename List, typename Callback>
-	void GameNode::forEachCallback(List& list, Callback cb)
+	void ConnectionNode::forEachCallback(List& list, Callback cb)
 	{
 		for (auto it = list.begin(); it != list.end(); ++it)
 		{

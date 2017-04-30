@@ -117,7 +117,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="GameConnection.cpp" />
+    <ClCompile Include="Connection.cpp" />
     <ClCompile Include="Platform.cpp" />
     <ClCompile Include="RecvPoint.cpp" />
     <ClCompile Include="RUDPConnection.cpp" />
@@ -128,19 +128,19 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="Netvar.cpp" />
-    <ClCompile Include="GameNode.cpp" />
+    <ClCompile Include="ConnectionNode.cpp" />
     <ClCompile Include="Zerodelay.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="RpcMacros.h" />
-    <ClInclude Include="GameConnection.h" />
+    <ClInclude Include="Connection.h" />
     <ClInclude Include="Platform.h" />
     <ClInclude Include="RecvPoint.h" />
     <ClInclude Include="RUDPConnection.h" />
     <ClInclude Include="EndPoint.h" />
     <ClInclude Include="Socket.h" />
     <ClInclude Include="Netvar.h" />
-    <ClInclude Include="GameNode.h" />
+    <ClInclude Include="ConnectionNode.h" />
     <ClInclude Include="Zerodelay.h" />
   </ItemGroup>
   <ItemGroup>

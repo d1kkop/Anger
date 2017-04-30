@@ -1,5 +1,5 @@
-#include "GameConnection.h"
-#include "GameNode.h"
+#include "Connection.h"
+#include "ConnectionNode.h"
 #include "Platform.h"
 
 
@@ -19,7 +19,7 @@ namespace Zerodelay
 	}
 
 
-	GameConnection::GameConnection(const EndPoint& endPoint, int keepAliveIntervalSeconds, int lingerTimeMs):
+	Connection::Connection(const EndPoint& endPoint, int keepAliveIntervalSeconds, int lingerTimeMs):
 		RUDPConnection(endPoint),
 		m_KeepAliveIntervalMs(keepAliveIntervalSeconds*1000),
 		m_LingerTimeMs(lingerTimeMs),
@@ -31,11 +31,11 @@ namespace Zerodelay
 	{
 	}
 
-	GameConnection::~GameConnection()
+	Connection::~Connection()
 	{
 	}
 
-	bool GameConnection::disconnect()
+	bool Connection::disconnect()
 	{
 		Ensure_State( Connected )
 		m_State = EConnectionState::Disconnecting;
@@ -44,28 +44,28 @@ namespace Zerodelay
 		return true;
 	}
 
-	bool GameConnection::acceptDisconnect()
+	bool Connection::acceptDisconnect()
 	{
 		Ensure_State( Connected )
 		m_State = EConnectionState::Disconnected;
 		return true;
 	}
 
-	bool GameConnection::setInvalidPassword()
+	bool Connection::setInvalidPassword()
 	{
 		Ensure_State( Connecting );
 		m_State = EConnectionState::InvalidPassword;
 		return true;
 	}
 
-	bool GameConnection::setMaxConnectionsReached()
+	bool Connection::setMaxConnectionsReached()
 	{
 		Ensure_State( Connecting );
 		m_State = EConnectionState::MaxConnectionsReached;
 		return true;
 	}
 
-	bool GameConnection::sendConnectRequest(const std::string& pw)
+	bool Connection::sendConnectRequest(const std::string& pw)
 	{
 		Ensure_State( Idle );
 		m_State = EConnectionState::Connecting;
@@ -74,7 +74,7 @@ namespace Zerodelay
 		return true;
 	}
 
-	bool GameConnection::sendConnectAccept()
+	bool Connection::sendConnectAccept()
 	{
 		Ensure_State( Idle )
 		m_State = EConnectionState::Connected;
@@ -82,7 +82,7 @@ namespace Zerodelay
 		return true;
 	}
 
-	bool GameConnection::sendKeepAliveRequest()
+	bool Connection::sendKeepAliveRequest()
 	{
 		if ( m_KeepAliveIntervalMs <= 0 ) // dont do keep alive requests
 			return false;
@@ -93,28 +93,28 @@ namespace Zerodelay
 		return true;
 	}
 
-	bool GameConnection::sendKeepAliveAnswer()
+	bool Connection::sendKeepAliveAnswer()
 	{
 		Ensure_State( Connected );
 		sendSystemMessage( EGameNodePacketType::KeepAliveAnswer );
 		return true;
 	}
 
-	bool GameConnection::sendIncorrectPassword()
+	bool Connection::sendIncorrectPassword()
 	{
 		Ensure_State( Idle );
 		sendSystemMessage( EGameNodePacketType::IncorrectPassword );
 		return true;
 	}
 
-	bool GameConnection::sendMaxConnectionsReached()
+	bool Connection::sendMaxConnectionsReached()
 	{
 		Ensure_State( Idle );
 		sendSystemMessage( EGameNodePacketType::MaxConnectionsReached );
 		return true;
 	}
 
-	bool GameConnection::onReceiveConnectAccept()
+	bool Connection::onReceiveConnectAccept()
 	{
 		Ensure_State( Connecting );
 		m_State = EConnectionState::Connected;
@@ -122,7 +122,7 @@ namespace Zerodelay
 		return true;
 	}
 
-	bool GameConnection::onReceiveRemoteConnected(const char* data, int len, EndPoint& ept)
+	bool Connection::onReceiveRemoteConnected(const char* data, int len, EndPoint& ept)
 	{
 		// Deliberately no state ensurance
 		if (ept.read( data, len ) > 0)
@@ -133,7 +133,7 @@ namespace Zerodelay
 		return true;
 	}
 
-	bool GameConnection::onReceiveRemoteDisconnected(const char* data, int len, EndPoint& etp, EDisconnectReason& reason)
+	bool Connection::onReceiveRemoteDisconnected(const char* data, int len, EndPoint& etp, EDisconnectReason& reason)
 	{
 		// Deliberately no state ensurance
 		int offs = etp.read(data, len);
@@ -150,7 +150,7 @@ namespace Zerodelay
 		return false;
 	}
 
-	bool GameConnection::onReceiveKeepAliveAnswer()
+	bool Connection::onReceiveKeepAliveAnswer()
 	{
 	//	Check_State( Connected ); // can be received after state switch to disconnect
 		m_IsWaitingForKeepAlive = false;
@@ -158,7 +158,7 @@ namespace Zerodelay
 		return true;
 	}
 
-	bool GameConnection::updateConnecting( int maxConnectTimeMs )
+	bool Connection::updateConnecting( int maxConnectTimeMs )
 	{
 		Check_State( Connecting );
 		if ( getTimeSince( m_StartConnectingTS ) >= maxConnectTimeMs )
@@ -169,7 +169,7 @@ namespace Zerodelay
 		return false;
 	}
 
-	bool GameConnection::updateKeepAlive()
+	bool Connection::updateKeepAlive()
 	{
 		Check_State( Connected );
 		if ( m_KeepAliveIntervalMs <= 0 )
@@ -189,7 +189,7 @@ namespace Zerodelay
 		return false;
 	}
 
-	bool GameConnection::updateDisconnecting()
+	bool Connection::updateDisconnecting()
 	{
 		Check_State( Disconnecting );
 		if ( getTimeSince(m_DisconnectTS) > m_LingerTimeMs )
@@ -201,14 +201,14 @@ namespace Zerodelay
 		return false;
 	}
 
-	int GameConnection::getTimeSince(int timestamp) const
+	int Connection::getTimeSince(int timestamp) const
 	{
 		clock_t now = ::clock();
 		float elapsedSeconds = float(now - timestamp) / (float)CLOCKS_PER_SEC;
 		return int(elapsedSeconds * 1000.f);
 	}
 
-	void GameConnection::sendSystemMessage( EGameNodePacketType packType, const char* payload, int payloadLen )
+	void Connection::sendSystemMessage( EGameNodePacketType packType, const char* payload, int payloadLen )
 	{
 		//	static_assert( sizeof(EGameNodePacketType)==1 );
 		beginAddToSendQueue();

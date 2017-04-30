@@ -27,7 +27,7 @@
 			name(); \
 		}\
 	}\
-	void rpc_##name( GameNode* gn, bool localCall = true, const EndPoint* specific=nullptr, bool exclude=false, EPacketType transType=EPacketType::Reliable_Ordered, unsigned char channel=0 )\
+	void rpc_##name( ConnectionNode* gn, bool localCall = true, const EndPoint* specific=nullptr, bool exclude=false, EPacketType transType=EPacketType::Reliable_Ordered, unsigned char channel=0 )\
 	{\
 		struct temp  { char rpc_name[RPC_NAME_MAX_LENGTH]; }; temp t;\
 		::memset( t.rpc_name, '\0', RPC_NAME_MAX_LENGTH ); \
@@ -48,7 +48,7 @@
 			name( t._a ); \
 		}\
 	}\
-	void rpc_##name( GameNode* gn, a at, bool localCall = true, const EndPoint* specific=nullptr, bool exclude=false, EPacketType transType=EPacketType::Reliable_Ordered, unsigned char channel=0 )\
+	void rpc_##name( ConnectionNode* gn, a at, bool localCall = true, const EndPoint* specific=nullptr, bool exclude=false, EPacketType transType=EPacketType::Reliable_Ordered, unsigned char channel=0 )\
 	{\
 		struct temp  { char rpc_name[RPC_NAME_MAX_LENGTH]; a _a; }; temp t;\
 		t._a = at; \
@@ -70,7 +70,7 @@
 			name( t._a, t._b ); \
 		}\
 	}\
-	void rpc_##name( GameNode* gn, a at, b bt, bool localCall = true, const EndPoint* specific=nullptr, bool exclude=false, EPacketType transType=EPacketType::Reliable_Ordered, unsigned char channel=0 )\
+	void rpc_##name( ConnectionNode* gn, a at, b bt, bool localCall = true, const EndPoint* specific=nullptr, bool exclude=false, EPacketType transType=EPacketType::Reliable_Ordered, unsigned char channel=0 )\
 	{\
 		struct temp  { char rpc_name[RPC_NAME_MAX_LENGTH]; a _a; b _b; }; temp t;\
 		t._a = at; t._b = bt; \
@@ -92,7 +92,7 @@
 			name( t._a, t._b, t._c ); \
 		}\
 	}\
-	void rpc_##name( GameNode* gn, a at, b bt, c ct, bool localCall = true, const EndPoint* specific=nullptr, bool exclude=false, EPacketType transType=EPacketType::Reliable_Ordered, unsigned char channel=0 )\
+	void rpc_##name( ConnectionNode* gn, a at, b bt, c ct, bool localCall = true, const EndPoint* specific=nullptr, bool exclude=false, EPacketType transType=EPacketType::Reliable_Ordered, unsigned char channel=0 )\
 	{\
 		struct temp  { char rpc_name[RPC_NAME_MAX_LENGTH]; a _a; b _b; c _c; }; temp t;\
 		t._a = at; t._b = bt; t._c = ct;\
@@ -114,7 +114,7 @@
 			name( t._a, t._b, t._c, t._d ); \
 		}\
 	}\
-	void rpc_##name( GameNode* gn, a at, b bt, c ct, d dt, bool localCall = true, const EndPoint* specific=nullptr, bool exclude=false, EPacketType transType=EPacketType::Reliable_Ordered, unsigned char channel=0 )\
+	void rpc_##name( ConnectionNode* gn, a at, b bt, c ct, d dt, bool localCall = true, const EndPoint* specific=nullptr, bool exclude=false, EPacketType transType=EPacketType::Reliable_Ordered, unsigned char channel=0 )\
 	{\
 		struct temp  { char rpc_name[RPC_NAME_MAX_LENGTH]; a _a; b _b; c _c; d _d; }; temp t;\
 		t._a = at; t._b = bt; t._c = ct; t._d = dt; \
@@ -136,7 +136,7 @@
 			name( t._a, t._b, t._c, t._d, t._e ); \
 		}\
 	}\
-	void rpc_##name( GameNode* gn, a at, b bt, c ct, d dt, e et, bool localCall = true, const EndPoint* specific=nullptr, bool exclude=false, EPacketType transType=EPacketType::Reliable_Ordered, unsigned char channel=0 )\
+	void rpc_##name( ConnectionNode* gn, a at, b bt, c ct, d dt, e et, bool localCall = true, const EndPoint* specific=nullptr, bool exclude=false, EPacketType transType=EPacketType::Reliable_Ordered, unsigned char channel=0 )\
 	{\
 		struct temp  { char rpc_name[RPC_NAME_MAX_LENGTH]; a _a; b _b; c _c; d _d; e _e; }; temp t;\
 		t._a = at; t._b = bt; t._c = ct; t._d = dt; t._e = et; \
@@ -157,7 +157,7 @@
 			name( t._a, t._b, t._c, t._d, t._e, t._f ); \
 		}\
 	}\
-	void rpc_##name( GameNode* gn, a at, b bt, c ct, d dt, e et, f ft, bool localCall = true, const EndPoint* specific=nullptr, bool exclude=false, EPacketType transType=EPacketType::Reliable_Ordered, unsigned char channel=0 )\
+	void rpc_##name( ConnectionNode* gn, a at, b bt, c ct, d dt, e et, f ft, bool localCall = true, const EndPoint* specific=nullptr, bool exclude=false, EPacketType transType=EPacketType::Reliable_Ordered, unsigned char channel=0 )\
 	{\
 		struct temp  { char rpc_name[RPC_NAME_MAX_LENGTH]; a _a; b _b; c _c; d _d; e _e; f _f; }; temp t;\
 		t._a = at; t._b = bt; t._c = ct; t._d = dt; t._e = et; t._f = ft; \
@@ -179,7 +179,7 @@
 			name( t._a, t._b, t._c, t._d, t._e, t._f, t._h ); \
 		}\
 	}\
-	void rpc_##name( GameNode* gn, a at, b bt, c ct, d dt, e et, f ft, h ht, bool localCall = true, const EndPoint* specific=nullptr, bool exclude=false, EPacketType transType=EPacketType::Reliable_Ordered, unsigned char channel=0 )\
+	void rpc_##name( ConnectionNode* gn, a at, b bt, c ct, d dt, e et, f ft, h ht, bool localCall = true, const EndPoint* specific=nullptr, bool exclude=false, EPacketType transType=EPacketType::Reliable_Ordered, unsigned char channel=0 )\
 	{\
 		struct temp  { char rpc_name[RPC_NAME_MAX_LENGTH]; a _a; b _b; c _c; d _d; e _e; f _f; h _h; }; temp t;\
 		t._a = at; t._b = bt; t._c = ct; t._d = dt; t._e = et; t._f = ft; t._h = ht; \
@@ -201,7 +201,7 @@
 			name( t._a, t._b, t._c, t._d, t._e, t._f, t._h, t._i ); \
 		}\
 	}\
-	void rpc_##name( GameNode* gn, a at, b bt, c ct, d dt, e et, f ft, h ht, i it, bool localCall = true, const EndPoint* specific=nullptr, bool exclude=false, EPacketType transType=EPacketType::Reliable_Ordered, unsigned char channel=0 )\
+	void rpc_##name( ConnectionNode* gn, a at, b bt, c ct, d dt, e et, f ft, h ht, i it, bool localCall = true, const EndPoint* specific=nullptr, bool exclude=false, EPacketType transType=EPacketType::Reliable_Ordered, unsigned char channel=0 )\
 	{\
 		struct temp  { char rpc_name[RPC_NAME_MAX_LENGTH]; a _a; b _b; c _c; d _d; e _e; f _f; h _h; i _i; }; temp t;\
 		t._a = at; t._b = bt; t._c = ct; t._d = dt; t._e = et; t._f = ft; t._h = ht; t._i = it; \
@@ -223,7 +223,7 @@
 			name( t._a, t._b, t._c, t._d, t._e, t._f, t._h, t._i, t._j ); \
 		}\
 	}\
-	void rpc_##name( GameNode* gn, a at, b bt, c ct, d dt, e et, f ft, h ht, i it, j jt, bool localCall = true, const EndPoint* specific=nullptr, bool exclude=false, EPacketType transType=EPacketType::Reliable_Ordered, unsigned char channel=0 )\
+	void rpc_##name( ConnectionNode* gn, a at, b bt, c ct, d dt, e et, f ft, h ht, i it, j jt, bool localCall = true, const EndPoint* specific=nullptr, bool exclude=false, EPacketType transType=EPacketType::Reliable_Ordered, unsigned char channel=0 )\
 	{\
 		struct temp  { char rpc_name[RPC_NAME_MAX_LENGTH]; a _a; b _b; c _c; d _d; e _e; f _f; h _h; i _i; j _j; }; temp t;\
 		t._a = at; t._b = bt; t._c = ct; t._d = dt; t._e = et; t._f = ft; t._h = ht; t._i = it; t._j = jt; \

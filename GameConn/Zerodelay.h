@@ -82,7 +82,7 @@ namespace Zerodelay
 
 
 		/*	Returns the last underlaying socket error. Returns 0 on no error. */
-		int  getLastError() const;
+		int getLastError() const;
 
 	private:
 		char pod[256];
@@ -196,6 +196,6 @@ namespace Zerodelay
 
 
 	private:
-		class GameNode* p;
+		class ConnectionNode* p;
 	};
 }

@@ -5,8 +5,8 @@
 #include "Socket.h"
 #include "EndPoint.h"
 #include "RecvPoint.h"
-#include "GameNode.h"
-#include "GameConnection.h"
+#include "ConnectionNode.h"
+#include "Connection.h"
 #include "Platform.h"
 #include "UnitTest.h"
 #include "RpcMacros.h"
@@ -44,7 +44,7 @@ class MyGameNetwork
 public:
 	MyGameNetwork(const std::string& name):
 		m_Name(name),
-		m_GameNode(new GameNode())
+		m_GameNode(new ConnectionNode())
 	{	
 		m_GameNode->bindOnConnectResult( [this] (const auto& etp, auto e) { onConnectectResult(etp, e); } );
 //		m_GameNode->bindOnDisconnect( [this] (const auto* c, const auto& etp, auto e) { onDisconnect(c, etp, e); } );
@@ -142,13 +142,13 @@ public:
 public:
 	std::string m_Name;
 	EndPoint m_RemoteEpt;
-	GameNode* m_GameNode;
+	ConnectionNode* m_GameNode;
 };
 
 
 int main(int argc, char** argv)
 {
-	if ( 0 == Platform::initialize() )
+	//if ( 0 == Platform::initialize() )
 	{
 	//	NetworkTests::RunAll();
 		system("pause");

@@ -1,4 +1,5 @@
 #include "EndPoint.h"
+#include "Platform.h"
 
 
 namespace Zerodelay
@@ -11,6 +12,8 @@ namespace Zerodelay
 
 	std::string EndPoint::asString() const
 	{
+		Platform::initialize();
+
 		// Ip
 		char ipBuff[128] = { 0 };
 
