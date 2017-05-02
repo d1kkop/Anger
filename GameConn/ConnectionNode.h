@@ -20,15 +20,15 @@ namespace Zerodelay
 		typedef std::function<void (const EndPoint&, unsigned char, const char*, int, unsigned char)>	CustomDataCallback;
 
 	public:
-		ConnectionNode(int connectTimeoutSeconds=8, int sendThreadSleepTimeMs=10, int keepAliveIntervalSeconds=8, bool captureSocketErrors=true);
+		ConnectionNode(int sendThreadSleepTimeMs=10, int keepAliveIntervalSeconds=8, bool captureSocketErrors=true);
 		virtual ~ConnectionNode();
 
 	public:
 		// Connect  to specific endpoint. 
 		// A succesful call does not mean a connection is established.
 		// To know if a connection is established, bindOnConnectResult.
-		EConnectCallResult connect( const EndPoint& endPoint, const std::string& pw="" );
-		EConnectCallResult connect( const std::string& name, int port, const std::string& pw="" );
+		EConnectCallResult connect( const EndPoint& endPoint, const std::string& pw="", int timeoutSeconds=8 );
+		EConnectCallResult connect( const std::string& name, int port, const std::string& pw="", int timeoutSeconds=8 );
 
 		// Listen on a specific port for incoming connections.
 		// Bind onNewConnection to do something with the new connections.
@@ -46,7 +46,7 @@ namespace Zerodelay
 		// Calls all bound callback functions
 		void update();
 
-		void setIsTrueServer(bool is);
+		void relayClientEvents(bool is);
 		void setServerPassword( const std::string& pw );
 
 		// Max number of connections of all incoming connection attempts. 
@@ -110,7 +110,6 @@ namespace Zerodelay
 
 		bool m_SocketIsOpened;
 		bool m_SocketIsBound;
-		int  m_ConnectTimeoutMs;
 		int	 m_KeepAliveIntervalSeconds;
 		bool m_IsServer;
 		int  m_MaxIncomingConnections;

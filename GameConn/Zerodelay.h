@@ -112,20 +112,24 @@ namespace Zerodelay
 	class ZDLL_DECLSPEC ZNode
 	{
 	public:
-		ZNode(int connectTimeoutSeconds=8, int sendThreadSleepTimeMs=2, int keepAliveIntervalSeconds=8, bool captureSocketErrors=true);
+		ZNode(int sendThreadSleepTimeMs=2, int keepAliveIntervalSeconds=8, bool captureSocketErrors=true);
 		virtual ~ZNode();
 
 
 		/*	Connect  to specific endpoint. 
 			A succesful call does not mean a connection is established.
 			To know if a connection is established, bindOnConnectResult. */
-		EConnectCallResult connect( const ZEndpoint& endPoint, const std::string& pw="" );
-		EConnectCallResult connect( const std::string& name, int port, const std::string& pw="" );
+		EConnectCallResult connect( const ZEndpoint& endPoint, const std::string& pw="", int timeoutSeconds=8 );
+		EConnectCallResult connect( const std::string& name, int port, const std::string& pw="", int timeoutSeconds=8 );
 
 
 		/*	Listen on a specific port for incoming connections.
-			Bind onNewConnection to do something with the new connections. */
-		EListenCallResult listenOn( int port, const std::string& pw="" );
+			Bind onNewConnection to do something with the new connections. 
+			[port] The port.
+			[pw]	Password string.
+			[maxConnections] Maximum number of connections. 
+			[relayEvents] If true, events such as ´disconnect´ will be relayed to other connections. */
+		EListenCallResult listenOn( int port, const std::string& pw="", int maxConnections=32, bool relayEvents=true );
 
 
 		/*	Disconnect a specific endpoint. */

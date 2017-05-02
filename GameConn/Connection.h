@@ -25,7 +25,7 @@ namespace Zerodelay
 	class Connection: public RUDPConnection
 	{
 	public:
-		Connection( const struct EndPoint& endPoint, int keepAliveIntervalSeconds=8, int lingerTimeMs = 300 );
+		Connection( const struct EndPoint& endPoint, int timeoutSeconds=8, int keepAliveIntervalSeconds=8, int lingerTimeMs = 300 );
 		virtual ~Connection();
 		bool disconnect();
 		bool acceptDisconnect();
@@ -46,9 +46,9 @@ namespace Zerodelay
 		bool onReceiveKeepAliveRequest();
 		bool onReceiveKeepAliveAnswer();
 		// -- updates
-		bool updateConnecting( int connectingTimeoutMs );	// Returns true if there is a state change
-		bool updateKeepAlive();								// same
-		bool updateDisconnecting();							// same
+		bool updateConnecting();	// Returns true if there is a state change
+		bool updateKeepAlive();		// same
+		bool updateDisconnecting();	// same
 		// -- getters
 		int getTimeSince(int timestamp) const;  // in milliseconds
 		EConnectionState getState() const { return m_State; }
@@ -56,6 +56,7 @@ namespace Zerodelay
 	private:
 		void sendSystemMessage( EGameNodePacketType type, const char* payload=nullptr, int payloadLen=0 );
 
+		int m_ConnectTimeoutSeconMs;
 		int m_KeepAliveIntervalMs;
 		int m_LingerTimeMs;
 		clock_t m_StartConnectingTS;

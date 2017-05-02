@@ -94,10 +94,23 @@ namespace Zerodelay
 
 #if _WIN32
 		FILE* f;
-		fopen_s( &f, "AngerLog.txt", "a+" );
+		fopen_s( &f, "ZerodelayLog.txt", "a" );
 		if ( f )
 		{
-			fprintf_s( f, "%s", buff );
+			time_t rawtime;
+			struct tm timeinfo;
+			time (&rawtime);
+			localtime_s(&timeinfo, &rawtime);
+			char asciitime[128];
+			asctime_s(asciitime, 128, &timeinfo);
+			static bool isFirstOpen = true;
+			if ( isFirstOpen )
+			{
+				isFirstOpen = false;
+				fprintf_s( f, "--------- NEW SESSION ---------" );
+				fprintf_s( f, "-------------------------------" );
+			}
+			fprintf_s( f, "%s %s", buff, asciitime );
 			fflush(f);
 			fclose(f);
 		}

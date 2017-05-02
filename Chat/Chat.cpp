@@ -47,6 +47,8 @@ BOOL                InitInstance(HINSTANCE, int);
 LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM);
 
+void				InitNetwork(bool isServ);
+
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
                      _In_opt_ HINSTANCE hPrevInstance,
                      _In_ LPWSTR    lpCmdLine,
@@ -55,22 +57,68 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     UNREFERENCED_PARAMETER(hPrevInstance);
     UNREFERENCED_PARAMETER(lpCmdLine);
 
-    g_Node = new ZNode();
+    // Initialize global strings
+    LoadStringW(hInstance, IDS_APP_TITLE, szTitle, MAX_LOADSTRING);
+    LoadStringW(hInstance, IDC_CHAT, szWindowClass, MAX_LOADSTRING);
+    MyRegisterClass(hInstance);
+
+    // Perform application initialization:
+    if (!InitInstance (hInstance, nCmdShow))
+    {
+        return FALSE;
+    }
+
+	bool isServ = (lpCmdLine[0] != '\0'); 
+	InitNetwork( isServ );
+
+    HACCEL hAccelTable = LoadAccelerators(hInstance, MAKEINTRESOURCE(IDC_CHAT));
+    MSG msg;
+    // Main message loop:
+	int kLobbyUpdateCnt = 0;
+	while (!g_Done)
+	{
+		while (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE))
+	    {
+		    if (!TranslateAccelerator(msg.hwnd, hAccelTable, &msg))
+			{
+				TranslateMessage(&msg);
+				DispatchMessage(&msg);
+			}
+		}
+		g_Node->update();
+		std::this_thread::sleep_for( std::chrono::milliseconds(100) );
+
+		if ( isServ && kLobbyUpdateCnt++ == 10 )
+		{
+			g_Node->sendSingle( g_LobbyId, (const char*)&g_lobby, sizeof(g_lobby) );
+			RefreshLobby();
+			kLobbyUpdateCnt = 0;
+		}
+    }
+
+	delete g_Node;
+    return (int) msg.wParam;
+}
+
+
+void InitNetwork(bool isServ)
+{
+	g_Node = new ZNode( 3 );
 	g_Node->bindOnConnectResult([] (auto etp, EConnectResult res)
 	{
 		switch ( res )
 		{
 		case EConnectResult::Succes:
-			g_lines.emplace_back( "connection: " + etp.asString() + " connected succesful" );
+		g_lines.emplace_back( "connection: " + etp.asString() + " connected succesful" );
 		break;
 		case EConnectResult::Timedout:
-			g_lines.emplace_back( "connection: " + etp.asString() + " connecting timed out" );
+		g_lines.emplace_back( "connection: " + etp.asString() + " connecting timed out" );
 		break;
 		case EConnectResult::InvalidPassword:
-			g_lines.emplace_back( "connection: " + etp.asString() + " connecting invalid pw" );
+		g_lines.emplace_back( "connection: " + etp.asString() + " connecting invalid pw" );
 		break;
 		case EConnectResult::MaxConnectionsReached:
-			g_lines.emplace_back( "connection: " + etp.asString() + " connecting max conns reached" );
+		g_lines.emplace_back( "connection: " + etp.asString() + " connecting max conns reached" );
 		break;
 		}
 		RefreshTextField();
@@ -109,65 +157,20 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 	g_Node->bindOnNewConnection( [] (auto etp) 
 	{
 		g_lines.emplace_back(" new connection: " + etp.asString() );
+		RefreshTextField();
 	});
 
-	bool isServer = false;
-	if ( lpCmdLine[0] != '\0' ) // start as serv
+	if ( isServ )
 	{
-		g_Node->setPassword("auto");
-		g_Node->setMaxIncomingConnections(9);
-		g_Node->relayClientEvents( true );
-		g_Node->listenOn(27000); 
-		isServer = true;
-		g_lines.emplace_back( " started as server " );
-		RefreshTextField();
+		g_Node->listenOn(27000, "auto", 9, true );
+		g_lines.emplace_back( "started as server..." );
 	}
 	else
 	{
 		g_Node->connect( "localhost", 27000, "auto" );
+		g_lines.emplace_back( "connecting..." );
 	}
-
-    // Initialize global strings
-    LoadStringW(hInstance, IDS_APP_TITLE, szTitle, MAX_LOADSTRING);
-    LoadStringW(hInstance, IDC_CHAT, szWindowClass, MAX_LOADSTRING);
-    MyRegisterClass(hInstance);
-
-    // Perform application initialization:
-    if (!InitInstance (hInstance, nCmdShow))
-    {
-        return FALSE;
-    }
-
-    HACCEL hAccelTable = LoadAccelerators(hInstance, MAKEINTRESOURCE(IDC_CHAT));
-
-    MSG msg;
-
-    // Main message loop:
-	
-	int kLobbyUpdateCnt = 0;
-	while (!g_Done)
-	{
-		while (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE))
-	    {
-		    if (!TranslateAccelerator(msg.hwnd, hAccelTable, &msg))
-			{
-				TranslateMessage(&msg);
-				DispatchMessage(&msg);
-			}
-		}
-		g_Node->update();
-		std::this_thread::sleep_for( std::chrono::milliseconds(100) );
-
-		if ( isServer && kLobbyUpdateCnt++ == 10 )
-		{
-			g_Node->sendSingle( g_LobbyId, (const char*)&g_lobby, sizeof(g_lobby) );
-			RefreshLobby();
-			kLobbyUpdateCnt = 0;
-		}
-    }
-
-	delete g_Node;
-    return (int) msg.wParam;
+	RefreshTextField();
 }
 
 
@@ -251,6 +254,19 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    return TRUE;
 }
 
+void Send()
+{
+	char text[2048];
+	GetWindowText(TextBox, text, 2047);
+	SetWindowText(TextBox, "");
+	int kLen = (int)strlen(text);
+	if ( kLen <= 0 )
+		return;
+	g_Node->sendSingle(100, text, kLen + 1);
+	g_lines.emplace_back(text);
+	RefreshTextField();
+}
+
 //
 //  FUNCTION: WndProc(HWND, UINT, WPARAM, LPARAM)
 //
@@ -269,26 +285,33 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	{
 		TextBox = CreateWindow(TEXT("EDIT"),
 							   TEXT(""),
-							   WS_BORDER | WS_CHILD | WS_VISIBLE,
-							   10, 220, 390, 20,
+							   WS_BORDER | WS_CHILD | WS_VISIBLE | ES_MULTILINE,
+							   10, 220, 590, 20,
 							   hWnd, (HMENU) 1, NULL, NULL);
 		TextField = CreateWindow(TEXT("EDIT"),
 								 TEXT(""),
-								 WS_VISIBLE | WS_CHILD | WS_BORDER | ES_READONLY,
-								 10, 10, 390, 200,
+								 WS_VISIBLE | WS_CHILD | WS_BORDER | ES_READONLY | ES_MULTILINE,
+								 10, 10, 590, 200,
 								 hWnd, (HMENU) 3, NULL, NULL);
 		SendButton = CreateWindow(TEXT("BUTTON"),
 								  TEXT("Send"),
 								  WS_VISIBLE | WS_CHILD | WS_BORDER,
-								  410, 220, 100, 20,
+								  610, 220, 200, 20,
 								  hWnd, (HMENU) 2, NULL, NULL);
 		Lobby = CreateWindow(TEXT("EDIT"),
 							   TEXT(""),
 							   WS_BORDER | WS_CHILD | WS_VISIBLE | ES_READONLY,
-							   410, 10, 100, 200,
+							   610, 10, 200, 200,
 							   hWnd, (HMENU) 4, NULL, NULL);
 	}
 	break;
+
+	case WM_KEYDOWN:
+		if ( LOWORD(wParam) == VK_RETURN )
+		{
+			Send();
+		}
+		break;
 
     case WM_COMMAND:
         {
@@ -296,12 +319,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             // Parse the menu selections:
             switch (wmId)
             {
-			case 2: 
+			case 2: // is button id..
 				{
-					char text[2048];
-					GetWindowText(TextBox, text, 2047);
-					SetWindowText(TextBox, "");
-					g_Node->sendSingle( 100, text, (int)strlen(text)+1 );
+					Send();
 				}
 				break;
             case IDM_ABOUT:

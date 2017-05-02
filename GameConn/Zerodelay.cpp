@@ -75,8 +75,8 @@ namespace Zerodelay
 	// -------- ZNode ----------------------------------------------------------------------------------------------
 
 
-	ZNode::ZNode(int connectTimeoutSeconds, int sendThreadSleepTimeMs, int keepAliveIntervalSeconds, bool captureSocketErrors) :
-		p(new ConnectionNode(connectTimeoutSeconds, sendThreadSleepTimeMs, keepAliveIntervalSeconds, captureSocketErrors))
+	ZNode::ZNode(int sendThreadSleepTimeMs, int keepAliveIntervalSeconds, bool captureSocketErrors) :
+		p(new ConnectionNode(sendThreadSleepTimeMs, keepAliveIntervalSeconds, captureSocketErrors))
 	{
 	}
 
@@ -85,18 +85,20 @@ namespace Zerodelay
 		delete p;
 	}
 
-	EConnectCallResult ZNode::connect(const ZEndpoint& endPoint, const std::string& pw)
+	EConnectCallResult ZNode::connect(const ZEndpoint& endPoint, const std::string& pw, int timeoutSeconds)
 	{
-		return p->connect( toEtp(endPoint), pw );
+		return p->connect( toEtp(endPoint), pw, timeoutSeconds );
 	}
 
-	EConnectCallResult ZNode::connect(const std::string& name, int port, const std::string& pw)
+	EConnectCallResult ZNode::connect(const std::string& name, int port, const std::string& pw, int timeoutSeconds)
 	{
-		return p->connect( name, port, pw );
+		return p->connect( name, port, pw, timeoutSeconds );
 	}
 
-	EListenCallResult ZNode::listenOn(int port, const std::string& pw)
+	EListenCallResult ZNode::listenOn(int port, const std::string& pw, int maxConnections, bool relayEvents)
 	{
+		p->setMaxIncomingConnections( maxConnections );
+		p->relayClientEvents( relayEvents );
 		return p->listenOn( port, pw );
 	}
 
@@ -127,7 +129,7 @@ namespace Zerodelay
 
 	void ZNode::relayClientEvents(bool relay)
 	{
-		p->setIsTrueServer( relay );
+		p->relayClientEvents( relay );
 	}
 
 	void ZNode::simulatePacketLoss(int percentage)

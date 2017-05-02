@@ -19,8 +19,9 @@ namespace Zerodelay
 	}
 
 
-	Connection::Connection(const EndPoint& endPoint, int keepAliveIntervalSeconds, int lingerTimeMs):
+	Connection::Connection(const EndPoint& endPoint, int timeoutSeconds, int keepAliveIntervalSeconds, int lingerTimeMs):
 		RUDPConnection(endPoint),
+		m_ConnectTimeoutSeconMs(timeoutSeconds*1000),
 		m_KeepAliveIntervalMs(keepAliveIntervalSeconds*1000),
 		m_LingerTimeMs(lingerTimeMs),
 		m_StartConnectingTS(-1),
@@ -165,10 +166,10 @@ namespace Zerodelay
 		return false;
 	}
 
-	bool Connection::updateConnecting( int maxConnectTimeMs )
+	bool Connection::updateConnecting()
 	{
 		Check_State( Connecting );
-		if ( getTimeSince( m_StartConnectingTS ) >= maxConnectTimeMs )
+		if ( getTimeSince( m_StartConnectingTS ) >= m_ConnectTimeoutSeconMs )
 		{
 			m_State = EConnectionState::InitiateTimedOut;
 			return true;

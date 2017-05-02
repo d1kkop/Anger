@@ -7,11 +7,10 @@
 
 namespace Zerodelay
 {
-	ConnectionNode::ConnectionNode(int connectTimeoutSeconds, int sendThreadSleepTimeMs, int keepAliveIntervalSeconds, bool captureSocketErrors):
+	ConnectionNode::ConnectionNode(int sendThreadSleepTimeMs, int keepAliveIntervalSeconds, bool captureSocketErrors):
 		RecvPoint(captureSocketErrors, sendThreadSleepTimeMs),
 		m_SocketIsOpened(false),
 		m_SocketIsBound(false),
-		m_ConnectTimeoutMs(connectTimeoutSeconds*1000),
 		m_KeepAliveIntervalSeconds(keepAliveIntervalSeconds),
 		m_IsServer(false),
 		m_MaxIncomingConnections(32)
@@ -22,17 +21,17 @@ namespace Zerodelay
 	{
 	}
 
-	EConnectCallResult ConnectionNode::connect(const std::string& name, int port, const std::string& pw)
+	EConnectCallResult ConnectionNode::connect(const std::string& name, int port, const std::string& pw, int timeoutSeconds)
 	{
 		EndPoint endPoint;
 		if ( !endPoint.resolve( name, port ) )
 		{
 			return EConnectCallResult::CannotResolveHost;
 		}
-		return connect( endPoint, pw );
+		return connect( endPoint, pw, timeoutSeconds );
 	}
 
-	EConnectCallResult ConnectionNode::connect(const EndPoint& endPoint, const std::string& pw)
+	EConnectCallResult ConnectionNode::connect(const EndPoint& endPoint, const std::string& pw, int timeoutSeconds)
 	{
 		if ( !m_ListenSocket )
 		{
@@ -57,7 +56,7 @@ namespace Zerodelay
 			{
 				return EConnectCallResult::AlreadyExists;
 			}
-			g = new Connection( endPoint, m_KeepAliveIntervalSeconds );
+			g = new Connection( endPoint, timeoutSeconds, m_KeepAliveIntervalSeconds );
 			m_Connections.insert( std::make_pair( endPoint, g ) );
 		}
 
@@ -154,7 +153,7 @@ namespace Zerodelay
 		m_DeadConnections.clear();
 	}
 
-	void ConnectionNode::setIsTrueServer(bool is)
+	void ConnectionNode::relayClientEvents(bool is)
 	{
 		m_IsServer = is;
 	}
@@ -309,6 +308,7 @@ namespace Zerodelay
 					(fcb)(g->getEndPoint());
 				});
 				sendRemoteConnected( g );
+				Platform::log( "%s connected", g->getEndPoint().asString().c_str() );
 			}
 			else
 			{
@@ -325,6 +325,7 @@ namespace Zerodelay
 			{
 				(fcb)(g->getEndPoint(), EConnectResult::Succes);
 			});
+			Platform::log( "accepted connection %s", g->getEndPoint().asString().c_str() );
 		}
 		else
 		{
@@ -339,6 +340,7 @@ namespace Zerodelay
 			if ( m_IsServer )
 			{	// if true server, relay message to all
 				sendRemoteDisconnected( g, EDisconnectReason::Closed );
+				Platform::log( "%s received disc packet", g->getEndPoint().asString().c_str() );
 			}
 			removeConnection(g, "disconnect received, removing connecting..%s", g->getEndPoint().asString().c_str());
 		}
@@ -357,10 +359,11 @@ namespace Zerodelay
 			{
 				(fcb)(etp);
 			});
+			Platform::log( "remote %s connected", g->getEndPoint().asString().c_str() );
 		}
 		else
 		{
-			removeConnection( g, "removing conn, serialization fail %s", __FUNCTION__);
+			removeConnection( g, "removing conn, serialization fail %s", __FUNCTION__ );
 		}
 	}
 
@@ -374,6 +377,7 @@ namespace Zerodelay
 			{
 				(fcb)(g->getEndPoint() == etp, etp, reason);
 			});
+			Platform::log( "remote %s disconnected", g->getEndPoint().asString().c_str() );
 		}
 		else
 		{
@@ -389,6 +393,7 @@ namespace Zerodelay
 			{
 				(fcb)(g->getEndPoint(), EConnectResult::InvalidPassword);
 			});
+			Platform::log( "invalid pw from %s", g->getEndPoint().asString().c_str() );
 		}
 		else
 		{
@@ -404,6 +409,7 @@ namespace Zerodelay
 			{
 				(fcb)(g->getEndPoint(), EConnectResult::MaxConnectionsReached);
 			});
+			Platform::log( "wont let %s connect, max connections reached", g->getEndPoint().asString().c_str() );
 		}
 		else
 		{
@@ -449,7 +455,7 @@ namespace Zerodelay
 
 	void ConnectionNode::updateConnecting(class Connection* g)
 	{
-		if ( g->updateConnecting(m_ConnectTimeoutMs) ) // Else, already connected or timed out
+		if ( g->updateConnecting() ) // Else, already connected or timed out
 		{
 			if ( g->getState() == EConnectionState::InitiateTimedOut )
 			{
@@ -488,7 +494,7 @@ namespace Zerodelay
 				{
 					(fcb)( true, g->getEndPoint(), EDisconnectReason::Closed );
 				});
-				removeConnection( g, "removing conn, disonnected gracefully" );
+				removeConnection( g, "removing conn %s, disonnected gracefully", g->getEndPoint().asString().c_str() );
 			}
 		}
 	}
