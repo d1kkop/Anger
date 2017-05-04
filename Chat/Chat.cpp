@@ -18,11 +18,16 @@ ZNode* g_Node;
 const int g_MaxNames = 10;
 struct ChatLobby
 {
-	char name[g_MaxNames][32];
+	char name[g_MaxNames][64];
+
+	ChatLobby() 
+	{
+		memset(this, 0, sizeof(*this));
+	}
 };
 
 int g_MsgId = 100;
-int g_LobbyId = 101;
+int g_LobbyId  = 101;
 int g_MaxLines = 20;
 bool g_Done = false;
 
@@ -94,7 +99,25 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 			RefreshLobby();
 			kLobbyUpdateCnt = 0;
 		}
+
+		//::SetFocus( SendButton );
     }
+
+	g_Node->disconnectAll();
+
+	// Give some chance to send disconnect messages
+	auto tp = std::chrono::high_resolution_clock::now();
+	while ( true )
+	{
+		g_Node->update();
+		std::this_thread::sleep_for( std::chrono::milliseconds(10) );
+
+		auto tn = std::chrono::high_resolution_clock::now();
+		std::chrono::duration<float> dt = tn - tp;
+		
+		if ( dt.count() > .3f )
+			break;
+	}
 
 	delete g_Node;
     return (int) msg.wParam;
@@ -109,17 +132,17 @@ void InitNetwork(bool isServ)
 		switch ( res )
 		{
 		case EConnectResult::Succes:
-		g_lines.emplace_back( "connection: " + etp.asString() + " connected succesful" );
-		break;
+			g_lines.emplace_back( "connection: " + etp.asString() + " connected succesful" );
+			break;
 		case EConnectResult::Timedout:
-		g_lines.emplace_back( "connection: " + etp.asString() + " connecting timed out" );
-		break;
+			g_lines.emplace_back( "connection: " + etp.asString() + " connecting timed out" );
+			break;
 		case EConnectResult::InvalidPassword:
-		g_lines.emplace_back( "connection: " + etp.asString() + " connecting invalid pw" );
-		break;
+			g_lines.emplace_back( "connection: " + etp.asString() + " connecting invalid pw" );
+			break;
 		case EConnectResult::MaxConnectionsReached:
-		g_lines.emplace_back( "connection: " + etp.asString() + " connecting max conns reached" );
-		break;
+			g_lines.emplace_back( "connection: " + etp.asString() + " connecting max conns reached" );
+			break;
 		}
 		RefreshTextField();
 	});
@@ -142,7 +165,7 @@ void InitNetwork(bool isServ)
 			RefreshLobby();
 		}
 	});
-	g_Node->bindOnDisconnect( [] (bool thisConn, auto etp, EDisconnectReason reason)
+	g_Node->bindOnDisconnect( [=] (bool thisConn, auto etp, EDisconnectReason reason)
 	{
 		if ( reason == EDisconnectReason::Lost )
 		{
@@ -152,16 +175,39 @@ void InitNetwork(bool isServ)
 		{
 			g_lines.emplace_back( "connection " + etp.asString() + " closed connection" );
 		}
+		if ( isServ )
+		{
+			for (int i = 0; i < g_MaxNames; i++)
+			{
+				if ( strcmp( g_lobby.name[i], etp.asString().c_str() ) == 0)
+				{
+					g_lobby.name[i][0] = '\0';
+					break;
+				}
+			}
+		}
 		RefreshTextField();
 	});
-	g_Node->bindOnNewConnection( [] (auto etp) 
+	g_Node->bindOnNewConnection( [=] (auto etp) 
 	{
+		if ( isServ )
+		{
+			for (int i = 0; i < g_MaxNames; i++)
+			{
+				if ( g_lobby.name[i][0] == '\0' )
+				{
+					strcpy_s( g_lobby.name[i], 64, etp.asString().c_str());
+					break;
+				}
+			}
+		}
 		g_lines.emplace_back(" new connection: " + etp.asString() );
 		RefreshTextField();
 	});
 
 	if ( isServ )
 	{
+		strcpy_s( g_lobby.name[0], 64, "server" );
 		g_Node->listenOn(27000, "auto", 9, true );
 		g_lines.emplace_back( "started as server..." );
 	}
@@ -177,9 +223,12 @@ void InitNetwork(bool isServ)
 void RefreshLobby()
 {
 	std::string total;
-	for (int i = 0; i < g_MaxNames ; i++)
+	for (int i = 0; i < g_MaxNames ; ++i)
 	{
-		total += g_lobby.name[i] + std::string("\r\n");
+		if ( g_lobby.name[i] != '\0' )
+		{
+			total += g_lobby.name[i] + std::string("\r\n");
+		}
 	}
 	SetWindowText( Lobby, total.c_str() );
 }
@@ -192,8 +241,9 @@ void RefreshTextField()
 	}
 	// total text
 	std::string total;
-	for ( auto& s : g_lines )
+	for (int i = (int)g_lines.size() - 1; i >= 0 ; i--)
 	{
+		auto& s = g_lines[i];
 		total += s + std::string("\r\n");
 	}
 	SetWindowText( TextField, total.c_str() );
@@ -241,7 +291,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    hInst = hInstance; // Store instance handle in our global variable
 
    HWND hWnd = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW,
-      CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, nullptr, nullptr, hInstance, nullptr);
+      CW_USEDEFAULT, 0, 860, 320, nullptr, nullptr, hInstance, nullptr);
 
    if (!hWnd)
    {
@@ -290,7 +340,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 							   hWnd, (HMENU) 1, NULL, NULL);
 		TextField = CreateWindow(TEXT("EDIT"),
 								 TEXT(""),
-								 WS_VISIBLE | WS_CHILD | WS_BORDER | ES_READONLY | ES_MULTILINE,
+								 WS_VISIBLE | WS_CHILD | WS_BORDER | WS_VSCROLL | ES_READONLY | ES_MULTILINE | ES_NUMBER,
 								 10, 10, 590, 200,
 								 hWnd, (HMENU) 3, NULL, NULL);
 		SendButton = CreateWindow(TEXT("BUTTON"),
@@ -300,7 +350,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 								  hWnd, (HMENU) 2, NULL, NULL);
 		Lobby = CreateWindow(TEXT("EDIT"),
 							   TEXT(""),
-							   WS_BORDER | WS_CHILD | WS_VISIBLE | ES_READONLY,
+							   WS_BORDER | WS_CHILD | WS_VISIBLE | ES_READONLY | ES_MULTILINE | WS_VSCROLL,
 							   610, 10, 200, 200,
 							   hWnd, (HMENU) 4, NULL, NULL);
 	}
@@ -316,14 +366,14 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     case WM_COMMAND:
         {
             int wmId = LOWORD(wParam);
+			int hid = HIWORD(wParam);
+
+			if ( wmId == 2 || hid == 1281 )
+				Send();
+
             // Parse the menu selections:
             switch (wmId)
             {
-			case 2: // is button id..
-				{
-					Send();
-				}
-				break;
             case IDM_ABOUT:
                 DialogBox(hInst, MAKEINTRESOURCE(IDD_ABOUTBOX), hWnd, About);
                 break;
