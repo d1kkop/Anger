@@ -19,7 +19,6 @@ const int g_MaxNames = 10;
 struct ChatLobby
 {
 	char name[g_MaxNames][64];
-
 	ChatLobby() 
 	{
 		memset(this, 0, sizeof(*this));
@@ -79,7 +78,6 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     HACCEL hAccelTable = LoadAccelerators(hInstance, MAKEINTRESOURCE(IDC_CHAT));
     MSG msg;
     // Main message loop:
-	int kLobbyUpdateCnt = 0;
 	while (!g_Done)
 	{
 		while (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE))
@@ -93,14 +91,11 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 		g_Node->update();
 		std::this_thread::sleep_for( std::chrono::milliseconds(100) );
 
-		if ( isServ && kLobbyUpdateCnt++ == 10 )
+		if ( isServ )
 		{
 			g_Node->sendSingle( g_LobbyId, (const char*)&g_lobby, sizeof(g_lobby) );
-			RefreshLobby();
-			kLobbyUpdateCnt = 0;
 		}
-
-		//::SetFocus( SendButton );
+		RefreshLobby();
     }
 
 	g_Node->disconnectAll();
@@ -162,6 +157,10 @@ void InitNetwork(bool isServ)
 		// lobby update
 		if ( id == g_LobbyId )
 		{
+			if ( len == sizeof(ChatLobby) )
+			{
+				memcpy( &g_lobby, data, len );
+			}
 			RefreshLobby();
 		}
 	});
@@ -225,7 +224,7 @@ void RefreshLobby()
 	std::string total;
 	for (int i = 0; i < g_MaxNames ; ++i)
 	{
-		if ( g_lobby.name[i] != '\0' )
+		if ( g_lobby.name[i][0] != '\0' )
 		{
 			total += g_lobby.name[i] + std::string("\r\n");
 		}

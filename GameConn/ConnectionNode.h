@@ -47,7 +47,7 @@ namespace Zerodelay
 		void update();
 
 		void relayClientEvents(bool is);
-		void setServerPassword( const std::string& pw );
+		void setPassword( const std::string& pw );
 
 		// Max number of connections of all incoming connection attempts. 
 		// Thus if listening on multiple ports, this value is not per port!
@@ -94,7 +94,7 @@ namespace Zerodelay
 		void recvInvalidPassword(class Connection* g, const char* payload, int payloadLen);
 		void recvMaxConnectionsReached(class Connection* g, const char* payload, int payloadLen);
 		void recvRpcPacket( const char* payload, int len, class Connection* g);
-		void recvUserPacket(class Connection* g, const char* payload, int payloadLen, unsigned char channel);
+		void recvUserPacket(class Connection* g, const Packet& pack);
 		// updating
 		void updateConnecting( class Connection* g );
 		void updateKeepAlive( class Connection* g );
@@ -111,9 +111,9 @@ namespace Zerodelay
 		bool m_SocketIsOpened;
 		bool m_SocketIsBound;
 		int	 m_KeepAliveIntervalSeconds;
-		bool m_IsServer;
+		bool m_RelayClientEvents;
 		int  m_MaxIncomingConnections;
-		std::string m_ServerPassword;
+		std::string m_Password;
 		std::vector<ConnectResultCallback>	m_ConnectResultCallbacks;
 		std::vector<DisconnectCallback>		m_DisconnectCallbacks;
 		std::vector<NewConnectionCallback>	m_NewConnectionCallbacks;

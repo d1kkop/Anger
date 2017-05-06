@@ -12,7 +12,7 @@ namespace Zerodelay
 		m_SocketIsOpened(false),
 		m_SocketIsBound(false),
 		m_KeepAliveIntervalSeconds(keepAliveIntervalSeconds),
-		m_IsServer(false),
+		m_RelayClientEvents(false),
 		m_MaxIncomingConnections(32)
 	{
 	}
@@ -82,7 +82,7 @@ namespace Zerodelay
 			return EListenCallResult::CannotBind;
 		}
 
-		setServerPassword( pw );
+		setPassword( pw );
 		startThreads();
 		return EListenCallResult::Succes;
 	}
@@ -155,12 +155,12 @@ namespace Zerodelay
 
 	void ConnectionNode::relayClientEvents(bool is)
 	{
-		m_IsServer = is;
+		m_RelayClientEvents = is;
 	}
 
-	void ConnectionNode::setServerPassword(const std::string& pw)
+	void ConnectionNode::setPassword(const std::string& pw)
 	{
-		m_ServerPassword = pw;
+		m_Password = pw;
 	}
 
 	void ConnectionNode::setMaxIncomingConnections(int maxNumConnections)
@@ -194,7 +194,7 @@ namespace Zerodelay
 
 	void ConnectionNode::sendRemoteConnected(const Connection* g)
 	{
-		if ( !m_IsServer )
+		if ( !m_RelayClientEvents )
 			return; // only if is true server, relay message
 		auto& etp = g->getEndPoint();
 		char buff[128];
@@ -211,7 +211,7 @@ namespace Zerodelay
 
 	void ConnectionNode::sendRemoteDisconnected(const Connection* g, EDisconnectReason reason)
 	{
-		if ( !m_IsServer )
+		if ( !m_RelayClientEvents )
 			return; // only if is true server, relay message
 		auto& etp = g->getEndPoint();
 		char buff[128];
@@ -268,7 +268,7 @@ namespace Zerodelay
 			recvRpcPacket(payload, payloadLen, g);
 			break;
 		default:
-			recvUserPacket(g, payload, payloadLen, pack.channel);
+			recvUserPacket(g, pack );
 			break;
 		}
 	}
@@ -282,7 +282,7 @@ namespace Zerodelay
 			removeConnection( g, "removing conn, serialization error %s", __FUNCTION__ );
 			return; // invalid serialization
 		}
-		if ( strcmp( m_ServerPassword.c_str(), pw ) != 0 )
+		if ( strcmp( m_Password.c_str(), pw ) != 0 )
 		{
 			g->sendIncorrectPassword();
 			removeConnection( g, "removing conn, invalid pw %s", __FUNCTION__ );
@@ -337,11 +337,15 @@ namespace Zerodelay
 	{
 		if ( g->acceptDisconnect() )
 		{
-			if ( m_IsServer )
+			if ( m_RelayClientEvents )
 			{	// if true server, relay message to all
 				sendRemoteDisconnected( g, EDisconnectReason::Closed );
 				Platform::log( "%s received disc packet", g->getEndPoint().asString().c_str() );
 			}
+			forEachCallback(m_DisconnectCallbacks, [&](auto& fcb)
+			{
+				(fcb)(true, g->getEndPoint(), EDisconnectReason::Closed);
+			});
 			removeConnection(g, "disconnect received, removing connecting..%s", g->getEndPoint().asString().c_str());
 		}
 		else
@@ -375,7 +379,8 @@ namespace Zerodelay
 		{
 			forEachCallback(m_DisconnectCallbacks, [&](auto& fcb)
 			{
-				(fcb)(g->getEndPoint() == etp, etp, reason);
+				assert ( etp != g->getEndPoint() && "received remote disc for ourselves..");
+				(fcb)(false, etp, reason);
 			});
 			Platform::log( "remote %s disconnected", g->getEndPoint().asString().c_str() );
 		}
@@ -445,11 +450,17 @@ namespace Zerodelay
 		}
 	}
 
-	void ConnectionNode::recvUserPacket(class Connection* g, const char* payload, int payloadLen, unsigned char channel)
+	void ConnectionNode::recvUserPacket(class Connection* g, const Packet& pack)
 	{
+		if ( pack.relay ) // send through to others
+		{
+			beginSend( &g->getEndPoint(), true );
+			send( pack.data[0], pack.data+1, pack.len-1, pack.type, pack.channel, false /* relay only once */ );
+			endSend();
+		}
 		forEachCallback(m_CustomDataCallbacks, [&](auto& fcb)
 		{
-			(fcb)(g->getEndPoint(), *(payload-1), payload, payloadLen, channel);
+			(fcb)(g->getEndPoint(), pack.data[0], pack.data+1, pack.len-1, pack.channel);
 		});
 	}
 

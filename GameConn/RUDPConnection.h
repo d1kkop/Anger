@@ -23,7 +23,7 @@ namespace Zerodelay
 
 		// --- All functions thread safe ---
 		virtual void beginAddToSendQueue() = 0;
-		virtual void addToSendQueue(unsigned char id, const char* data, int len, EPacketType packetType, unsigned char channel=0) = 0;
+		virtual void addToSendQueue(unsigned char id, const char* data, int len, EPacketType packetType, unsigned char channel=0, bool relay=true) = 0;
 		virtual void endAddToSendQueue() = 0;
 		virtual void beginPoll() = 0;
 		virtual bool poll(Packet& packet) = 0;
@@ -84,7 +84,7 @@ namespace Zerodelay
 			virtual void beginAddToSendQueue() override;
 			// In case of 'Ordered', the channel specifies on which channel a packet should arrive ordered.
 			// Num of channels is 8, so 0 to 7 is valid channel.
-			virtual void addToSendQueue( unsigned char id, const char* data, int len, EPacketType packetType, unsigned char channel=0 ) override;
+			virtual void addToSendQueue( unsigned char id, const char* data, int len, EPacketType packetType, unsigned char channel=0, bool relay=true ) override;
 			virtual void endAddToSendQueue() override; // releases the lock
 		
 			// Calls beginSend-send-endSend in a chain
@@ -110,9 +110,10 @@ namespace Zerodelay
 		void dispatchSendQueue(ISocket* socket);
 		void dispatchAckQueue(ISocket* socket);
 		void receiveReliableOrdered(const char * buff, int rawSize);
-		void receiveUnreliableOredered(const char * buff, int rawSize);
+		void receiveUnreliableSequenced(const char * buff, int rawSize);
 		void receiveAck(const char* buff, int rawSize);
-		Packet extractPayload( const char* buff, int rawSize ) const;
+		void assemblePacket( Packet& pack, const char*  buff, int rawSize, char channel, bool relay, EPacketType type ) const;
+		void extractPayload( Packet& pack, const char* buff, int rawSize ) const;
 		bool isSequenceNewer( unsigned int incoming, unsigned int having ) const;
 
 		sendQueueType m_SendQueue_reliable[sm_NumChannels];

@@ -35,7 +35,7 @@ namespace Zerodelay
 		m_SendMutex.lock();
 	}
 
-	void RUDPConnection::addToSendQueue(unsigned char id, const char* data, int len, EPacketType packetType, unsigned char channel)
+	void RUDPConnection::addToSendQueue(unsigned char id, const char* data, int len, EPacketType packetType, unsigned char channel, bool relay)
 	{
 		// user not allowed to send acks
 		if ( packetType == EPacketType::Ack )
@@ -47,7 +47,8 @@ namespace Zerodelay
 		pack.data = new char[len+off_Norm_Data];
 		pack.data[off_Type] = (char)packetType;
 		pack.data[off_Norm_Chan] = channel;
-		pack.data[off_Norm_Id]   = id;
+		pack.data[off_Norm_Chan] |= ((char)relay) << 3; // skip over the bits for channel, 0 to 7
+		pack.data[off_Norm_Id] = id;
 		memcpy_s( pack.data + off_Norm_Data, len, data, len ); 
 		pack.len = len + off_Norm_Data;
 		if ( packetType == EPacketType::Reliable_Ordered )
@@ -91,7 +92,6 @@ namespace Zerodelay
 				if ( it != queue.end() )
 				{
 					pack = it->second;
-					pack.channel = i;
 					queue.erase( it );
 					m_RecvSeq_reliable_gameThread[i]++;
 					return true;
@@ -105,7 +105,6 @@ namespace Zerodelay
 			if ( !queue.empty() )
 			{
 				pack = queue.front();
-				pack.channel = i;
 				queue.pop_front();
 				return true;
 			}
@@ -157,12 +156,12 @@ namespace Zerodelay
 
 			case EPacketType::Reliable_Ordered:
 				// ack it (even if we already processed this packet)
-				addAckToAckQueue( buff[off_Norm_Chan], *(unsigned int*)&buff[off_Norm_Seq] );
+				addAckToAckQueue( buff[off_Norm_Chan] & 7, *(unsigned int*)&buff[off_Norm_Seq] );
 				receiveReliableOrdered(buff, rawSize);	
 				break;
 
 			case EPacketType::Unreliable_Sequenced:
-				receiveUnreliableOredered(buff, rawSize);
+				receiveUnreliableSequenced(buff, rawSize);
 				break;
 		}
 	}
@@ -227,7 +226,8 @@ namespace Zerodelay
 
 	void RUDPConnection::receiveReliableOrdered(const char * buff, int rawSize)
 	{
-		char channel = buff[off_Norm_Chan];
+		char channel = (buff[off_Norm_Chan] & 7);
+		bool relay   = (buff[off_Norm_Chan] & 8) != 0;
 		unsigned int seq = *(unsigned int*)(buff + off_Norm_Seq);
 
 		std::lock_guard<std::mutex> lock(m_RecvMutex);
@@ -239,7 +239,8 @@ namespace Zerodelay
 		auto& queue = m_RecvQueue_reliable_order[channel];
 		if ( queue.count( seq ) == 0 )
 		{
-			auto pack = extractPayload( buff, rawSize );
+			Packet pack;
+			assemblePacket( pack, buff, rawSize, channel, relay, EPacketType::Reliable_Ordered );
 			queue.insert( std::make_pair(seq, pack) );
 		}
 		// update recv seq to most recent possible
@@ -249,19 +250,22 @@ namespace Zerodelay
 		}
 	}
 
-	void RUDPConnection::receiveUnreliableOredered(const char * buff, int rawSize)
+	void RUDPConnection::receiveUnreliableSequenced(const char * buff, int rawSize)
 	{
-		char channel = buff[off_Norm_Chan];
+		char channel = (buff[off_Norm_Chan] & 7);
+		bool relay   = (buff[off_Norm_Chan] & 8) != 0;
 		unsigned int seq = *(unsigned int*)(buff + off_Norm_Seq);
 	
 		std::lock_guard<std::mutex> lock(m_RecvMutex);
 		if ( !isSequenceNewer(seq, m_RecvSeq_unreliable[channel]) )
 			return;
 	
-		// in case of unreliable, immediately update the expected sequenced to the received seq
+		// In case of unreliable, immediately update the expected sequenced to the received seq.
+		// Therefore, unsequenced but arrived packets, will be discarded!
 		m_RecvSeq_unreliable[channel] = seq+1;
 
-		auto pack = extractPayload( buff, rawSize );
+		Packet pack;
+		assemblePacket( pack, buff, rawSize, channel, relay, EPacketType::Unreliable_Sequenced );
 		m_RecvQueue_unreliable_order[channel].emplace_back( pack );
 	}
 
@@ -288,13 +292,19 @@ namespace Zerodelay
 		}
 	}
 
-	Packet RUDPConnection::extractPayload( const char* buff, int rawSize ) const
+	void RUDPConnection::assemblePacket(Packet& pack, const char* buff, int rawSize, char channel, bool relay, EPacketType type) const
 	{
-		Packet pack;
+		extractPayload( pack, buff, rawSize );
+		pack.channel = channel;
+		pack.relay = relay;
+		pack.type  = type;
+	}
+
+	void RUDPConnection::extractPayload(Packet& pack, const char* buff, int rawSize) const
+	{
 		pack.len  = rawSize - off_Norm_Id; // <--- this is correct, id is enclosed in the payload
 		pack.data = new char[pack.len];
 		memcpy_s(pack.data, pack.len, buff + off_Norm_Id, pack.len); // off_Norm_Id is correct
-		return pack;
 	}
 
 	bool RUDPConnection::isSequenceNewer(unsigned int incoming, unsigned int having) const

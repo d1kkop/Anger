@@ -56,11 +56,11 @@ namespace Zerodelay
 		});
 	}
 
-	void RecvPoint::send(unsigned char id, const char* data, int len, EPacketType type, unsigned char channel)
+	void RecvPoint::send(unsigned char id, const char* data, int len, EPacketType type, unsigned char channel, bool relay)
 	{
 		forEachConnection( m_WasSpecific, m_WasExclude, [=] (IConnection* conn) 
 		{
-			conn->addToSendQueue( id, data, len, type, channel );
+			conn->addToSendQueue( id, data, len, type, channel, relay );
 		});
 	}
 

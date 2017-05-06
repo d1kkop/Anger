@@ -119,7 +119,7 @@ namespace Zerodelay
 
 	void ZNode::setPassword(const std::string& pw)
 	{
-		p->setServerPassword( pw );
+		p->setPassword( pw );
 	}
 
 	void ZNode::setMaxIncomingConnections(int maxNumConnections)
@@ -140,7 +140,7 @@ namespace Zerodelay
 	void ZNode::sendSingle(unsigned char id, const char* data, int len, const ZEndpoint* specific, bool exclude, EPacketType type, unsigned char channel, bool relay)
 	{
 		p->beginSend( asEpt(specific), exclude );
-		p->send( id, data, len, type, channel );
+		p->send( id, data, len, type, channel, relay );
 		p->endSend();
 	}
 

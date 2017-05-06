@@ -14,9 +14,11 @@ namespace Zerodelay
 {
 	struct Packet 
 	{
-		char* data;
 		int len; 
+		char* data;
 		char channel;
+		bool relay;
+		EPacketType type;
 	};
 
 
@@ -34,9 +36,8 @@ namespace Zerodelay
 
 	public:
 		void beginSend( const EndPoint* specific=nullptr, bool exclude=false );
-		void send(unsigned char id, const char* data, int len, EPacketType type=EPacketType::Reliable_Ordered, unsigned char channel=0);
+		void send( unsigned char id, const char* data, int len, EPacketType type=EPacketType::Reliable_Ordered, unsigned char channel=0, bool relay=true );
 		void endSend();
-
 		void simulatePacketLoss( int percentage );
 
 	protected:

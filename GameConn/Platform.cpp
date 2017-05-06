@@ -103,14 +103,17 @@ namespace Zerodelay
 			localtime_s(&timeinfo, &rawtime);
 			char asciitime[128];
 			asctime_s(asciitime, 128, &timeinfo);
+			char* p = strstr(asciitime, "\n");
+			if ( p )
+				*p ='\0';
 			static bool isFirstOpen = true;
 			if ( isFirstOpen )
 			{
 				isFirstOpen = false;
-				fprintf_s( f, "--------- NEW SESSION ---------" );
-				fprintf_s( f, "-------------------------------" );
+				fprintf_s( f, "--------- NEW SESSION ---------\n" );
+				fprintf_s( f, "-------------------------------\n" );
 			}
-			fprintf_s( f, "%s %s", buff, asciitime );
+			fprintf_s( f, "%s\t\t%s", asciitime, buff );
 			fflush(f);
 			fclose(f);
 		}
