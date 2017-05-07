@@ -1,8 +1,10 @@
 #include "RecvPoint.h"
 #include "Socket.h"
 #include "EndPoint.h"
+#include "VariableGroup.h"
 #include "RUDPConnection.h"
 
+#include <cassert>
 #include <chrono>
 using namespace std::chrono_literals;
 
@@ -16,6 +18,7 @@ namespace Zerodelay
 		m_ListenSocket(ISocket::create()),
 		m_WasSpecific(nullptr),
 		m_WasExclude(false),
+		m_LocalVariableGroupId(1),
 		m_RecvThread(nullptr),
 		m_SendThread(nullptr)
 	{
@@ -71,6 +74,21 @@ namespace Zerodelay
 			conn->endAddToSendQueue();
 		});
 		m_ConnectionListMutex.unlock();
+	}
+
+	void RecvPoint::beginVariableGroup()
+	{
+		assert( VariableGroup::Last == nullptr && "should be NULL" );
+		// First create group using local Id, later fetch the networkId if not present immediately
+		int localId = m_LocalVariableGroupId++;
+		VariableGroup::Last = new VariableGroup( localId );
+		m_VariableGroupsLocal.insert( std::make_pair( localId, VariableGroup::Last ) );
+	}
+
+	void RecvPoint::endVariableGroup()
+	{
+		assert ( VariableGroup::Last != nullptr && "should be not NULL" );
+		m_VariableGroupsLocal.clear();
 	}
 
 	void RecvPoint::simulatePacketLoss(int percentage)

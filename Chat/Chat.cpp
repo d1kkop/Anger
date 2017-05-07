@@ -7,6 +7,8 @@
 #include <string>
 #include <thread>
 
+#include "RpcMacros.h"
+#include "Netvar.h"
 #include "Zerodelay.h"
 
 #define MAX_LOADSTRING 100
@@ -14,6 +16,37 @@
 using namespace Zerodelay;
 
 ZNode* g_Node;
+
+
+struct Tank
+{
+	Tank( int _x, int _y, int _z )
+	{
+
+	}
+
+	void update(float dt)
+	{
+		if ( x.getVarConrol() == EVarControl::Full )
+		{
+			// have full control
+		}
+	}
+
+	NetInt16 x, y, z;
+	NetByte b1, b2;
+};
+
+
+Tank* g_Tank = nullptr;
+
+RPC_FUNC_3( createTank, int, x, int, y, int, z )
+{
+	g_Node->beginVariableGroup();
+	g_Tank = new Tank( x, y, z );
+	g_Node->endVariableGroup();
+}
+
 
 const int g_MaxNames = 10;
 struct ChatLobby

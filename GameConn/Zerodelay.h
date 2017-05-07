@@ -191,6 +191,12 @@ namespace Zerodelay
 		void endSend();
 
 
+		/*	Start calling this before a new instance of a class/struct is created that uses NetVar's. 
+			Call endVariableGroup after the instance creation. */
+		void beginVariableGroup();
+		void endVariableGroup();
+
+
 		/*	----- Callbacks ----------------------------------------------------------------------------------------------- */
 
 			/*	For handling connect request results. */

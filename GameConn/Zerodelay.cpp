@@ -159,6 +159,16 @@ namespace Zerodelay
 		p->endSend();
 	}
 
+	void ZNode::beginVariableGroup()
+	{
+		p->beginVariableGroup();
+	}
+
+	void ZNode::endVariableGroup()
+	{
+		p->endVariableGroup();
+	}
+
 	void ZNode::bindOnConnectResult(std::function<void(const ZEndpoint&, EConnectResult)> cb)
 	{
 		p->bindOnConnectResult( [=] (auto etp, auto res) {

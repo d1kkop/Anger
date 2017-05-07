@@ -10,6 +10,9 @@
     <Filter Include="User">
       <UniqueIdentifier>{d7583bd1-b17e-4a8a-9ad9-4aaf803bddf0}</UniqueIdentifier>
     </Filter>
+    <Filter Include="NetVariables">
+      <UniqueIdentifier>{b43bdc28-9d91-4936-87c9-ff92d1626019}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Socket.cpp">
@@ -39,6 +42,12 @@
     </ClCompile>
     <ClCompile Include="Connection.cpp">
       <Filter>ConnectionLayer</Filter>
+    </ClCompile>
+    <ClCompile Include="NetVariable.cpp">
+      <Filter>NetVariables</Filter>
+    </ClCompile>
+    <ClCompile Include="VariableGroup.cpp">
+      <Filter>NetVariables</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -71,6 +80,12 @@
     </ClInclude>
     <ClInclude Include="Connection.h">
       <Filter>ConnectionLayer</Filter>
+    </ClInclude>
+    <ClInclude Include="NetVariable.h">
+      <Filter>NetVariables</Filter>
+    </ClInclude>
+    <ClInclude Include="VariableGroup.h">
+      <Filter>NetVariables</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
