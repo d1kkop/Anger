@@ -3,12 +3,13 @@
 #include "VariableGroup.h"
 #include "NetVariable.h"
 
+#include <cassert>
+
 
 namespace Zerodelay
 {
-	VariableGroup::VariableGroup(unsigned int localId):
+	VariableGroup::VariableGroup():
 		m_NumPreBytes(0),
-		m_LocalId(localId),
 		m_NetworkId(0),
 		m_Control(EVarControl::Full)
 	{
@@ -91,6 +92,14 @@ namespace Zerodelay
 			kBit = 0;
 			kByte++;
 		}
+	}
+
+	void VariableGroup::setNetworkId( unsigned int id )
+	{
+		assert ( m_NetworkId == 0 && "network id already set" );
+		if ( m_NetworkId != 0 )
+			return;
+		m_NetworkId = id;
 	}
 
 	VariableGroup* VariableGroup::Last = nullptr;

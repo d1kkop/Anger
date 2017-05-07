@@ -20,18 +20,18 @@ namespace Zerodelay
 		return p->getVarControl();
 	}
 
-	// -------- NetInt ----------------------------------------------------------------------------------------------
-
-	NetByte::NetByte() :
-		NetVar(1)
+	unsigned int NetVar::getNetworkGroupId() const
 	{
-
+		return p->getGroupId();
 	}
 
-	NetInt16::NetInt16():
-		NetVar(2)
+	char* NetVar::data()
 	{
-
+		return p->data();
 	}
 
+	const char* NetVar::data() const
+	{
+		return p->data();
+	}
 }

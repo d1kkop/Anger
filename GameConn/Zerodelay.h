@@ -29,7 +29,9 @@ namespace Zerodelay
 		KeepAliveAnswer,
 		IncorrectPassword,
 		MaxConnectionsReached,
-		Rpc
+		Rpc,
+		IdPackRequest,
+		IdPackProvide
 	};
 
 #define  USER_ID_OFFSET (unsigned char)(EGameNodePacketType::Rpc)+1
@@ -223,5 +225,6 @@ namespace Zerodelay
 
 	private:
 		class ConnectionNode* p;
+		class VariableGroupNode* vgn;
 	};
 }

@@ -131,6 +131,7 @@
     <ClCompile Include="Netvar.cpp" />
     <ClCompile Include="ConnectionNode.cpp" />
     <ClCompile Include="VariableGroup.cpp" />
+    <ClCompile Include="VariableGroupNode.cpp" />
     <ClCompile Include="Zerodelay.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -145,6 +146,7 @@
     <ClInclude Include="Netvar.h" />
     <ClInclude Include="ConnectionNode.h" />
     <ClInclude Include="VariableGroup.h" />
+    <ClInclude Include="VariableGroupNode.h" />
     <ClInclude Include="Zerodelay.h" />
   </ItemGroup>
   <ItemGroup>

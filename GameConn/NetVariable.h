@@ -1,18 +1,22 @@
 #pragma once
 
-#include "Netvar.h"
+#include "Zerodelay.h"
+
 
 namespace Zerodelay
 {
-	class NetVariable
+	class ZDLL_DECLSPEC NetVariable
 	{
 	public:
 		NetVariable(int nBytes);
 		virtual ~NetVariable();
 
-		EVarControl getVarControl() const;
+		enum class EVarControl getVarControl() const;
+		int getGroupId() const;
 		bool sync(bool writing, char*& buff, int buffLen);
 		bool wantsSync() const { return true; }
+		char* data();
+		const char* data() const;
 
 	private:
 		class VariableGroup* m_Group;

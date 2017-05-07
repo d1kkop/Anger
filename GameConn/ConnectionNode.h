@@ -43,8 +43,9 @@ namespace Zerodelay
 		void disconnectAll();
 
 		// To be called every update loop. 
-		// Calls all bound callback functions
-		void update();
+		// Calls all bound callback functions.
+		// Packets that do not belong to the connection layer are passed through unhandledPacket callback.
+		void update( std::function<void (const Packet&, IConnection*)> unhandledPacketCb );
 
 		void relayClientEvents(bool is);
 		void setPassword( const std::string& pw );
@@ -85,7 +86,7 @@ namespace Zerodelay
 		void sendRemoteConnected( const class Connection* g );
 		void sendRemoteDisconnected( const class Connection* g, EDisconnectReason reason );
 		// recvs (Game thread)
-		void recvPacket( struct Packet& pack, class Connection* g );
+		bool recvPacket( struct Packet& pack, class Connection* g );
 		void recvConnectPacket(const char* payload, int len, class Connection* g);
 		void recvConnectAccept(class Connection* g);
 		void recvDisconnectPacket( const char* payload, int len, class Connection* g );

@@ -1,5 +1,6 @@
 #include "Zerodelay.h"
 #include "ConnectionNode.h"
+#include "VariableGroupNode.h"
 
 
 namespace Zerodelay
@@ -76,13 +77,15 @@ namespace Zerodelay
 
 
 	ZNode::ZNode(int sendThreadSleepTimeMs, int keepAliveIntervalSeconds, bool captureSocketErrors) :
-		p(new ConnectionNode(sendThreadSleepTimeMs, keepAliveIntervalSeconds, captureSocketErrors))
+		p(new ConnectionNode(sendThreadSleepTimeMs, keepAliveIntervalSeconds, captureSocketErrors)),
+		vgn(new VariableGroupNode())
 	{
 	}
 
 	ZNode::~ZNode()
 	{
 		delete p;
+		delete vgn;
 	}
 
 	EConnectCallResult ZNode::connect(const ZEndpoint& endPoint, const std::string& pw, int timeoutSeconds)
@@ -114,7 +117,13 @@ namespace Zerodelay
 
 	void ZNode::update()
 	{
-		p->update();
+		p->update( [=] (auto p, auto g) 
+		{
+			// unhandled packets, are sent through this callback
+			if ( vgn->recvPacket( p, g ) )
+				return;
+			// TODO handle packet in other systems..
+		});
 	}
 
 	void ZNode::setPassword(const std::string& pw)
@@ -161,12 +170,12 @@ namespace Zerodelay
 
 	void ZNode::beginVariableGroup()
 	{
-		p->beginVariableGroup();
+		vgn->beginGroup();
 	}
 
 	void ZNode::endVariableGroup()
 	{
-		p->endVariableGroup();
+		vgn->endGroup();
 	}
 
 	void ZNode::bindOnConnectResult(std::function<void(const ZEndpoint&, EConnectResult)> cb)

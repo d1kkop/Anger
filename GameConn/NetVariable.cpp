@@ -1,6 +1,7 @@
 #pragma once
 
 #include "NetVariable.h"
+#include "Netvar.h"
 #include "VariableGroup.h"
 
 #include <cassert>
@@ -36,6 +37,13 @@ namespace Zerodelay
 		return m_Group->getVarControl();
 	}
 
+	int NetVariable::getGroupId() const
+	{
+		if ( !m_Group )
+			return 0;
+		return m_Group->getNetworkId();
+	}
+
 	bool NetVariable::sync(bool writing, char*& buff, int buffLen)
 	{
 		if ( buffLen < m_Length )
@@ -54,4 +62,15 @@ namespace Zerodelay
 		buff += m_Length;
 		return true;
 	}
+
+	char* NetVariable::data()
+	{
+		return m_Data;
+	}
+
+	const char* NetVariable::data() const
+	{
+		return m_Data;
+	}
+
 }

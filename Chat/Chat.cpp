@@ -27,14 +27,12 @@ struct Tank
 
 	void update(float dt)
 	{
-		if ( x.getVarConrol() == EVarControl::Full )
+	//	if ( x.getVarConrol() == EVarControl::Full )
 		{
 			// have full control
 		}
 	}
 
-	NetInt16 x, y, z;
-	NetByte b1, b2;
 };
 
 
@@ -93,6 +91,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 {
     UNREFERENCED_PARAMETER(hPrevInstance);
     UNREFERENCED_PARAMETER(lpCmdLine);
+
 
     // Initialize global strings
     LoadStringW(hInstance, IDS_APP_TITLE, szTitle, MAX_LOADSTRING);
@@ -155,6 +154,14 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 void InitNetwork(bool isServ)
 {
 	g_Node = new ZNode( 3 );
+
+	g_Node->beginVariableGroup();
+	GenericNetVar<double> db;
+	(double)db = 0.f;
+	(double)db += 1.3;
+	double kb = db;
+	g_Node->endVariableGroup();
+
 	g_Node->bindOnConnectResult([] (auto etp, EConnectResult res)
 	{
 		switch ( res )

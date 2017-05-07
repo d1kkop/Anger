@@ -127,7 +127,7 @@ namespace Zerodelay
 		}
 	}
 
-	void ConnectionNode::update()
+	void ConnectionNode::update( std::function<void (const Packet&, IConnection*)> unhandledCb )
 	{
 		m_TempConnections.clear();
 		copyConnectionsTo( m_TempConnections );
@@ -140,7 +140,11 @@ namespace Zerodelay
 				Packet pack;
 				while ( gc->poll(pack) )
 				{
-					recvPacket( pack, gc );
+					// returns false if packet is not handled.
+					if ( !recvPacket( pack, gc ) )
+					{
+						unhandledCb( pack, gc );
+					}
 					delete [] pack.data;
 				}
 				gc->endPoll();
@@ -230,7 +234,7 @@ namespace Zerodelay
 		endSend();
 	}
 
-	void ConnectionNode::recvPacket(struct Packet& pack, class Connection* g)
+	bool ConnectionNode::recvPacket(struct Packet& pack, class Connection* g)
 	{
 		EGameNodePacketType packType = (EGameNodePacketType)pack.data[0];
 		const char* payload  = pack.data+1; // first byte is PacketType
@@ -268,9 +272,18 @@ namespace Zerodelay
 			recvRpcPacket(payload, payloadLen, g);
 			break;
 		default:
-			recvUserPacket(g, pack );
+			if ( (char)packType >= USER_ID_OFFSET )
+			{
+				recvUserPacket(g, pack );
+			}
+			else
+			{
+				// unhandled packet
+				return false;
+			}
 			break;
 		}
+		return true;
 	}
 
 	void ConnectionNode::recvConnectPacket(const char* payload, int payloadLen, class Connection* g)

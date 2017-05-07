@@ -1,6 +1,7 @@
 #pragma once
 
 #include "RUDPConnection.h"
+#include "NetVariable.h"
 
 #include <mutex>
 
@@ -35,39 +36,57 @@ namespace Zerodelay
 		EVarControl getVarConrol() const;
 
 
-	private:
+		/*	The NetVar is part of a group that has an id. This id is network wide unique.
+			Use this networkGroupId to target specific group's remotely. */
+		unsigned int getNetworkGroupId() const;
+
+
+	protected:
+		char* data();
+		const char* data() const;
 		class NetVariable* p;
 	};
 
+	
+	/*	The GenericNetVar is nothing more than a POD (plain old data) stucture that can hold
+		native types and structures.
+		It performs no Endiannes converions. So if this is not handled at the application level, 
+		transport between different Endiannes machines will fail. 
+		
+		Examples:
+			Note that the cast operator returns a reference to the data.
+			
+			--- Ex 1 ----------------------------------------------------------
 
-	class ZDLL_DECLSPEC NetByte : public NetVar
+			GenericNetVar<int> nInt;
+			(int)nInt  = 0;
+			(int)nInt += 22;
+			int myLocalInt = nInt; // -> myLocalInt is 22
+
+			----------------------------------------------------------
+
+			GenericNetVar<double> nDouble;
+			(double)nDouble = 0.0;
+			(double)nDouble = myMathFunction(...);
+			double myLocalDouble = nDouble; // -> has local copy of myMathFunction(..)		
+			
+			--- Ex 2 ----------------------------------------------------------
+			
+			struct MyLobby
+			{
+				char playerNames[10][64];
+			};
+
+			GenericNetVar<MyLobby> nLobby;
+			(MyLobby)nLobby.playerNames[2] = "my nickname";			*/
+	template <typename T>
+	class GenericNetVar : public NetVar
 	{
 	public:
-		NetByte();
-		virtual ~NetByte() { }
+		GenericNetVar(): NetVar( sizeof(T) ) { }
+
+		operator T& () { return *(T*)p->data(); }
+		operator const T&() const { return *(const T*)p->data(); }
 	};
-
-	class ZDLL_DECLSPEC NetInt16: public NetVar
-	{
-	public:
-		NetInt16();
-		virtual ~NetInt16() { }
-	};
-
-
-	//// 16 bit signed integer type.
-	//class NetInt16: public INetVar
-	//{
-	//	// 16 bit in length
-	//	virtual void sync(char* buffer, int buffSize) override;
-	//};
-
-
-	//class NetInt32: public INetVar
-	//{
-	//	// 32 bit in length
-	//	virtual void sync(char* buffer, int buffSize) override;
-	//};
-
 
 }

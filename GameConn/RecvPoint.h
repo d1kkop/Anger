@@ -39,9 +39,6 @@ namespace Zerodelay
 		void send( unsigned char id, const char* data, int len, EPacketType type=EPacketType::Reliable_Ordered, unsigned char channel=0, bool relay=true );
 		void endSend();
 
-		void beginVariableGroup();
-		void endVariableGroup();
-
 		void simulatePacketLoss( int percentage );
 
 	protected:
@@ -62,15 +59,12 @@ namespace Zerodelay
 		int  m_SendThreadSleepTimeMs;
 		const EndPoint* m_WasSpecific;
 		bool m_WasExclude;
-		int m_LocalVariableGroupId;
 		std::thread* m_RecvThread;
 		std::thread* m_SendThread;
 		std::condition_variable m_SendThreadCv;
 		std::mutex m_ConnectionListMutex;
 		std::vector<int> m_SocketErrors;
 		std::map<EndPoint, class IConnection*, EndPoint::STLCompare> m_Connections;
-		std::map<unsigned int, class VariableGroup*> m_VariableGroupsNetwork;
-		std::map<unsigned int, class VariableGroup*> m_VariableGroupsLocal;
 
 #if ZNETWORK_DEBUG
 	public:
