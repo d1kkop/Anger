@@ -96,12 +96,21 @@ namespace Zerodelay
 
 	BSDSocket::BSDSocket():
 		m_LastError(0),
+		m_Open(false),
+		m_Bound(false),
 		m_Socket(INVALID_SOCKET)
 	{
 	}
 
 	bool BSDSocket::open(IPProto ipv, bool reuseAddr)
 	{
+		if ( m_Open && m_Socket != INVALID_SOCKET )
+		{
+			return true;
+		}
+		// reset open state if was invalid socket
+		m_Open = false;
+
 		m_IpProto = ipv;
 
 		m_Socket = socket( (ipv == IPProto::Ipv4 ? AF_INET : AF_INET6), SOCK_DGRAM, IPPROTO_UDP) ;
@@ -118,6 +127,7 @@ namespace Zerodelay
 			return false;
 		}
 
+		m_Open = true;
 		return true;
 	}
 
@@ -125,6 +135,9 @@ namespace Zerodelay
 	{
 		if ( m_Socket == INVALID_SOCKET )
 			return false;
+
+		if ( m_Bound )
+			return true;
 
 		addrinfo hints;
 		addrinfo *addrInfo = nullptr;
@@ -155,6 +168,7 @@ namespace Zerodelay
 			if (0 == ::bind(m_Socket, inf->ai_addr, (int)inf->ai_addrlen))
 			{
 				freeaddrinfo(addrInfo);
+				m_Bound = true;
 				return true;
 			}
 		}
@@ -184,6 +198,8 @@ namespace Zerodelay
 			// was already closed or never opened
 			result = -1;
 		}
+		m_Open  = false;
+		m_Bound = false;
 		return (result == 0);
 	}
 

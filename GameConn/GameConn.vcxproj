@@ -145,6 +145,7 @@
     <ClInclude Include="Socket.h" />
     <ClInclude Include="Netvar.h" />
     <ClInclude Include="ConnectionNode.h" />
+    <ClInclude Include="SyncGroups.h" />
     <ClInclude Include="VariableGroup.h" />
     <ClInclude Include="VariableGroupNode.h" />
     <ClInclude Include="Zerodelay.h" />

@@ -93,6 +93,9 @@
     <ClInclude Include="VariableGroupNode.h">
       <Filter>NetVariables</Filter>
     </ClInclude>
+    <ClInclude Include="SyncGroups.h">
+      <Filter>User</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="..\README.md" />

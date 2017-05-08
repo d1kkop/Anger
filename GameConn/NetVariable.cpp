@@ -27,6 +27,10 @@ namespace Zerodelay
 
 	NetVariable::~NetVariable()
 	{
+		if ( m_Group )
+		{
+			m_Group->markBroken();
+		}
 		delete [] m_Data;
 	}
 
@@ -44,7 +48,7 @@ namespace Zerodelay
 		return m_Group->getNetworkId();
 	}
 
-	bool NetVariable::sync(bool writing, char*& buff, int buffLen)
+	bool NetVariable::sync(bool writing, char*& buff, int& buffLen, int& nOperations)
 	{
 		if ( buffLen < m_Length )
 		{
@@ -60,6 +64,8 @@ namespace Zerodelay
 			memcpy( m_Data, buff, m_Length );
 		}
 		buff += m_Length;
+		buffLen -= m_Length;
+		nOperations += m_Length;
 		return true;
 	}
 

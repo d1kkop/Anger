@@ -11,6 +11,7 @@ namespace Zerodelay
 	VariableGroup::VariableGroup():
 		m_NumPreBytes(0),
 		m_NetworkId(0),
+		m_Broken(false),
 		m_Control(EVarControl::Full)
 	{
 	}
@@ -19,9 +20,10 @@ namespace Zerodelay
 	{
 	}
 
-	bool VariableGroup::sync(bool isWriting, char* data, int buffLen)
+	bool VariableGroup::sync(bool isWriting, char* data, int buffLen, int& nOperations)
 	{
 		const int maxVars = 1024;
+		nOperations = 0;
 
 		// Compute num prebytes that indicate that can hold a bit
 		// for every variable that is been written
@@ -45,6 +47,10 @@ namespace Zerodelay
 		int kBit  = 0;
 		char* varBits = data;
 		data += m_NumPreBytes;
+		
+		// In begin, always numPreBytes are nOperations, and buffLength is provided minus that
+		nOperations = m_NumPreBytes;
+		buffLen -= nOperations;
 
 		// If is writing, skip the pre-bytes and first write all requested data
 		if ( isWriting )
@@ -54,12 +60,13 @@ namespace Zerodelay
 			{
 				if ( v->wantsSync() )
 				{
-					if ( v->sync( true, data, buffLen ) )
+					if ( v->sync( true, data, buffLen, nOperations ) )
 					{
 						varBits[kByte] |= (1 << kBit);
 					}
 					else
 					{
+						// not enough buff length
 						return false;
 					}
 				}
@@ -73,8 +80,9 @@ namespace Zerodelay
 				bool isWritten = (varBits[kBit] & (1 << kByte)) != 0;
 				if ( isWritten )
 				{
-					if ( !v->sync( false, data, buffLen ) )
+					if ( !v->sync( false, data, buffLen, nOperations ) )
 					{
+						// not enough buff length
 						return false;
 					}
 				}

@@ -1,5 +1,7 @@
 #include "Zerodelay.h"
 #include "ConnectionNode.h"
+#include "RUDPConnection.h"
+#include "Socket.h"
 #include "VariableGroupNode.h"
 
 
@@ -80,6 +82,7 @@ namespace Zerodelay
 		p(new ConnectionNode(sendThreadSleepTimeMs, keepAliveIntervalSeconds, captureSocketErrors)),
 		vgn(new VariableGroupNode())
 	{
+		vgn->m_ZNode = this;
 	}
 
 	ZNode::~ZNode()
@@ -122,8 +125,10 @@ namespace Zerodelay
 			// unhandled packets, are sent through this callback
 			if ( vgn->recvPacket( p, g ) )
 				return;
+			Platform::log( "received unknown packet from %s", g->getEndPoint().asString().c_str() );
 			// TODO handle packet in other systems..
 		});
+		vgn->update();
 	}
 
 	void ZNode::setPassword(const std::string& pw)
@@ -149,7 +154,7 @@ namespace Zerodelay
 	void ZNode::sendSingle(unsigned char id, const char* data, int len, const ZEndpoint* specific, bool exclude, EPacketType type, unsigned char channel, bool relay)
 	{
 		p->beginSend( asEpt(specific), exclude );
-		p->send( id, data, len, type, channel, relay );
+		send( id, data, len, type, channel, relay );
 		p->endSend();
 	}
 
@@ -160,7 +165,15 @@ namespace Zerodelay
 
 	void ZNode::send(unsigned char id, const char* data, int len, EPacketType type, unsigned char channel, bool relay)
 	{
-		p->send( id, data, len, type, channel );
+		ISocket* sock = p->getSocket();
+		if ( sock && sock->isBound() && sock->isOpen() )
+		{
+			p->send( id, data, len, type, channel );
+		}
+		else
+		{
+			Platform::log( "trying to send data over invalid socket, ignoring send" );
+		}
 	}
 
 	void ZNode::endSend()
@@ -176,6 +189,11 @@ namespace Zerodelay
 	void ZNode::endVariableGroup()
 	{
 		vgn->endGroup();
+	}
+
+	void ZNode::setIsNetworkIdProvider(bool isProvider)
+	{
+		vgn->setIsNetworkIdProvider( isProvider );
 	}
 
 	void ZNode::bindOnConnectResult(std::function<void(const ZEndpoint&, EConnectResult)> cb)

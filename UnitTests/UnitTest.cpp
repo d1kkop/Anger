@@ -33,8 +33,8 @@ namespace UnitTests
 		bool connected = false;
 		bool timedOut  = false;
 		bool foundNewConn = false;
-		ZNode* g1 = new ZNode(8, 2, 2);
-		ZNode* g2 = new ZNode(8, 2, 2);
+		ZNode* g1 = new ZNode(8, 2, true);
+		ZNode* g2 = new ZNode(8, 2, true);
 		g1->bindOnConnectResult( [&] (auto etp, auto res) 
 		{
 			std::string resStr;
@@ -437,6 +437,51 @@ namespace UnitTests
 	}
 
 	//////////////////////////////////////////////////////////////////////////
+	// Sync group test layer test
+	//////////////////////////////////////////////////////////////////////////
+
+
+	void SyncGroupTest::initialize()
+	{
+		
+	}
+
+	void SyncGroupTest::run()
+	{
+		ZNode* g1 = new ZNode();
+		ZNode* g2 = new ZNode();
+
+		g1->beginVariableGroup();
+		Unit* u  = new Unit;
+		Unit* u2 = new Unit;
+		g1->endVariableGroup();
+
+		g1->connect( "localhost", 27000 );
+		g2->listenOn( 27000 );
+		g2->setIsNetworkIdProvider( true );
+
+		volatile bool bThreadClose = false;
+		std::thread t( [&] () {
+			while ( !bThreadClose ) {
+				g1->update();
+				g2->update();
+			}
+		});
+
+		std::this_thread::sleep_for(3000ms);
+		bThreadClose = true;
+
+		if ( t.joinable() )
+			t.join();
+
+		delete u;
+		delete u2;
+		delete g1;
+		delete g2;
+		Result = true;
+	}
+
+	//////////////////////////////////////////////////////////////////////////
 	/// NetworkTests
 	//////////////////////////////////////////////////////////////////////////
 
@@ -445,10 +490,11 @@ namespace UnitTests
 		std::vector<BaseTest*> tests;
 
 		// add tests
-		tests.emplace_back( new ConnectionLayerTest );
-		tests.emplace_back( new MassConnectTest );
-		tests.emplace_back( new ReliableOrderTest );
-		tests.emplace_back( new RpcTest );
+//		tests.emplace_back( new ConnectionLayerTest );
+//		tests.emplace_back( new MassConnectTest );
+//		tests.emplace_back( new ReliableOrderTest );
+//		tests.emplace_back( new RpcTest );
+		tests.emplace_back( new SyncGroupTest );
 			
 		// run them
 		for ( auto* t : tests )

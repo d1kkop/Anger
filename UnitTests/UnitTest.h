@@ -2,6 +2,12 @@
 
 #include <string>
 
+#include "Zerodelay.h"
+#include "Netvar.h"
+
+
+using namespace Zerodelay;
+
 
 namespace UnitTests
 {
@@ -48,6 +54,19 @@ namespace UnitTests
 	{
 		virtual void initialize() override;
 		virtual void run() override;
+	};
+
+	struct SyncGroupTest: public BaseTest
+	{
+		virtual void initialize() override;
+		virtual void run() override;
+
+		struct Unit
+		{
+			GenericNetVar<int> nInt;
+			GenericNetVar<double> nDouble;
+			GenericNetVar<float> nFloat;
+		};
 	};
 
 	struct NetworkTests

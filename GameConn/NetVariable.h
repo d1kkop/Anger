@@ -13,7 +13,7 @@ namespace Zerodelay
 
 		enum class EVarControl getVarControl() const;
 		int getGroupId() const;
-		bool sync(bool writing, char*& buff, int buffLen);
+		bool sync(bool writing, char*& buff, int& buffLen, int& nOperations);
 		bool wantsSync() const { return true; }
 		char* data();
 		const char* data() const;

@@ -93,6 +93,9 @@ namespace Zerodelay
 		va_end(myargs);
 
 #if _WIN32
+		static bool isFirstOpen = true;
+		if ( isFirstOpen )
+			::remove( "ZerodelayLog.txt" );
 		FILE* f;
 		fopen_s( &f, "ZerodelayLog.txt", "a" );
 		if ( f )
@@ -106,7 +109,6 @@ namespace Zerodelay
 			char* p = strstr(asciitime, "\n");
 			if ( p )
 				*p ='\0';
-			static bool isFirstOpen = true;
 			if ( isFirstOpen )
 			{
 				isFirstOpen = false;

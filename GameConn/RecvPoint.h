@@ -40,6 +40,7 @@ namespace Zerodelay
 		void endSend();
 
 		void simulatePacketLoss( int percentage );
+		class ISocket* getSocket() const { return m_ListenSocket; }
 
 	protected:
 		void startThreads();
@@ -65,11 +66,6 @@ namespace Zerodelay
 		std::mutex m_ConnectionListMutex;
 		std::vector<int> m_SocketErrors;
 		std::map<EndPoint, class IConnection*, EndPoint::STLCompare> m_Connections;
-
-#if ZNETWORK_DEBUG
-	public:
-		ISocket* dbg_getSocket() const { return m_ListenSocket; }
-#endif
 	};
 
 	template <typename Callback>

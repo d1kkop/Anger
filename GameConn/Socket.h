@@ -45,6 +45,8 @@ namespace Zerodelay
 		virtual ERecvResult recv( char* buff, int& rawSize, struct EndPoint& endpointOut ) = 0; // buffSize in, received size out
 		virtual int getUnderlayingSocketError() const = 0;
 		virtual bool isBlocking() const = 0;
+		virtual bool isOpen() const = 0;
+		virtual bool isBound() const = 0;
 
 		static bool readString( char* dst, int dstSize, const char* buffIn, int buffInSize );
 		static bool readFixed( char* dst, int dstSize, const char* buffIn, int buffInSize );
@@ -73,6 +75,8 @@ namespace Zerodelay
 		virtual ERecvResult recv( char* buff, int& rawSize, struct EndPoint& endPoint ) override;
 		virtual int getUnderlayingSocketError() const override { return 0; }
 		virtual bool isBlocking() const override { return false; }
+		virtual bool isOpen() const { return true; }
+		virtual bool isBound() const { return true; }
 
 		void storeData( const char* data, int len, const struct EndPoint& endPoint );
 
@@ -97,10 +101,14 @@ namespace Zerodelay
 		virtual ERecvResult recv( char* buff, int& rawSize, struct EndPoint& endPoint ) override;
 		virtual int getUnderlayingSocketError() const override;
 		virtual bool isBlocking() const override { return true; }
+		virtual bool isOpen() const { return m_Open; }
+		virtual bool isBound() const { return m_Bound; }
 
 	protected:
 		void setLastError();
 		int m_LastError;
+		bool m_Open;
+		bool m_Bound;
 #ifdef _WIN32
 		SOCKET m_Socket;
 #endif

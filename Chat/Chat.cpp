@@ -38,13 +38,6 @@ struct Tank
 
 Tank* g_Tank = nullptr;
 
-RPC_FUNC_3( createTank, int, x, int, y, int, z )
-{
-	g_Node->beginVariableGroup();
-	g_Tank = new Tank( x, y, z );
-	g_Node->endVariableGroup();
-}
-
 
 const int g_MaxNames = 10;
 struct ChatLobby
@@ -154,14 +147,6 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 void InitNetwork(bool isServ)
 {
 	g_Node = new ZNode( 3 );
-
-	g_Node->beginVariableGroup();
-	GenericNetVar<double> db;
-	(double)db = 0.f;
-	(double)db += 1.3;
-	double kb = db;
-	g_Node->endVariableGroup();
-
 	g_Node->bindOnConnectResult([] (auto etp, EConnectResult res)
 	{
 		switch ( res )

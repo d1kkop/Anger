@@ -31,10 +31,11 @@ namespace Zerodelay
 		MaxConnectionsReached,
 		Rpc,
 		IdPackRequest,
-		IdPackProvide
+		IdPackProvide,
+		VariableGroup,
 	};
 
-#define  USER_ID_OFFSET (unsigned char)(EGameNodePacketType::Rpc)+1
+#define  USER_ID_OFFSET (unsigned char)(EGameNodePacketType::VariableGroup)+1
 
 	enum class EConnectCallResult
 	{
@@ -197,6 +198,11 @@ namespace Zerodelay
 			Call endVariableGroup after the instance creation. */
 		void beginVariableGroup();
 		void endVariableGroup();
+
+
+		/*	Only one node in the network provides new network id's on request.
+			Typically, this is the Server in a client-server model or the 'Super-Peer' in a p2p network. */
+		void setIsNetworkIdProvider(bool isProvider);
 
 
 		/*	----- Callbacks ----------------------------------------------------------------------------------------------- */
