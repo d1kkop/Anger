@@ -25,6 +25,11 @@ namespace Zerodelay
 		return p->getGroupId();
 	}
 
+	void NetVar::bindOnUpdate(std::function<void(const char*, const char*)> rawCallback)
+	{
+		p->bindOnUpdateCallback( rawCallback );
+	}
+
 	char* NetVar::data()
 	{
 		return p->data();

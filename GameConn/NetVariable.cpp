@@ -3,6 +3,7 @@
 #include "NetVariable.h"
 #include "Netvar.h"
 #include "VariableGroup.h"
+#include "Platform.h"
 
 #include <cassert>
 
@@ -48,7 +49,7 @@ namespace Zerodelay
 		return m_Group->getNetworkId();
 	}
 
-	bool NetVariable::sync(bool writing, char*& buff, int& buffLen, int& nOperations)
+	bool NetVariable::sync(bool writing, char*& buff, int& buffLen)
 	{
 		if ( buffLen < m_Length )
 		{
@@ -65,7 +66,6 @@ namespace Zerodelay
 		}
 		buff += m_Length;
 		buffLen -= m_Length;
-		nOperations += m_Length;
 		return true;
 	}
 
@@ -77,6 +77,11 @@ namespace Zerodelay
 	const char* NetVariable::data() const
 	{
 		return m_Data;
+	}
+
+	void NetVariable::bindOnUpdateCallback(std::function<void(const char*, const char*)> callback)
+	{
+		m_Callback = callback;
 	}
 
 }

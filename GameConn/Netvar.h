@@ -1,9 +1,6 @@
 #pragma once
 
-#include "RUDPConnection.h"
-#include "NetVariable.h"
-
-#include <mutex>
+#include "Zerodelay.h"
 
 
 namespace Zerodelay
@@ -40,6 +37,10 @@ namespace Zerodelay
 			Use this networkGroupId to target specific group's remotely. */
 		unsigned int getNetworkGroupId() const;
 
+
+		/*	Bind a callback function for when the variable is updated.
+			At this callback, the vriable type is not know and therefore raw bytes are passed. */
+		void bindOnUpdate( std::function<void (const char*, const char*)> rawCallback );
 
 	protected:
 		char* data();
@@ -83,10 +84,25 @@ namespace Zerodelay
 	class GenericNetVar : public NetVar
 	{
 	public:
-		GenericNetVar(): NetVar( sizeof(T) ) { }
+		GenericNetVar(): NetVar( sizeof(T) )
+		{
+			bindOnUpdate( [this] (const char* oldData, const char* newData)
+			{
+				if ( OnUpdate )
+				{
+					OnUpdate( *(const T*)oldData, *(const T*)newData );
+				}
+			});
+		}
 
-		operator T& () { return *(T*)p->data(); }
-		operator const T&() const { return *(const T*)p->data(); }
+		operator T& () { return *(T*)data(); }
+		operator const T&() const { return *(const T*)data(); }
+
+		std::function<void (const T& oldValue, const T& newValue)> OnUpdate;
 	};
+
+	using NetVarChar  = GenericNetVar<char>;
+	using NetVarInt	  = GenericNetVar<int>;
+	using NetVarFloat = GenericNetVar<float>;
 
 }

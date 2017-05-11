@@ -454,6 +454,7 @@ namespace UnitTests
 		g1->beginVariableGroup();
 		Unit* u  = new Unit;
 		Unit* u2 = new Unit;
+		(double)u->nDouble = 3.0;
 		g1->endVariableGroup();
 
 		g1->connect( "localhost", 27000 );
@@ -461,8 +462,10 @@ namespace UnitTests
 		g2->setIsNetworkIdProvider( true );
 
 		volatile bool bThreadClose = false;
-		std::thread t( [&] () {
-			while ( !bThreadClose ) {
+		std::thread t( [&] () 
+		{
+			while ( !bThreadClose ) 
+			{
 				g1->update();
 				g2->update();
 			}

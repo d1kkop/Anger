@@ -195,8 +195,9 @@ namespace Zerodelay
 
 
 		/*	Start calling this before a new instance of a class/struct is created that uses NetVar's. 
-			Call endVariableGroup after the instance creation. */
-		void beginVariableGroup();
+			Call endVariableGroup after the instance creation. 
+			[channel]	Channel for the group to sync on. */
+		void beginVariableGroup(char channel = 1);
 		void endVariableGroup();
 
 

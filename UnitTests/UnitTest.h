@@ -63,6 +63,7 @@ namespace UnitTests
 
 		struct Unit
 		{
+			NetVarFloat nFloat2;
 			GenericNetVar<int> nInt;
 			GenericNetVar<double> nDouble;
 			GenericNetVar<float> nFloat;

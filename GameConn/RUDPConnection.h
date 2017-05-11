@@ -19,7 +19,7 @@ namespace Zerodelay
 	class IConnection
 	{
 	public:
-		virtual ~IConnection() { }
+		virtual ~IConnection() = default;
 
 		// --- All functions thread safe ---
 		virtual void beginAddToSendQueue() = 0;

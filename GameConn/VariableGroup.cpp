@@ -2,13 +2,15 @@
 
 #include "VariableGroup.h"
 #include "NetVariable.h"
+#include "Platform.h"
 
 #include <cassert>
 
 
 namespace Zerodelay
 {
-	VariableGroup::VariableGroup():
+	VariableGroup::VariableGroup(char channel):
+		m_Channel(channel),
 		m_NumPreBytes(0),
 		m_NetworkId(0),
 		m_Broken(false),
@@ -20,13 +22,12 @@ namespace Zerodelay
 	{
 	}
 
-	bool VariableGroup::sync(bool isWriting, char* data, int buffLen, int& nOperations)
+	bool VariableGroup::sync(bool isWriting, char* data, int buffLen)
 	{
 		const int maxVars = 1024;
-		nOperations = 0;
 
-		// Compute num prebytes that indicate that can hold a bit
-		// for every variable that is been written
+		// Compute num prebytes in which for each variable that is written a abit is 
+		// set whether it was transmitted or not.
 		if ( m_NumPreBytes == 0)
 		{
 			m_NumPreBytes = (int(m_Variables.size()) + 7) / 8;
@@ -37,36 +38,32 @@ namespace Zerodelay
 				return false;
 			}
 		}
-		if ( m_NumPreBytes < buffLen )
+
+		// +4 for networkId
+		buffLen -= (m_NumPreBytes+4);
+		if ( buffLen < 0 )
 		{
 			Platform::log( "serialization error in: %s", __FUNCTION__ );
 			return false;
 		}
 		
 		int kByte = 0;
-		int kBit  = 0;
-		char* varBits = data;
-		data += m_NumPreBytes;
-		
-		// In begin, always numPreBytes are nOperations, and buffLength is provided minus that
-		nOperations = m_NumPreBytes;
-		buffLen -= nOperations;
+		int kBit  = 0;			// first 4 bytes are networkId
+		char* varBits = data+4; // preBytes (indicate if variable is written or not)		
 
 		// If is writing, skip the pre-bytes and first write all requested data
 		if ( isWriting )
 		{
+			*(unsigned int*)data = m_NetworkId;
 			memset( varBits, 0, m_NumPreBytes );
 			for (auto* v : m_Variables)
 			{
 				if ( v->wantsSync() )
 				{
-					if ( v->sync( true, data, buffLen, nOperations ) )
+					varBits[kByte] |= (1 << kBit);
+					if ( !v->sync( true, data, buffLen ) )
 					{
-						varBits[kByte] |= (1 << kBit);
-					}
-					else
-					{
-						// not enough buff length
+						// serialization error
 						return false;
 					}
 				}
@@ -75,12 +72,14 @@ namespace Zerodelay
 		}
 		else // Is reading..
 		{
+			// networkId already read.., skip it
+			buffLen -= 4;
 			for ( auto* v : m_Variables )
 			{
 				bool isWritten = (varBits[kBit] & (1 << kByte)) != 0;
 				if ( isWritten )
 				{
-					if ( !v->sync( false, data, buffLen, nOperations ) )
+					if ( !v->sync( false, data, buffLen ) )
 					{
 						// not enough buff length
 						return false;

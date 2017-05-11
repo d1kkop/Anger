@@ -10,10 +10,10 @@ namespace Zerodelay
 	class VariableGroup
 	{
 	public:
-		VariableGroup();
+		VariableGroup(char channel);
 		virtual ~VariableGroup();
 
-		bool sync( bool isWriting, char* data, int buffLen, int& nOperations );
+		bool sync( bool isWriting, char* data, int buffLen );
 		void addVariable( NetVariable* nv ) { m_Variables.emplace_back( nv ); }
 		EVarControl getVarControl() const	{ return m_Control; }
 		unsigned int getNetworkId() const   { return m_NetworkId; }
@@ -32,7 +32,8 @@ namespace Zerodelay
 	private:
 		void incBitCounterAndWrap(int &kBit, int &kByte);
 
-		int m_NumPreBytes;
+		char m_Channel;
+		int  m_NumPreBytes;
 		bool m_Broken;
 	 	unsigned int m_NetworkId;
 		EVarControl m_Control;

@@ -181,9 +181,9 @@ namespace Zerodelay
 		p->endSend();
 	}
 
-	void ZNode::beginVariableGroup()
+	void ZNode::beginVariableGroup(char channel)
 	{
-		vgn->beginGroup();
+		vgn->beginGroup( channel );
 	}
 
 	void ZNode::endVariableGroup()

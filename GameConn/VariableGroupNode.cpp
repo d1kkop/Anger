@@ -3,6 +3,7 @@
 #include "VariableGroupNode.h"
 #include "Zerodelay.h"
 #include "VariableGroup.h"
+#include "RUDPConnection.h"
 
 #include <cassert>
 
@@ -38,19 +39,24 @@ namespace Zerodelay
 	{
 		checkAndsendNewIdsRequest();
 		resolvePendingGroups();
-		queueVariableGroupsIfDirty();
+		sendVariableGroups();
 	}
 
 	bool VariableGroupNode::recvPacket(const Packet& pack, const IConnection* conn)
 	{
+		assert( conn && "invalid ptr" );
 		EGameNodePacketType packType = (EGameNodePacketType)pack.data[0];
+		auto etp = conn->getEndPoint();
 		switch ( packType )
 		{
 		case EGameNodePacketType::IdPackRequest:
-			recvIdRequest( conn );			
+			recvIdRequest( etp );	
 			break;
 		case EGameNodePacketType::IdPackProvide:
-			recvIdProvide( pack, conn );
+			recvIdProvide( pack, etp );
+			break;
+		case EGameNodePacketType::VariableGroup:
+			recvVariableGroup( pack, etp );
 			break;
 		default:
 			return false;
@@ -58,10 +64,10 @@ namespace Zerodelay
 		return true;
 	}
 
-	void VariableGroupNode::beginGroup()
+	void VariableGroupNode::beginGroup( char channel )
 	{
 		assert( VariableGroup::Last == nullptr && "should be NULL" );
-		VariableGroup::Last = new VariableGroup();
+		VariableGroup::Last = new VariableGroup(channel);
 		m_PendingGroups.emplace_back( VariableGroup::Last );
 	}
 
@@ -76,11 +82,8 @@ namespace Zerodelay
 		m_IsNetworkIdProvider = isProvider;
 	}
 
-	void VariableGroupNode::recvIdRequest(const IConnection* sender)
+	void VariableGroupNode::recvIdRequest(const EndPoint& etp)
 	{
-		assert ( sender && "invalid sender" );
-		if ( !sender )
-			return;
 		if ( !m_IsNetworkIdProvider )
 		{
 			Platform::log( "id requested on node that is not a network id provider" );
@@ -91,20 +94,47 @@ namespace Zerodelay
 		{
 			idPack[i] = m_UniqueIdCounter++;			
 		}
-		m_ZNode->sendSingle( (unsigned char)EGameNodePacketType::IdPackProvide, (const char*)idPack, sizeof(unsigned int)*sm_AvailableIds,
-							 &toZpt( sender->getEndPoint() ), false, EPacketType::Reliable_Ordered, 0, false );
+		m_ZNode->sendSingle( (unsigned char)EGameNodePacketType::IdPackProvide, 
+							 (const char*)idPack, sizeof(unsigned int)*sm_AvailableIds,
+							 &toZpt(etp), false, EPacketType::Reliable_Ordered, 0, false );
 	}
 
-	void VariableGroupNode::recvIdProvide(const Packet& pack, const IConnection* sender)
+	void VariableGroupNode::recvIdProvide(const Packet& pack, const EndPoint& etp)
 	{
 		const int numIds = sm_AvailableIds;
-		assert ( sender && pack.len-1 == sizeof(unsigned int)*sm_AvailableIds && "invalid sender or data" );
-		if ( !sender )
+		if ( pack.len-1 != sizeof(unsigned int)*sm_AvailableIds )
+		{
+			Platform::log( "invalid sender or serialization in: %s" , __FUNCTION__ );
 			return;
+		}
 		unsigned int* ids = (unsigned int*)(pack.data+1);
 		for (int i = 0; i < sm_AvailableIds ; i++)
 		{
 			m_UniqueIds.emplace_back( ids[i] );
+		}
+	}
+
+	void VariableGroupNode::recvVariableGroup(const Packet& pack, const EndPoint& etp)
+	{
+		if ( pack.len < 5 )
+		{
+			Platform::log( "serialization error in: %s", __FUNCTION__ );
+			return;
+		}
+		auto remoteGroupIt = m_RemoteVariableGroups.find( etp );
+		if ( remoteGroupIt != m_RemoteVariableGroups.end() )
+		{
+			unsigned int networkId = *(unsigned int*)(pack.data+1);
+			auto& networkVariables = remoteGroupIt->second;
+			auto groupIt = networkVariables.find( networkId );
+			if ( groupIt != networkVariables.end() )
+			{
+				VariableGroup* vg = groupIt->second;
+				if ( !vg->sync( false, pack.data+1, pack.len-1 ) )
+				{
+					Platform::log( "serialization error in: %s", __FUNCTION__ );
+				}
+			}
 		}
 	}
 
@@ -153,7 +183,7 @@ namespace Zerodelay
 		}
 	}
 
-	void VariableGroupNode::queueVariableGroupsIfDirty()
+	void VariableGroupNode::sendVariableGroups()
 	{
 		const int buffLen = 2048;
 		char groupData[buffLen];
@@ -163,22 +193,25 @@ namespace Zerodelay
 		for ( auto& kvp : m_VariableGroups )
 		{
 			VariableGroup* vg = kvp.second;
-			if ( vg->isDirty() && vg->getNetworkId() != 0 && !vg->isBroken() )
+			if ( /*vg->isDirty() &&*/ vg->getNetworkId() != 0 && !vg->isBroken() )
 			{
 				int nOperations = 0; // bytes written or read
-				if ( !vg->sync( true, groupData, buffLen, nOperations ) )
+				if ( !vg->sync( true, groupData, buffLen ) )
 				{
 					Platform::log("cannot sync variable group, because exceeding %d buff size", buffLen);
+					m_ZNode->endSend(); // unlock
 					return;
 				}
 				/// QQQ / TODO revise this because this makes it unreliable 
 				m_ZNode->send( (unsigned char)EGameNodePacketType::VariableGroup, groupData, nOperations, EPacketType::Unreliable_Sequenced, 0, true );
-				vg->setDirty( false );
+			//	vg->setDirty( false );
 			}
 		}
 
 		m_ZNode->endSend();
 	}
+
+
 
 	//void VariableGroupNode::syncVariablesThread()
 	//{
