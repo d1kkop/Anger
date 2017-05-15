@@ -32,10 +32,13 @@ namespace Zerodelay
 		Rpc,
 		IdPackRequest,
 		IdPackProvide,
-		VariableGroup,
+		VariableGroupCreate,
+		VariableGroupDestroy,
+		VariableGroupUpdate,
+		UserOffset
 	};
 
-#define  USER_ID_OFFSET (unsigned char)(EGameNodePacketType::VariableGroup)+1
+	#define  USER_ID_OFFSET (unsigned char)(EGameNodePacketType::UserOffset)
 
 	enum class EConnectCallResult
 	{
@@ -128,10 +131,10 @@ namespace Zerodelay
 
 		/*	Listen on a specific port for incoming connections.
 			Bind onNewConnection to do something with the new connections. 
-			[port] The port.
-			[pw]	Password string.
-			[maxConnections] Maximum number of connections. 
-			[relayEvents] If true, events such as ´disconnect´ will be relayed to other connections. */
+			[port]				The port.
+			[pw]				Password string.
+			[maxConnections]	Maximum number of connections. 
+			[relayEvents]		If true, events such as ´disconnect´ will be relayed to other connections. */
 		EListenCallResult listenOn( int port, const std::string& pw="", int maxConnections=32, bool relayEvents=true );
 
 
@@ -196,8 +199,10 @@ namespace Zerodelay
 
 		/*	Start calling this before a new instance of a class/struct is created that uses NetVar's. 
 			Call endVariableGroup after the instance creation. 
-			[channel]	Channel for the group to sync on. */
-		void beginVariableGroup(char channel = 1);
+			[constructData]		Raw data for constructoign the variable group at the remote endpoint.
+			[constructDataLen]	Length of the raw construct data.
+			[channel]			Channel for the group to sync on. */
+		void beginVariableGroup(const char* constructData=nullptr, int constructDataLen=0, char channel = 1);
 		void endVariableGroup();
 
 

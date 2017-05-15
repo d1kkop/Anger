@@ -14,6 +14,7 @@ namespace Zerodelay
 		m_NumPreBytes(0),
 		m_NetworkId(0),
 		m_Broken(false),
+		m_DestroySent(false),
 		m_Control(EVarControl::Full)
 	{
 	}
@@ -22,7 +23,7 @@ namespace Zerodelay
 	{
 	}
 
-	bool VariableGroup::sync(bool isWriting, char* data, int buffLen)
+	bool VariableGroup::sync(bool isWriting, char* data, int& buffLen)
 	{
 		const int maxVars = 1024;
 
@@ -101,7 +102,7 @@ namespace Zerodelay
 		}
 	}
 
-	void VariableGroup::setNetworkId( unsigned int id )
+	void VariableGroup::setNetworkId(unsigned int id)
 	{
 		assert ( m_NetworkId == 0 && "network id already set" );
 		if ( m_NetworkId != 0 )

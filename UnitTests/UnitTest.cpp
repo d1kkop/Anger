@@ -1,6 +1,7 @@
 #include "UnitTest.h"
 #include "Zerodelay.h"
 #include "RpcMacros.h"
+#include "SyncGroups.h"
 
 #include <windows.h>
 
@@ -441,9 +442,16 @@ namespace UnitTests
 	//////////////////////////////////////////////////////////////////////////
 
 
+	SYNC_GROUP_2( myGroup, double, d, int, i )
+	{
+		Unit* u = new Unit();
+		u->nDouble = d;
+		SyncGroupTest::s_sgt->m_units.emplace_back( u );
+	}
+
 	void SyncGroupTest::initialize()
 	{
-		
+		s_sgt = this;
 	}
 
 	void SyncGroupTest::run()
@@ -451,11 +459,7 @@ namespace UnitTests
 		ZNode* g1 = new ZNode();
 		ZNode* g2 = new ZNode();
 
-		g1->beginVariableGroup();
-		Unit* u  = new Unit;
-		Unit* u2 = new Unit;
-		(double)u->nDouble = 3.0;
-		g1->endVariableGroup();
+		create_myGroup( g1, 2.3, 188 );
 
 		g1->connect( "localhost", 27000 );
 		g2->listenOn( 27000 );
@@ -477,12 +481,14 @@ namespace UnitTests
 		if ( t.joinable() )
 			t.join();
 
-		delete u;
-		delete u2;
+//		delete u;
+		//delete u2;
 		delete g1;
 		delete g2;
 		Result = true;
 	}
+
+ 	SyncGroupTest* SyncGroupTest::s_sgt = nullptr;
 
 	//////////////////////////////////////////////////////////////////////////
 	/// NetworkTests

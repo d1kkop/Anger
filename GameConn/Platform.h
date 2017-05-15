@@ -30,6 +30,9 @@ namespace Zerodelay
 		static void* getPtrFromName(const char* name);
 		// Do thread safe logging
 		static void log(const char* format, ...);
+
+		static bool memCpy( char* dst, int dstSize, const char* src, int srcSize );
+		static bool sprint( char* dst, int dstSize, const char* frmt, ... );
 	private:
 		static bool wasInitialized;
 		static std::mutex mapMutex;

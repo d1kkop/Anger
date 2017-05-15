@@ -12,10 +12,7 @@
 //		RPC_EXPORT
 //#endif
 //
-//#define RPC_CPY_N_SEND \
-//		gn->beginSend(specific, exclude);\
-//		gn->send((unsigned char)EGameNodePacketType::Rpc, (const char*)&t, sizeof(temp), transType, channel, relay);\
-//		gn->endSend();
+
 //
 //#define RPC_ASSERT_N_CPY \
 //			assert( len == sizeof(temp) && "invalid struct size" ); \
@@ -73,12 +70,12 @@
 			name( t._a, t._b ); \
 		}\
 	}\
-	void sgp_##name( ZNode* gn, a at, b bt )\
+	void create_##name( ZNode* gn, a at, b bt )\
 	{\
 		struct temp  { char sgp_name[RPC_NAME_MAX_LENGTH]; a _a; b _b; }; temp t;\
 		t._a = at; t._b = bt; \
 		::sprintf_s( t.sgp_name, RPC_NAME_MAX_LENGTH, "%s", #name ); \
-		gn->beginVariableGroup(); \
+		gn->beginVariableGroup((const char*)&t, sizeof(temp)); \
 		name( at, bt ); \
 		gn->endVariableGroup(); \
 	}\

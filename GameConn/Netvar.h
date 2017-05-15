@@ -84,7 +84,19 @@ namespace Zerodelay
 	class GenericNetVar : public NetVar
 	{
 	public:
-		GenericNetVar(): NetVar( sizeof(T) )
+		GenericNetVar(): NetVar( sizeof(T) ) { bindUpdate(); }
+		GenericNetVar(const T& o) : NetVar( sizeof(T) ) { bindUpdate(); }
+
+		T& operator = (const T& o) { (double&)(*this) = o; return (double)*this; }
+
+
+		operator T& () { return *(T*)data(); }
+		operator const T&() const { return *(const T*)data(); }
+
+		std::function<void (const T& oldValue, const T& newValue)> OnUpdate;
+
+	private: 
+		void bindUpdate()
 		{
 			bindOnUpdate( [this] (const char* oldData, const char* newData)
 			{
@@ -94,11 +106,6 @@ namespace Zerodelay
 				}
 			});
 		}
-
-		operator T& () { return *(T*)data(); }
-		operator const T&() const { return *(const T*)data(); }
-
-		std::function<void (const T& oldValue, const T& newValue)> OnUpdate;
 	};
 
 	using NetVarChar  = GenericNetVar<char>;

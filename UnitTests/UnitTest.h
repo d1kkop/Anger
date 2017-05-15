@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <vector>
 
 #include "Zerodelay.h"
 #include "Netvar.h"
@@ -56,18 +57,23 @@ namespace UnitTests
 		virtual void run() override;
 	};
 
+	// Sync group unit
+	struct Unit
+	{
+		NetVarFloat nFloat2;
+		GenericNetVar<int> nInt;
+		GenericNetVar<double> nDouble;
+		GenericNetVar<float> nFloat;
+	};
+
 	struct SyncGroupTest: public BaseTest
 	{
 		virtual void initialize() override;
 		virtual void run() override;
+		
+		std::vector<Unit*> m_units;
 
-		struct Unit
-		{
-			NetVarFloat nFloat2;
-			GenericNetVar<int> nInt;
-			GenericNetVar<double> nDouble;
-			GenericNetVar<float> nFloat;
-		};
+		static SyncGroupTest* s_sgt;
 	};
 
 	struct NetworkTests

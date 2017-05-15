@@ -3,6 +3,8 @@
 #include "VariableGroupNode.h"
 #include "Zerodelay.h"
 #include "VariableGroup.h"
+#include "Socket.h"
+#include "SyncGroups.h"
 #include "RUDPConnection.h"
 
 #include <cassert>
@@ -18,21 +20,12 @@ namespace Zerodelay
 		m_ConnOwner(nullptr),
 		m_UniqueIdCounter(1),
 		m_IsNetworkIdProvider(false)
-		//m_SyncVariablesThread(nullptr),
-		//m_Closing(false)
 	{
 		m_LastIdPackRequestTS = -1;
-		//m_SyncVariablesThread = new std::thread( [this] () { syncVariablesThread(); } );
 	}
 
 	VariableGroupNode::~VariableGroupNode() 
 	{
-		//m_Closing = true;
-		//if ( m_SyncVariablesThread && m_SyncVariablesThread->joinable() )
-		//{
-		//	m_SyncVariablesThread->join();
-		//}
-		//delete m_SyncVariablesThread;
 	}
 
 	void VariableGroupNode::update()
@@ -55,8 +48,14 @@ namespace Zerodelay
 		case EGameNodePacketType::IdPackProvide:
 			recvIdProvide( pack, etp );
 			break;
-		case EGameNodePacketType::VariableGroup:
-			recvVariableGroup( pack, etp );
+		case EGameNodePacketType::VariableGroupCreate:
+			recvVariableGroupCreate( pack, etp );
+			break;
+		case EGameNodePacketType::VariableGroupDestroy:
+			recvVariableGroupDestroy( pack, etp );
+			break;
+		case EGameNodePacketType::VariableGroupUpdate:
+			recvVariableGroupUpdate( pack, etp );
 			break;
 		default:
 			return false;
@@ -64,11 +63,24 @@ namespace Zerodelay
 		return true;
 	}
 
-	void VariableGroupNode::beginGroup( char channel )
+	void VariableGroupNode::beginGroup( const char* paramData, int paramDataLen, char channel )
 	{
 		assert( VariableGroup::Last == nullptr && "should be NULL" );
 		VariableGroup::Last = new VariableGroup(channel);
-		m_PendingGroups.emplace_back( VariableGroup::Last );
+
+		if ( paramDataLen >= PendingVariableGroup::MaxParamDataLength )
+		{
+			Platform::log("param data too long for variable group in %s", __FUNCTION__ );
+			paramDataLen = PendingVariableGroup::MaxParamDataLength;
+			// TODO caue desync
+		}
+
+		PendingVariableGroup pvg;
+		Platform::memCpy( pvg.ParamData, PendingVariableGroup::MaxParamDataLength, paramData, paramDataLen );
+		pvg.ParamDataLength = paramDataLen;
+		pvg.Vg = VariableGroup::Last;
+		
+		m_PendingGroups.emplace_back( pvg );
 	}
 
 	void VariableGroupNode::endGroup()
@@ -114,28 +126,69 @@ namespace Zerodelay
 		}
 	}
 
-	void VariableGroupNode::recvVariableGroup(const Packet& pack, const EndPoint& etp)
+	void VariableGroupNode::recvVariableGroupCreate(const Packet& pack, const EndPoint& etp)
+	{
+		char* payload = pack.data + 1;
+		int len = pack.len-1;
+		char name[RPC_NAME_MAX_LENGTH];
+		if ( !ISocket::readFixed( name, RPC_NAME_MAX_LENGTH, payload, (RPC_NAME_MAX_LENGTH<len?RPC_NAME_MAX_LENGTH:len)) )
+		{
+			Platform::log( "serialization error in %s", __FUNCTION__ );
+			/// TODO critical as no group can be created, cause desync
+			return;
+		}
+		char fname[RPC_NAME_MAX_LENGTH*2];
+	#if _WIN32
+		sprintf_s(fname, RPC_NAME_MAX_LENGTH*2, "__sgp_deserialize_%s", name);
+	#else	
+		sprintf(fname, "__sgp_deserialize_%s", name);
+	#endif
+		void* pf = Platform::getPtrFromName( fname );
+		if ( pf )
+		{
+			// function signature
+			void (*pfunc)(const char*, int);
+			pfunc = (decltype(pfunc)) pf;
+			pfunc( payload + RPC_NAME_MAX_LENGTH, len - RPC_NAME_MAX_LENGTH );
+		}
+		else
+		{
+			Platform::log( "removing conn, serialize group function: %s not found, trying from: %s", fname, __FUNCTION__ );
+			/// TODO remove connection
+		}
+	}
+
+	void VariableGroupNode::recvVariableGroupDestroy(const Packet& pack, const EndPoint& etp)
+	{
+		unsigned int id = *(unsigned int*)(pack.data+1);		
+		VariableGroup* vg = findRemoteGroup( id, nullptr, true );
+		delete vg;
+	}
+
+	void VariableGroupNode::recvVariableGroupUpdate(const Packet& pack, const EndPoint& etp)
 	{
 		if ( pack.len < 5 )
 		{
 			Platform::log( "serialization error in: %s", __FUNCTION__ );
 			return;
 		}
-		auto remoteGroupIt = m_RemoteVariableGroups.find( etp );
-		if ( remoteGroupIt != m_RemoteVariableGroups.end() )
+		unsigned int networkId = *(unsigned int*)(pack.data+1);
+		VariableGroup* vg = findRemoteGroup(networkId, nullptr);
+		if ( vg )
 		{
-			unsigned int networkId = *(unsigned int*)(pack.data+1);
-			auto& networkVariables = remoteGroupIt->second;
-			auto groupIt = networkVariables.find( networkId );
-			if ( groupIt != networkVariables.end() )
-			{
-				VariableGroup* vg = groupIt->second;
-				if ( !vg->sync( false, pack.data+1, pack.len-1 ) )
-				{
-					Platform::log( "serialization error in: %s", __FUNCTION__ );
-				}
-			}
+			int buffLen = pack.len-1;
+			vg->sync( false, pack.data+1, buffLen );
 		}
+	}
+
+	void VariableGroupNode::sendCreateVariableGroup(unsigned int networkId, const char* paramData, int paramDataLen)
+	{
+		m_ZNode->sendSingle( (unsigned char)EGameNodePacketType::VariableGroupCreate, paramData, paramDataLen );
+	}
+
+	void VariableGroupNode::sendDestroyVariableGroup(unsigned int networkId)
+	{
+		m_ZNode->sendSingle( (unsigned char)EGameNodePacketType::VariableGroupDestroy, (const char*)&networkId, sizeof(networkId) );
 	}
 
 	void VariableGroupNode::checkAndsendNewIdsRequest()
@@ -172,30 +225,27 @@ namespace Zerodelay
 		// If has pending groups to be resolved and unique network wide id's are availalbe, resolve them!
 		while (m_PendingGroups.size() && m_UniqueIds.size())
 		{
-			VariableGroup* vg = m_PendingGroups.front();
+			auto& pvg = m_PendingGroups.front();
 			unsigned int id = m_UniqueIds.front();
 			m_PendingGroups.pop_front();
 			m_UniqueIds.pop_front();
-			vg->setNetworkId(id); // now that the id is set to something not 0, it will be automatically sync itself
-			// this map is accessed by sync thread
-		//	std::lock_guard<std::mutex> lock(m_VariableGroupsMutex);
-			m_VariableGroups.insert( std::make_pair( id, vg ) );
+			pvg.Vg->setNetworkId(id); // now that the id is set to something not 0, it will be automatically sync itself
+			m_VariableGroups.insert( std::make_pair( id, pvg.Vg ) );
+			sendCreateVariableGroup( id, pvg.ParamData, pvg.ParamDataLength );
 		}
 	}
 
 	void VariableGroupNode::sendVariableGroups()
 	{
-		const int buffLen = 2048;
-		char groupData[buffLen];
-
 		m_ZNode->beginSend();
-
 		for ( auto& kvp : m_VariableGroups )
 		{
 			VariableGroup* vg = kvp.second;
 			if ( /*vg->isDirty() &&*/ vg->getNetworkId() != 0 && !vg->isBroken() )
 			{
-				int nOperations = 0; // bytes written or read
+				char groupData[2048];
+				int buffLen = 2000; // leave room for hdr size
+				int oldBuffLen = buffLen;
 				if ( !vg->sync( true, groupData, buffLen ) )
 				{
 					Platform::log("cannot sync variable group, because exceeding %d buff size", buffLen);
@@ -203,35 +253,53 @@ namespace Zerodelay
 					return;
 				}
 				/// QQQ / TODO revise this because this makes it unreliable 
-				m_ZNode->send( (unsigned char)EGameNodePacketType::VariableGroup, groupData, nOperations, EPacketType::Unreliable_Sequenced, 0, true );
-			//	vg->setDirty( false );
+				int bytesWritten = oldBuffLen - buffLen;
+				m_ZNode->send( (unsigned char)EGameNodePacketType::VariableGroupUpdate, groupData, bytesWritten, EPacketType::Unreliable_Sequenced, vg->getChannel(), true );
+			}
+			else if ( vg->getNetworkId() != 0 && vg->isBroken() && !vg->isDestroySent() )
+			{
+				vg->markDestroySent();
+				sendDestroyVariableGroup( vg->getNetworkId() );
 			}
 		}
-
 		m_ZNode->endSend();
 	}
 
-
-
-	//void VariableGroupNode::syncVariablesThread()
-	//{
-	//	while ( !m_Closing )
-	//	{
-	//		{
-	//			std::lock_guard<std::mutex> lock(m_VariableGroupsMutex);
-	//			for (auto& kvp : m_VariableGroups)
-	//			{
-	//				auto* vg = kvp.second;
-	//				if ( vg->isDirty() )
-	//				{
-	//					vg->startSync();
-	//					vg->
-	//					vg->endSync();
-	//				}
-	//			}
-	//		}
-	//		std::this_thread::sleep_for( std::chrono::milliseconds(3) );
-	//	}
-	//}
-
+	VariableGroup* VariableGroupNode::findRemoteGroup(unsigned int networkId, const EndPoint* etp, bool removeOnFind)
+	{
+		if ( etp )
+		{
+			auto remoteGroupIt = m_RemoteVariableGroups.find( *etp );
+			if ( remoteGroupIt != m_RemoteVariableGroups.end() )
+			{
+				auto& networkVariables = remoteGroupIt->second;
+				auto groupIt = networkVariables.find( networkId );
+				if ( groupIt != networkVariables.end() )
+				{
+					if ( removeOnFind )
+					{
+						networkVariables.erase( groupIt );
+					}
+					return groupIt->second;
+				}
+			}
+		}
+		else
+		{
+			for ( auto kvp : m_RemoteVariableGroups )
+			{
+				auto& networkVariables = kvp.second;
+				auto groupIt = networkVariables.find( networkId );
+				if ( groupIt != kvp.second.end() )
+				{
+					if ( removeOnFind )
+					{
+						networkVariables.erase( groupIt );
+					}
+					return groupIt->second;
+				}
+			}
+		}
+		return nullptr;
+	}
 }

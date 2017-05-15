@@ -123,6 +123,31 @@ namespace Zerodelay
 #endif
 	}
 
+	bool Platform::memCpy(char* dst, int dstSize, const char* src, int srcSize)
+	{
+		if ( srcSize > dstSize )
+			return false;
+	#ifdef _WIN32
+		memcpy_s( dst, dstSize, src, srcSize );
+	#else
+		memcpy( dst, src, srcSize );
+	#endif
+		return true;
+	}
+
+	bool Platform::sprint(char* dst, int dstSize, const char* fmt, ...)
+	{
+		va_list myargs;
+		va_start(myargs, fmt);
+	#if _WIN32
+		vsprintf_s(dst, dstSize, fmt, myargs);
+	#else
+		vsprintf(dst, fmt, myargs);
+	#endif
+		va_end(myargs);
+		return true;
+	}
+
 	bool Platform::wasInitialized = false;
 	std::mutex Platform::mapMutex;
 	std::mutex Platform::logMutex;
