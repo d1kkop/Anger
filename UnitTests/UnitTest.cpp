@@ -446,6 +446,9 @@ namespace UnitTests
 	{
 		Unit* u = new Unit();
 		u->nDouble = d;
+		u->nInt = i;
+		u->nFloat  = 817.92f;
+		u->nFloat2 = 83.76f;
 		SyncGroupTest::s_sgt->m_units.emplace_back( u );
 	}
 

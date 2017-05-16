@@ -33,6 +33,7 @@ namespace Zerodelay
 		void markDestroySent()		{ m_DestroySent = true; }
 
 		char getChannel() const		{ return m_Channel; }
+		bool isRemote() const		{ return m_Channel<0; }
 
 	private:
 		void incBitCounterAndWrap(int &kBit, int &kByte);

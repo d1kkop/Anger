@@ -197,15 +197,6 @@ namespace Zerodelay
 		void endSend();
 
 
-		/*	Start calling this before a new instance of a class/struct is created that uses NetVar's. 
-			Call endVariableGroup after the instance creation. 
-			[constructData]		Raw data for constructoign the variable group at the remote endpoint.
-			[constructDataLen]	Length of the raw construct data.
-			[channel]			Channel for the group to sync on. */
-		void beginVariableGroup(const char* constructData=nullptr, int constructDataLen=0, char channel = 1);
-		void endVariableGroup();
-
-
 		/*	Only one node in the network provides new network id's on request.
 			Typically, this is the Server in a client-server model or the 'Super-Peer' in a p2p network. */
 		void setIsNetworkIdProvider(bool isProvider);
@@ -235,8 +226,33 @@ namespace Zerodelay
 		/*	----- End Callbacks ----------------------------------------------------------------------------------------------- */
 
 
+		/*	Begin constructing a new variable group.
+			All GenericNetVar declared between this call end EndVariable group are 
+			put in a group with a unique ID.
+			The variables synchronize when they change. */
+		void beginVariableGroup( const char* constructData=nullptr, int constructDataLen=0, char channel=1 );
+		void endVariableGroup();
+
 	private:
 		class ConnectionNode* p;
 		class VariableGroupNode* vgn;
+		class ZNodePrivate* zp;
+	};
+
+
+
+	/** ---------------------------------------------------------------------------------------------------------------------------------
+	/*	FOR PRIVATE USE, DO NOT USE! */
+	class ZDLL_DECLSPEC ZNodePrivate
+	{
+		friend class ZNode;
+
+	public:
+		void priv_beginVarialbeGroupRemote();
+		void priv_endVariableGroup();
+
+	private:
+		ZNode* m_ZNode;
+		VariableGroupNode* vgn;
 	};
 }

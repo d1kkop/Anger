@@ -32,7 +32,8 @@ namespace Zerodelay
 		static void log(const char* format, ...);
 
 		static bool memCpy( char* dst, int dstSize, const char* src, int srcSize );
-		static bool sprint( char* dst, int dstSize, const char* frmt, ... );
+		static bool formatPrint( char* dst, int dstSize, const char* frmt, ... );
+
 	private:
 		static bool wasInitialized;
 		static std::mutex mapMutex;

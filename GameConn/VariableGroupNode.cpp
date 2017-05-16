@@ -70,7 +70,7 @@ namespace Zerodelay
 
 		if ( paramDataLen >= PendingVariableGroup::MaxParamDataLength )
 		{
-			Platform::log("param data too long for variable group in %s", __FUNCTION__ );
+			Platform::log( "param data too long for variable group in %s", __FUNCTION__ );
 			paramDataLen = PendingVariableGroup::MaxParamDataLength;
 			// TODO caue desync
 		}
@@ -81,6 +81,12 @@ namespace Zerodelay
 		pvg.Vg = VariableGroup::Last;
 		
 		m_PendingGroups.emplace_back( pvg );
+	}
+
+	void VariableGroupNode::beginGroupFromRemote()
+	{
+		assert( VariableGroup::Last == nullptr && "should be NULL" );
+		VariableGroup::Last = new VariableGroup(-1);
 	}
 
 	void VariableGroupNode::endGroup()
@@ -138,18 +144,14 @@ namespace Zerodelay
 			return;
 		}
 		char fname[RPC_NAME_MAX_LENGTH*2];
-	#if _WIN32
-		sprintf_s(fname, RPC_NAME_MAX_LENGTH*2, "__sgp_deserialize_%s", name);
-	#else	
-		sprintf(fname, "__sgp_deserialize_%s", name);
-	#endif
+		Platform::formatPrint( fname, RPC_NAME_MAX_LENGTH*2, "__sgp_deserialize_%s", name );
 		void* pf = Platform::getPtrFromName( fname );
 		if ( pf )
 		{
 			// function signature
-			void (*pfunc)(const char*, int);
+			void (*pfunc)(ZNodePrivate*, const char*, int);
 			pfunc = (decltype(pfunc)) pf;
-			pfunc( payload + RPC_NAME_MAX_LENGTH, len - RPC_NAME_MAX_LENGTH );
+			pfunc( m_PrivZ,  payload + RPC_NAME_MAX_LENGTH, len - RPC_NAME_MAX_LENGTH );
 		}
 		else
 		{
@@ -223,7 +225,7 @@ namespace Zerodelay
 			}
 		}
 		// If has pending groups to be resolved and unique network wide id's are availalbe, resolve them!
-		while (m_PendingGroups.size() && m_UniqueIds.size())
+		while (m_PendingGroups.size()>0 && m_UniqueIds.size()>0)
 		{
 			auto& pvg = m_PendingGroups.front();
 			unsigned int id = m_UniqueIds.front();
@@ -241,7 +243,10 @@ namespace Zerodelay
 		for ( auto& kvp : m_VariableGroups )
 		{
 			VariableGroup* vg = kvp.second;
-			if ( /*vg->isDirty() &&*/ vg->getNetworkId() != 0 && !vg->isBroken() )
+			if ( vg->getNetworkId() == 0 )
+				continue;
+
+			if ( /*vg->isDirty() &&*/ !vg->isBroken() )
 			{
 				char groupData[2048];
 				int buffLen = 2000; // leave room for hdr size
@@ -256,7 +261,7 @@ namespace Zerodelay
 				int bytesWritten = oldBuffLen - buffLen;
 				m_ZNode->send( (unsigned char)EGameNodePacketType::VariableGroupUpdate, groupData, bytesWritten, EPacketType::Unreliable_Sequenced, vg->getChannel(), true );
 			}
-			else if ( vg->getNetworkId() != 0 && vg->isBroken() && !vg->isDestroySent() )
+			else if ( vg->isBroken() && !vg->isDestroySent() )
 			{
 				vg->markDestroySent();
 				sendDestroyVariableGroup( vg->getNetworkId() );

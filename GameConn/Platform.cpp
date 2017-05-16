@@ -135,7 +135,7 @@ namespace Zerodelay
 		return true;
 	}
 
-	bool Platform::sprint(char* dst, int dstSize, const char* fmt, ...)
+	bool Platform::formatPrint(char* dst, int dstSize, const char* fmt, ...)
 	{
 		va_list myargs;
 		va_start(myargs, fmt);

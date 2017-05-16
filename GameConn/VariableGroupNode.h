@@ -33,6 +33,7 @@ namespace Zerodelay
 		bool recvPacket(const struct Packet& pack, const class IConnection* conn);
 
 		void beginGroup(const char* paramData, int paramDataLen, char channel);
+		void beginGroupFromRemote();
 		void endGroup();
 		void setIsNetworkIdProvider( bool isProvider );
 
@@ -59,9 +60,11 @@ namespace Zerodelay
 		std::deque<PendingVariableGroup> m_PendingGroups;
 		std::map<unsigned int, class VariableGroup*> m_VariableGroups;
 		std::map<EndPoint, std::map<unsigned int, class VariableGroup*>, EndPoint::STLCompare> m_RemoteVariableGroups;
-		class ZNode* m_ZNode;
 		class IConnection* m_ConnOwner;
 		clock_t m_LastIdPackRequestTS;
 		unsigned char m_UniqueIdCounter;
+		// --- ptrs to other managers
+		class ZNode* m_ZNode;
+		class ZNodePrivate* m_PrivZ;
 	};
 }

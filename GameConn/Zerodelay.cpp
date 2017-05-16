@@ -80,15 +80,20 @@ namespace Zerodelay
 
 	ZNode::ZNode(int sendThreadSleepTimeMs, int keepAliveIntervalSeconds, bool captureSocketErrors) :
 		p(new ConnectionNode(sendThreadSleepTimeMs, keepAliveIntervalSeconds, captureSocketErrors)),
-		vgn(new VariableGroupNode())
+		vgn(new VariableGroupNode()),
+		zp(new ZNodePrivate())
 	{
 		vgn->m_ZNode = this;
+		vgn->m_PrivZ = zp;
+		zp->m_ZNode = this;
+		zp->vgn = this->vgn;
 	}
 
 	ZNode::~ZNode()
 	{
 		delete p;
 		delete vgn;
+		delete zp;
 	}
 
 	EConnectCallResult ZNode::connect(const ZEndpoint& endPoint, const std::string& pw, int timeoutSeconds)
@@ -181,16 +186,6 @@ namespace Zerodelay
 		p->endSend();
 	}
 
-	void ZNode::beginVariableGroup(const char* paramData, int paramDataLen, char channel)
-	{
-		vgn->beginGroup( paramData, paramDataLen, channel );
-	}
-
-	void ZNode::endVariableGroup()
-	{
-		vgn->endGroup();
-	}
-
 	void ZNode::setIsNetworkIdProvider(bool isProvider)
 	{
 		vgn->setIsNetworkIdProvider( isProvider );
@@ -222,6 +217,31 @@ namespace Zerodelay
 		p->bindOnCustomData( [=] ( auto etp, auto id, auto data, auto len, auto chan ) {
 			cb( toZpt( etp ), id, data, len, chan );
 		});
+	}
+
+	void ZNode::beginVariableGroup(const char* paramData, int paramDataLen, char channel)
+	{
+		vgn->beginGroup( paramData, paramDataLen, channel );
+	}
+
+	void ZNode::endVariableGroup()
+	{
+		vgn->endGroup();
+	}
+
+
+
+	// -------- ZNodePrivate ----------------------------------------------------------------------------------------------
+
+
+	void ZNodePrivate::priv_beginVarialbeGroupRemote()
+	{
+		vgn->beginGroupFromRemote();
+	}
+
+	void ZNodePrivate::priv_endVariableGroup()
+	{
+		vgn->endGroup();
 	}
 
 }

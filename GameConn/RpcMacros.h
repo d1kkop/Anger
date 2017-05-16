@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cassert>
+#include "Platform.h"
 
 #define RPC_NAME_MAX_LENGTH 32
 

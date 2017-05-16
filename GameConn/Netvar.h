@@ -87,7 +87,7 @@ namespace Zerodelay
 		GenericNetVar(): NetVar( sizeof(T) ) { bindUpdate(); }
 		GenericNetVar(const T& o) : NetVar( sizeof(T) ) { bindUpdate(); }
 
-		T& operator = (const T& o) { (double&)(*this) = o; return (double)*this; }
+		T& operator = (const T& o) { (T&)(*this) = o; return (T)*this; }
 
 
 		operator T& () { return *(T*)data(); }

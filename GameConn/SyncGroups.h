@@ -63,11 +63,13 @@
 #define SYNC_GROUP_2( name, a, at, b, bt ) \
 	void name( a at, b bt );\
 	extern "C" {\
-		RPC_EXPORT void __sgp_deserialize_##name( const char* data, int len ) \
+		RPC_EXPORT void __sgp_deserialize_##name( ZNodePrivate* gn, const char* data, int len ) \
 		{ \
 			struct temp { a _a; b _b; }; temp t;\
 			RPC_ASSERT_N_CPY \
+			gn->priv_beginVarialbeGroupRemote(); \
 			name( t._a, t._b ); \
+			gn->priv_endVariableGroup(); \
 		}\
 	}\
 	void create_##name( ZNode* gn, a at, b bt )\
