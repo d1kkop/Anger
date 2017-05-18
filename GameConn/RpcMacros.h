@@ -18,8 +18,8 @@
 		gn->endSend();
 
 #define RPC_ASSERT_N_CPY \
-			assert( len == sizeof(temp) && "invalid struct size" ); \
-			memcpy(&t, data, len);
+			assert( len == (sizeof(temp)-offsetof(temp,_a)) && "invalid struct size" ); \
+			memcpy(&t._a, data, len);
 
 
 #define RPC_FUNC_0( name) \

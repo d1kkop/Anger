@@ -445,10 +445,11 @@ namespace UnitTests
 	SYNC_GROUP_2( myGroup, double, d, int, i )
 	{
 		Unit* u = new Unit();
-		u->nDouble = d;
-		u->nInt = i;
-		u->nFloat  = 817.92f;
-		u->nFloat2 = 83.76f;
+//		u->nDouble = d;
+		u->nInt = -1;
+	//	u->nInt = i;
+	//	u->nFloat  = 817.92f;
+	//	u->nFloat2 = 83.76f;
 		SyncGroupTest::s_sgt->m_units.emplace_back( u );
 	}
 

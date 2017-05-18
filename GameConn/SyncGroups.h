@@ -62,22 +62,24 @@
 
 #define SYNC_GROUP_2( name, a, at, b, bt ) \
 	void name( a at, b bt );\
+	struct sgp_struct_##name { char sgp_name[RPC_NAME_MAX_LENGTH]; unsigned int nId; a _a; b _b; };\
 	extern "C" {\
-		RPC_EXPORT void __sgp_deserialize_##name( ZNodePrivate* gn, const char* data, int len ) \
+		RPC_EXPORT void __sgp_deserialize_##name( ZNodePrivate* gn, char* data, int len, const ZEndpoint& ztp ) \
 		{ \
-			struct temp { a _a; b _b; }; temp t;\
-			RPC_ASSERT_N_CPY \
-			gn->priv_beginVarialbeGroupRemote(); \
-			name( t._a, t._b ); \
+			sgp_struct_##name *t = reinterpret_cast<sgp_struct_##name*>(data); \
+			assert( len == sizeof(sgp_struct_##name) && "invalid size" ); \
+			memcpy(t, data, len); \
+			gn->priv_beginVarialbeGroupRemote(t->nId, ztp); \
+			name( t->_a, t->_b ); \
 			gn->priv_endVariableGroup(); \
 		}\
 	}\
 	void create_##name( ZNode* gn, a at, b bt )\
 	{\
-		struct temp  { char sgp_name[RPC_NAME_MAX_LENGTH]; a _a; b _b; }; temp t;\
-		t._a = at; t._b = bt; \
+		sgp_struct_##name t;\
 		::sprintf_s( t.sgp_name, RPC_NAME_MAX_LENGTH, "%s", #name ); \
-		gn->beginVariableGroup((const char*)&t, sizeof(temp)); \
+		t._a = at; t._b = bt; \
+		gn->beginVariableGroup((const char*)&t, sizeof(t)); \
 		name( at, bt ); \
 		gn->endVariableGroup(); \
 	}\

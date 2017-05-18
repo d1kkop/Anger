@@ -12,6 +12,8 @@ namespace Zerodelay
 		Remote
 	};
 
+
+
 	/*	Currently, all variables are interpreted as POD (plain old data), just an array of bytes.
 		Therefore any type/structure can be used as a NetVar but no network to host byte ordering is done.
 		This means that BigEndian to LittleEndian traffic will fail if not accounted for at the application level. */
@@ -38,71 +40,59 @@ namespace Zerodelay
 		unsigned int getNetworkGroupId() const;
 
 
-		/*	Bind a callback function for when the variable is updated.
-			At this callback, the vriable type is not know and therefore raw bytes are passed. */
-		void bindOnUpdate( std::function<void (const char*, const char*)> rawCallback );
-
 	protected:
+		void bindOnPreWriteCallback( std::function<void (const char*)> rawCallback );
+		void bindOnPostUpdateCallback( std::function<void (const char*, const char*)> rawCallback );
+
 		char* data();
 		const char* data() const;
 		class NetVariable* p;
 	};
 
 	
+
 	/*	The GenericNetVar is nothing more than a POD (plain old data) stucture that can hold
 		native types and structures.
 		It performs no Endiannes converions. So if this is not handled at the application level, 
-		transport between different Endiannes machines will fail. 
-		
-		Examples:
-			Note that the cast operator returns a reference to the data.
-			
-			--- Ex 1 ----------------------------------------------------------
-
-			GenericNetVar<int> nInt;
-			(int)nInt  = 0;
-			(int)nInt += 22;
-			int myLocalInt = nInt; // -> myLocalInt is 22
-
-			----------------------------------------------------------
-
-			GenericNetVar<double> nDouble;
-			(double)nDouble = 0.0;
-			(double)nDouble = myMathFunction(...);
-			double myLocalDouble = nDouble; // -> has local copy of myMathFunction(..)		
-			
-			--- Ex 2 ----------------------------------------------------------
-			
-			struct MyLobby
-			{
-				char playerNames[10][64];
-			};
-
-			GenericNetVar<MyLobby> nLobby;
-			(MyLobby)nLobby.playerNames[2] = "my nickname";			*/
+		transport between different Endiannes machines will fail. */
 	template <typename T>
 	class GenericNetVar : public NetVar
 	{
 	public:
-		GenericNetVar(): NetVar( sizeof(T) ) { bindUpdate(); }
-		GenericNetVar(const T& o) : NetVar( sizeof(T) ) { bindUpdate(); }
+		GenericNetVar(): NetVar( sizeof(T) ) { forwardCallbacks(); }
+		GenericNetVar(const T& o) : NetVar( sizeof(T) ) { forwardCallbacks(); }
 
-		T& operator = (const T& o) { (T&)(*this) = o; return (T)*this; }
+		/// CONT 
+		GenericNetVar<T>& operator = (const T& o)
+		{
+			*((T*) data()) = o;
+			return *this;
+		}
+
+		/*	If set, called just before the variable is about to be written to the network stream. */
+		std::function<void (const T& currentValue)> OnPreWriteCallback;
 
 
-		operator T& () { return *(T*)data(); }
-		operator const T&() const { return *(const T*)data(); }
+		/*	If set, called when the variable gets updated from the network stream.
+			The variable itself holds the new value already when this function is called. */
+		std::function<void (const T& oldValue, const T& newValue)> OnPostUpdateCallback;
 
-		std::function<void (const T& oldValue, const T& newValue)> OnUpdate;
 
 	private: 
-		void bindUpdate()
+		void forwardCallbacks()
 		{
-			bindOnUpdate( [this] (const char* oldData, const char* newData)
+			bindOnPreWriteCallback( [this] (const char* currentRaw)
 			{
-				if ( OnUpdate )
+				if ( OnPreWriteCallback )
 				{
-					OnUpdate( *(const T*)oldData, *(const T*)newData );
+					OnPreWriteCallback( *(const T*)currentRaw );
+				}
+			});
+			bindOnPostUpdateCallback( [this] (const char* oldData, const char* newData)
+			{
+				if ( OnPostUpdateCallback )
+				{
+					OnPostUpdateCallback( *(const T*)oldData, *(const T*)newData );
 				}
 			});
 		}

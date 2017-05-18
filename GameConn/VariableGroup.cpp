@@ -50,7 +50,8 @@ namespace Zerodelay
 		
 		int kByte = 0;
 		int kBit  = 0;			// first 4 bytes are networkId
-		char* varBits = data+4; // preBytes (indicate if variable is written or not)		
+		char* varBits = data+4; // preBytes (indicate if variable is written or not)	
+		char* varData = varBits+2;
 
 		// If is writing, skip the pre-bytes and first write all requested data
 		if ( isWriting )
@@ -62,7 +63,7 @@ namespace Zerodelay
 				if ( v->wantsSync() )
 				{
 					varBits[kByte] |= (1 << kBit);
-					if ( !v->sync( true, data, buffLen ) )
+					if ( !v->sync( true, varData, buffLen ) )
 					{
 						// serialization error
 						return false;
@@ -73,14 +74,12 @@ namespace Zerodelay
 		}
 		else // Is reading..
 		{
-			// networkId already read.., skip it
-			buffLen -= 4;
 			for ( auto* v : m_Variables )
 			{
 				bool isWritten = (varBits[kBit] & (1 << kByte)) != 0;
 				if ( isWritten )
 				{
-					if ( !v->sync( false, data, buffLen ) )
+					if ( !v->sync( false, varData, buffLen ) )
 					{
 						// not enough buff length
 						return false;

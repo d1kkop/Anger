@@ -13,6 +13,7 @@ namespace Zerodelay
 	NetVariable::NetVariable(int nBytes):
 		m_Group(VariableGroup::Last),
 		m_Data(new char[nBytes]),
+		m_PrevData(nullptr),
 		m_Length(nBytes)
 	{
 		assert( m_Group != nullptr && "VariableGroup::Last" );
@@ -32,6 +33,7 @@ namespace Zerodelay
 		{
 			m_Group->markBroken();
 		}
+		delete [] m_PrevData;
 		delete [] m_Data;
 	}
 
@@ -58,11 +60,27 @@ namespace Zerodelay
 		}
 		if ( writing )
 		{
+			if ( m_PreWriteCallback )
+			{
+				m_PreWriteCallback( m_Data );
+			}
 			memcpy( buff, m_Data, m_Length );
 		}
 		else
 		{
+			if ( m_PostUpdateCallback )
+			{
+				if ( !m_PrevData )
+				{
+					m_PrevData = new char[m_Length];
+				}
+				memcpy( m_PrevData, m_Data, m_Length );
+			}
 			memcpy( m_Data, buff, m_Length );
+			if ( m_PostUpdateCallback )
+			{
+				m_PostUpdateCallback( m_PrevData, m_Data );
+			}
 		}
 		buff += m_Length;
 		buffLen -= m_Length;
@@ -79,9 +97,14 @@ namespace Zerodelay
 		return m_Data;
 	}
 
-	void NetVariable::bindOnUpdateCallback(std::function<void(const char*, const char*)> callback)
+	void NetVariable::bindOnPreWriteCallback(std::function<void(const char*)> callback)
 	{
-		m_Callback = callback;
+		m_PreWriteCallback = callback;
+	}
+
+	void NetVariable::bindOnPostUpdateCallback(std::function<void(const char*, const char*)> callback)
+	{
+		m_PostUpdateCallback = callback;
 	}
 
 }

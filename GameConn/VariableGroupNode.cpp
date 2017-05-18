@@ -13,6 +13,7 @@
 namespace Zerodelay
 {
 	extern ZEndpoint toZpt( const EndPoint& r );
+	extern EndPoint  toEtp( const ZEndpoint& z );
 
 
 	VariableGroupNode::VariableGroupNode():
@@ -72,9 +73,10 @@ namespace Zerodelay
 		{
 			Platform::log( "param data too long for variable group in %s", __FUNCTION__ );
 			paramDataLen = PendingVariableGroup::MaxParamDataLength;
-			// TODO caue desync
+			// TODO causee desync
 		}
 
+		// networkId will later be pushed in front as first param (but after rpcName of function)
 		PendingVariableGroup pvg;
 		Platform::memCpy( pvg.ParamData, PendingVariableGroup::MaxParamDataLength, paramData, paramDataLen );
 		pvg.ParamDataLength = paramDataLen;
@@ -83,10 +85,25 @@ namespace Zerodelay
 		m_PendingGroups.emplace_back( pvg );
 	}
 
-	void VariableGroupNode::beginGroupFromRemote()
+	void VariableGroupNode::beginGroupFromRemote(unsigned int nid, const ZEndpoint& ztp)
 	{
 		assert( VariableGroup::Last == nullptr && "should be NULL" );
 		VariableGroup::Last = new VariableGroup(-1);
+		VariableGroup::Last->setNetworkId( nid );
+		VariableGroup::Last->setControl( EVarControl::Remote );
+		// ----------------------------
+		EndPoint etp = toEtp ( ztp );
+		auto remoteGroupIt = m_RemoteVariableGroups.find( etp );
+		if ( remoteGroupIt == m_RemoteVariableGroups.end() )
+		{
+			std::map<unsigned int, VariableGroup*> newMap;
+			newMap.insert( std::make_pair( nid, VariableGroup::Last ) );
+			m_RemoteVariableGroups.insert( std::make_pair( etp, newMap ) );
+		}
+		else
+		{
+			remoteGroupIt->second.insert( std::make_pair( nid, VariableGroup::Last ) );
+		}
 	}
 
 	void VariableGroupNode::endGroup()
@@ -149,9 +166,10 @@ namespace Zerodelay
 		if ( pf )
 		{
 			// function signature
-			void (*pfunc)(ZNodePrivate*, const char*, int);
+			ZEndpoint ztp = toZpt( etp );
+			void (*pfunc)(ZNodePrivate*, const char*, int, const ZEndpoint&);
 			pfunc = (decltype(pfunc)) pf;
-			pfunc( m_PrivZ,  payload + RPC_NAME_MAX_LENGTH, len - RPC_NAME_MAX_LENGTH );
+			pfunc( m_PrivZ, payload, len, ztp );
 		}
 		else
 		{
@@ -185,6 +203,8 @@ namespace Zerodelay
 
 	void VariableGroupNode::sendCreateVariableGroup(unsigned int networkId, const char* paramData, int paramDataLen)
 	{
+		// now that networkId is known, push it in front as first parameter of paramData
+		*(unsigned int*)(paramData + RPC_NAME_MAX_LENGTH) = networkId;
 		m_ZNode->sendSingle( (unsigned char)EGameNodePacketType::VariableGroupCreate, paramData, paramDataLen );
 	}
 

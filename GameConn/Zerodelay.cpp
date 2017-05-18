@@ -234,9 +234,9 @@ namespace Zerodelay
 	// -------- ZNodePrivate ----------------------------------------------------------------------------------------------
 
 
-	void ZNodePrivate::priv_beginVarialbeGroupRemote()
+	void ZNodePrivate::priv_beginVarialbeGroupRemote(unsigned int nid, const ZEndpoint& ztp )
 	{
-		vgn->beginGroupFromRemote();
+		vgn->beginGroupFromRemote(nid, ztp);
 	}
 
 	void ZNodePrivate::priv_endVariableGroup()

@@ -18,12 +18,16 @@ namespace Zerodelay
 		bool wantsSync() const { return true; }
 		char* data();
 		const char* data() const;
-		void bindOnUpdateCallback( std::function<void (const char*, const char*)> callback );
+
+		void bindOnPreWriteCallback( std::function<void (const char*)> callback );
+		void bindOnPostUpdateCallback( std::function<void (const char*, const char*)> callback );
 
 	private:
 		class VariableGroup* m_Group;
 		char* m_Data;
+		char* m_PrevData;
 		int m_Length;
-		std::function<void (const char*, const char*)> m_Callback;
+		std::function<void (const char*)> m_PreWriteCallback;
+		std::function<void (const char*, const char*)> m_PostUpdateCallback;
 	};
 }

@@ -19,8 +19,10 @@ namespace Zerodelay
 		unsigned int getNetworkId() const   { return m_NetworkId; }
 
 		// Only when networkId is assigned, the group can be submitted network wide
-		bool isNetworkIdValid() const		{ return m_NetworkId != 0; }
 		void setNetworkId( unsigned int id );
+		bool isNetworkIdValid() const			{ return m_NetworkId != 0; }
+
+		void setControl( EVarControl control )	{ m_Control = control; }
 
 		// Group is broken if one the variable's destructors is called. In that case, the group is no longer complete/valid.
 		void markBroken()	  { m_Broken = true; }

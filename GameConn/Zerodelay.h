@@ -248,7 +248,7 @@ namespace Zerodelay
 		friend class ZNode;
 
 	public:
-		void priv_beginVarialbeGroupRemote();
+		void priv_beginVarialbeGroupRemote(unsigned int nid, const ZEndpoint& ztp );
 		void priv_endVariableGroup();
 
 	private:

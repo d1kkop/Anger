@@ -60,10 +60,26 @@ namespace UnitTests
 	// Sync group unit
 	struct Unit
 	{
-		NetVarFloat nFloat2;
+	//	NetVarFloat nFloat2;
 		GenericNetVar<int> nInt;
-		GenericNetVar<double> nDouble;
-		GenericNetVar<float> nFloat;
+	//	GenericNetVar<double> nDouble;
+	//	GenericNetVar<float> nFloat;
+	//	GenericNetVar<float[3]> nFloat3;
+
+	//	GenericNetVar<char[64]> playerName;
+
+		Unit()
+		{
+			nInt.OnPreWriteCallback = [](auto& fCurrent)
+			{
+				printf("nCur %d\n", (int) fCurrent);
+			};
+
+			nInt.OnPostUpdateCallback = [] (auto& old, auto& newVal)
+			{
+				printf("old value %d , new value %d\n", (int)old, (int)newVal );
+			};
+		}
 	};
 
 	struct SyncGroupTest: public BaseTest
