@@ -39,6 +39,12 @@ namespace Zerodelay
 		void send( unsigned char id, const char* data, int len, EPacketType type=EPacketType::Reliable_Ordered, unsigned char channel=0, bool relay=true );
 		void endSend();
 
+		void  setUserDataPtr( void* ptr) { m_UserPtr = ptr; }
+		void* getUserDataPtr() const { return m_UserPtr; }
+
+		void setUserDataIdx( int idx ) { m_UserIndex = idx; }
+		int  getUserDataIdx() const { return m_UserIndex; }
+
 		void simulatePacketLoss( int percentage );
 		class ISocket* getSocket() const { return m_ListenSocket; }
 
@@ -66,6 +72,8 @@ namespace Zerodelay
 		std::mutex m_ConnectionListMutex;
 		std::vector<int> m_SocketErrors;
 		std::map<EndPoint, class IConnection*, EndPoint::STLCompare> m_Connections;
+		void* m_UserPtr;
+		int  m_UserIndex;
 	};
 
 	template <typename Callback>

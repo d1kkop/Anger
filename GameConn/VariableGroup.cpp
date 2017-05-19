@@ -49,9 +49,9 @@ namespace Zerodelay
 		}
 		
 		int kByte = 0;
-		int kBit  = 0;			// first 4 bytes are networkId
-		char* varBits = data+4; // preBytes (indicate if variable is written or not)	
-		char* varData = varBits+2;
+		int kBit  = 0;			
+		char* varBits = data+4;	// first 4 bytes are networkId
+		char* varData = varBits + m_NumPreBytes; // preBytes (indicate if variable is written or not)	
 
 		// If is writing, skip the pre-bytes and first write all requested data
 		if ( isWriting )

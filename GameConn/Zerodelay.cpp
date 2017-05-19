@@ -219,6 +219,26 @@ namespace Zerodelay
 		});
 	}
 
+	void ZNode::setUserDataPtr(void* ptr)
+	{
+		p->setUserDataPtr( ptr );
+	}
+
+	void* ZNode::getUserDataPtr() const
+	{
+		return p->getUserDataPtr();
+	}
+
+	void ZNode::setUserDataIdx(int idx)
+	{
+		p->setUserDataIdx( idx );
+	}
+
+	int ZNode::gtUserDataIdx() const
+	{
+		return p->getUserDataIdx();
+	}
+
 	void ZNode::beginVariableGroup(const char* paramData, int paramDataLen, char channel)
 	{
 		vgn->beginGroup( paramData, paramDataLen, channel );
@@ -242,6 +262,11 @@ namespace Zerodelay
 	void ZNodePrivate::priv_endVariableGroup()
 	{
 		vgn->endGroup();
+	}
+
+	ZNode* ZNodePrivate::priv_getUserNode() const
+	{
+		return m_ZNode;
 	}
 
 }

@@ -27,6 +27,17 @@ namespace Zerodelay
 
 	VariableGroupNode::~VariableGroupNode() 
 	{
+		for ( auto& kvp : m_VariableGroups )
+		{
+			delete kvp.second;
+		}
+		for ( auto& kvp : m_RemoteVariableGroups )
+		{
+			for ( auto& kvp2 : kvp.second )
+			{
+				delete kvp2.second;
+			}
+		}
 	}
 
 	void VariableGroupNode::update()

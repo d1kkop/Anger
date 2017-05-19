@@ -77,7 +77,7 @@ namespace Zerodelay
 				memcpy( m_PrevData, m_Data, m_Length );
 			}
 			memcpy( m_Data, buff, m_Length );
-			if ( m_PostUpdateCallback )
+			if ( m_PostUpdateCallback && memcmp( m_Data, m_PrevData, m_Length ) != 0 )
 			{
 				m_PostUpdateCallback( m_PrevData, m_Data );
 			}

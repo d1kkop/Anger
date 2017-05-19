@@ -60,8 +60,8 @@
 //	void name( a at )
 
 
-#define SYNC_GROUP_2( name, a, at, b, bt ) \
-	void name( a at, b bt );\
+#define SYNC_GROUP_2( name, _zn, a, at, b, bt ) \
+	void name( ZNode* _zn, a at, b bt );\
 	struct sgp_struct_##name { char sgp_name[RPC_NAME_MAX_LENGTH]; unsigned int nId; a _a; b _b; };\
 	extern "C" {\
 		RPC_EXPORT void __sgp_deserialize_##name( ZNodePrivate* gn, char* data, int len, const ZEndpoint& ztp ) \
@@ -70,7 +70,7 @@
 			assert( len == sizeof(sgp_struct_##name) && "invalid size" ); \
 			memcpy(t, data, len); \
 			gn->priv_beginVarialbeGroupRemote(t->nId, ztp); \
-			name( t->_a, t->_b ); \
+			name( gn->priv_getUserNode(), t->_a, t->_b ); \
 			gn->priv_endVariableGroup(); \
 		}\
 	}\
@@ -80,10 +80,10 @@
 		::sprintf_s( t.sgp_name, RPC_NAME_MAX_LENGTH, "%s", #name ); \
 		t._a = at; t._b = bt; \
 		gn->beginVariableGroup((const char*)&t, sizeof(t)); \
-		name( at, bt ); \
+		name( gn, at, bt ); \
 		gn->endVariableGroup(); \
 	}\
-	void name( a at, b bt )
+	void name( ZNode* _zn, a at, b bt )
 
 //
 //#define RPC_FUNC_3( name, a, at, b, bt, c, ct ) \

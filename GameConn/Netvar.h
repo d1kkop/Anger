@@ -61,13 +61,16 @@ namespace Zerodelay
 	public:
 		GenericNetVar(): NetVar( sizeof(T) ) { forwardCallbacks(); }
 		GenericNetVar(const T& o) : NetVar( sizeof(T) ) { forwardCallbacks(); }
+		virtual ~GenericNetVar<T>() = default;
 
-		/// CONT 
 		GenericNetVar<T>& operator = (const T& o)
 		{
 			*((T*) data()) = o;
 			return *this;
 		}
+
+		operator T& () { return *(T*)data(); }
+		operator const T&() const { return *(const T*)data(); }
 
 		/*	If set, called just before the variable is about to be written to the network stream. */
 		std::function<void (const T& currentValue)> OnPreWriteCallback;

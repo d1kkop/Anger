@@ -226,6 +226,15 @@ namespace Zerodelay
 		/*	----- End Callbacks ----------------------------------------------------------------------------------------------- */
 
 
+		/*	Custom ptr to provide a way to come from a 'global' variable group or rpc functions to application code. */
+		void  setUserDataPtr( void* ptr );
+		void* getUserDataPtr() const;
+
+		/*	Custom handle to provide a way to come from a 'global' variable group or rpc functions to application code. */
+		void setUserDataIdx( int idx );
+		int  gtUserDataIdx() const;
+
+
 		/*	Begin constructing a new variable group.
 			All GenericNetVar declared between this call end EndVariable group are 
 			put in a group with a unique ID.
@@ -250,6 +259,7 @@ namespace Zerodelay
 	public:
 		void priv_beginVarialbeGroupRemote(unsigned int nid, const ZEndpoint& ztp );
 		void priv_endVariableGroup();
+		ZNode* priv_getUserNode() const;
 
 	private:
 		ZNode* m_ZNode;

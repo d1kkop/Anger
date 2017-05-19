@@ -66,18 +66,25 @@ namespace UnitTests
 	//	GenericNetVar<float> nFloat;
 	//	GenericNetVar<float[3]> nFloat3;
 
-	//	GenericNetVar<char[64]> playerName;
+		GenericNetVar<char[64]> playerName;
+
 
 		Unit()
 		{
+			
 			nInt.OnPreWriteCallback = [](auto& fCurrent)
 			{
-				printf("nCur %d\n", (int) fCurrent);
+				//printf("nCur %d\n", (int) fCurrent);
 			};
 
 			nInt.OnPostUpdateCallback = [] (auto& old, auto& newVal)
 			{
 				printf("old value %d , new value %d\n", (int)old, (int)newVal );
+			};
+
+			playerName.OnPostUpdateCallback = [] (auto& oldName, auto& newName)
+			{
+				printf("changed name from %s to %s\n", oldName, newName);
 			};
 		}
 	};
@@ -87,9 +94,8 @@ namespace UnitTests
 		virtual void initialize() override;
 		virtual void run() override;
 		
-		std::vector<Unit*> m_units;
-
-		static SyncGroupTest* s_sgt;
+		std::vector<Unit*> m_unitsSelf;
+		std::vector<Unit*> m_unitsRemote;
 	};
 
 	struct NetworkTests

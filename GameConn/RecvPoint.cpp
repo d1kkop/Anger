@@ -19,7 +19,9 @@ namespace Zerodelay
 		m_WasSpecific(nullptr),
 		m_WasExclude(false),
 		m_RecvThread(nullptr),
-		m_SendThread(nullptr)
+		m_SendThread(nullptr),
+		m_UserPtr(nullptr),
+		m_UserIndex(0)
 	{
 	}
 

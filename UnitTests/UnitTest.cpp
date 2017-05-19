@@ -442,20 +442,30 @@ namespace UnitTests
 	//////////////////////////////////////////////////////////////////////////
 
 
-	SYNC_GROUP_2( myGroup, double, d, int, i )
+	SYNC_GROUP_2( myGroup, zn, double, d, int, i )
 	{
+		SyncGroupTest* sgt = (SyncGroupTest*) zn->getUserDataPtr();
+		
 		Unit* u = new Unit();
+		sprintf_s( u->playerName, 64, "bart knuiman" ); 
 //		u->nDouble = d;
 		u->nInt = -1;
 	//	u->nInt = i;
 	//	u->nFloat  = 817.92f;
 	//	u->nFloat2 = 83.76f;
-		SyncGroupTest::s_sgt->m_units.emplace_back( u );
+	
+		if ( u->nInt.getVarConrol() == EVarControl::Remote )
+		{
+			sgt->m_unitsRemote.emplace_back( u );
+		}
+		else
+		{
+			sgt->m_unitsSelf.emplace_back( u );
+		}
 	}
 
 	void SyncGroupTest::initialize()
 	{
-		s_sgt = this;
 	}
 
 	void SyncGroupTest::run()
@@ -463,36 +473,56 @@ namespace UnitTests
 		ZNode* g1 = new ZNode();
 		ZNode* g2 = new ZNode();
 
-		create_myGroup( g1, 2.3, 188 );
+		g1->setUserDataPtr( this );
+		g2->setUserDataPtr( this );
+		create_myGroup( g1, 8.723, 88 );
 
 		g1->connect( "localhost", 27000 );
 		g2->listenOn( 27000 );
 		g2->setIsNetworkIdProvider( true );
 
-		volatile bool bThreadClose = false;
-		std::thread t( [&] () 
+		int kTicks = 0;
+		while ( true )
 		{
-			while ( !bThreadClose ) 
+			g1->update();
+			g2->update();
+			std::this_thread::sleep_for(20ms);
+
+			kTicks++;
+
+			// 50 is a sec
+			if ( kTicks == 50 )
 			{
-				g1->update();
-				g2->update();
+				if ( m_unitsSelf.size() )
+				{
+					Unit* u =  m_unitsSelf[0];
+					assert( u->nInt.getVarConrol() == EVarControl::Full );
+					u->nInt = 8819;
+					sprintf_s( u->playerName, 64, "super raket change");
+					printf("have control\n");
+				}
+
+				if ( m_unitsRemote.size() )
+				{
+					Unit* u =  m_unitsRemote[0];
+					assert( u->nInt.getVarConrol() == EVarControl::Remote );
+					printf("have NO control\n");
+				}
 			}
-		});
 
-		std::this_thread::sleep_for(3000ms);
-		bThreadClose = true;
+			if ( kTicks > 200 )
+				break;
+		}
 
-		if ( t.joinable() )
-			t.join();
-
-//		delete u;
-		//delete u2;
+		for ( auto* u : m_unitsSelf )
+			delete u;
+		for (auto * u : m_unitsRemote )
+			delete u;
 		delete g1;
 		delete g2;
 		Result = true;
 	}
 
- 	SyncGroupTest* SyncGroupTest::s_sgt = nullptr;
 
 	//////////////////////////////////////////////////////////////////////////
 	/// NetworkTests
