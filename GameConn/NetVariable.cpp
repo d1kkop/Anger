@@ -2,9 +2,8 @@
 
 #include "NetVariable.h"
 #include "Netvar.h"
-#include "VariableGroup.h"
 #include "Platform.h"
-
+#include "VariableGroup.h"
 #include <cassert>
 
 

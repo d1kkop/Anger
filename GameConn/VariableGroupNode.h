@@ -47,8 +47,10 @@ namespace Zerodelay
 		/* sends */
 		void sendCreateVariableGroup( unsigned int networkId, const char* paramData, int paramDataLen );
 		void sendDestroyVariableGroup( unsigned int networkId );
+		void sendIdPackRequest();
+		void sendIdPackProvide(const EndPoint& etp, int numIds);
 		/* flow */
-		void checkAndsendNewIdsRequest();
+		void intervalSendIdRequest();
 		void resolvePendingGroups();
 		void sendVariableGroups();
 		//void syncVariablesThread();

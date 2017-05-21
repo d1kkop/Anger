@@ -109,5 +109,16 @@ namespace Zerodelay
 		m_NetworkId = id;
 	}
 
+	void VariableGroup::unrefGroup()
+	{
+		for (auto* v : m_Variables)
+		{
+			if ( v )
+			{
+				v->unrefGroup();
+			}
+		}
+	}
+
 	VariableGroup* VariableGroup::Last = nullptr;
 }

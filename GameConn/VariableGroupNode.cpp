@@ -42,7 +42,7 @@ namespace Zerodelay
 
 	void VariableGroupNode::update()
 	{
-		checkAndsendNewIdsRequest();
+		intervalSendIdRequest();
 		resolvePendingGroups();
 		sendVariableGroups();
 	}
@@ -135,14 +135,7 @@ namespace Zerodelay
 			Platform::log( "id requested on node that is not a network id provider" );
 			return;
 		}
-		unsigned int idPack[sm_AvailableIds];
-		for (int i = 0; i < sm_AvailableIds ; i++)
-		{
-			idPack[i] = m_UniqueIdCounter++;			
-		}
-		m_ZNode->sendSingle( (unsigned char)EGameNodePacketType::IdPackProvide, 
-							 (const char*)idPack, sizeof(unsigned int)*sm_AvailableIds,
-							 &toZpt(etp), false, EPacketType::Reliable_Ordered, 0, false );
+		sendIdPackProvide(etp, sm_AvailableIds);
 	}
 
 	void VariableGroupNode::recvIdProvide(const Packet& pack, const EndPoint& etp)
@@ -193,7 +186,11 @@ namespace Zerodelay
 	{
 		unsigned int id = *(unsigned int*)(pack.data+1);		
 		VariableGroup* vg = findRemoteGroup( id, nullptr, true );
-		delete vg;
+		if ( vg )
+		{
+			vg->unrefGroup();
+			delete vg;
+		}
 	}
 
 	void VariableGroupNode::recvVariableGroupUpdate(const Packet& pack, const EndPoint& etp)
@@ -224,7 +221,27 @@ namespace Zerodelay
 		m_ZNode->sendSingle( (unsigned char)EGameNodePacketType::VariableGroupDestroy, (const char*)&networkId, sizeof(networkId) );
 	}
 
-	void VariableGroupNode::checkAndsendNewIdsRequest()
+	void VariableGroupNode::sendIdPackRequest()
+	{
+		m_ZNode->sendSingle((unsigned char)EGameNodePacketType::IdPackRequest, nullptr, 0, nullptr, false, EPacketType::Reliable_Ordered, 0, false);
+	}
+
+	void VariableGroupNode::sendIdPackProvide(const EndPoint& etp, int numIds)
+	{
+		assert( numIds >= 0 && "numIds invalid count" );
+		if ( numIds > sm_AvailableIds )
+			numIds = sm_AvailableIds;
+		unsigned int idPack[sm_AvailableIds];
+		for (int i = 0; i < numIds ; i++)
+		{
+			idPack[i] = m_UniqueIdCounter++;			
+		}
+		m_ZNode->sendSingle((unsigned char)EGameNodePacketType::IdPackProvide,
+							(const char*)idPack, sizeof(unsigned int)*numIds,
+							&toZpt(etp), false, EPacketType::Reliable_Ordered, 0, false);
+	}
+
+	void VariableGroupNode::intervalSendIdRequest()
 	{
 		if ( m_IsNetworkIdProvider )
 			return;
@@ -237,7 +254,7 @@ namespace Zerodelay
 			if ( dt >= .5f )
 			{
 				m_LastIdPackRequestTS = tNow;
-				m_ZNode->sendSingle( (unsigned char)EGameNodePacketType::IdPackRequest, nullptr, 0, nullptr, false, EPacketType::Reliable_Ordered, 0, false );
+				sendIdPackRequest();
 			}
 		}
 	}

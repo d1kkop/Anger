@@ -3,6 +3,7 @@
 #include "NetVar.h"
 #include <vector>
 
+
 namespace Zerodelay
 {
 	class NetVariable;
@@ -36,6 +37,8 @@ namespace Zerodelay
 
 		char getChannel() const		{ return m_Channel; }
 		bool isRemote() const		{ return m_Channel<0; }
+
+		void unrefGroup();
 
 	private:
 		void incBitCounterAndWrap(int &kBit, int &kByte);

@@ -204,23 +204,23 @@ namespace Zerodelay
 
 		/*	----- Callbacks ----------------------------------------------------------------------------------------------- */
 
-			/*	For handling connect request results. */
-			void bindOnConnectResult( std::function<void (const ZEndpoint&, EConnectResult)> cb );
+		/*	For handling connect request results. */
+		void bindOnConnectResult( std::function<void (const ZEndpoint&, EConnectResult)> cb );
 
 
-			/*	For handling new incoming connections. 
-				In a client-server achitecture, new clients are also relayed to existing clients from the server. */
-			void bindOnNewConnection( std::function<void (const ZEndpoint&)> cb );
+		/*	For handling new incoming connections. 
+			In a client-server achitecture, new clients are also relayed to existing clients from the server. */
+		void bindOnNewConnection( std::function<void (const ZEndpoint&)> cb );
 
 
-			/*	For when connection is closed or gets dropped.
-				In a client-server architecture, disconnects are releyed so that all clients from the server. */
-			void bindOnDisconnect( std::function<void (bool isThisConnection, const ZEndpoint&, EDisconnectReason)> cb );
+		/*	For when connection is closed or gets dropped.
+			In a client-server architecture, disconnects are releyed so that all clients from the server. */
+		void bindOnDisconnect( std::function<void (bool isThisConnection, const ZEndpoint&, EDisconnectReason)> cb );
 
 
-			/*	For all other data that is specific to the application. 
-				The 'length' parameter is the size of the 'data' parameter. */
-			void bindOnCustomData( std::function<void (const ZEndpoint&, unsigned char id, const char* data, int length, unsigned char channel)> cb );
+		/*	For all other data that is specific to the application. 
+			The 'length' parameter is the size of the 'data' parameter. */
+		void bindOnCustomData( std::function<void (const ZEndpoint&, unsigned char id, const char* data, int length, unsigned char channel)> cb );
 
 
 		/*	----- End Callbacks ----------------------------------------------------------------------------------------------- */

@@ -411,7 +411,6 @@ namespace UnitTests
 		int k = 0; 
 		while ( k++ < 10 )
 		{
-
 			rpc_unitRpcTest0( g1 );
 			rpc_unitRpcTest1( g1, __high );
 			rpc_unitRpcTest2( g1, __high, __fltMax );
@@ -441,27 +440,151 @@ namespace UnitTests
 	// Sync group test layer test
 	//////////////////////////////////////////////////////////////////////////
 
-
-	SYNC_GROUP_2( myGroup, zn, double, d, int, i )
+	void groupCreateFeedback(int groupIdx, Unit* u, SyncGroupTest* sgt )
 	{
-		SyncGroupTest* sgt = (SyncGroupTest*) zn->getUserDataPtr();
-		
-		Unit* u = new Unit();
-		sprintf_s( u->playerName, 64, "bart knuiman" ); 
-//		u->nDouble = d;
-		u->nInt = -1;
-	//	u->nInt = i;
-	//	u->nFloat  = 817.92f;
-	//	u->nFloat2 = 83.76f;
-	
-		if ( u->nInt.getVarConrol() == EVarControl::Remote )
+		if ( u->c.getVarConrol() == EVarControl::Remote )
 		{
+			printf("group %d created remotely\n", groupIdx);
 			sgt->m_unitsRemote.emplace_back( u );
 		}
 		else
 		{
+			printf("group %d created locally\n", groupIdx);
 			sgt->m_unitsSelf.emplace_back( u );
 		}
+	}
+
+	SYNC_GROUP_0( myGroup0, zn )
+	{
+		SyncGroupTest* sgt = (SyncGroupTest*) zn->getUserDataPtr();
+		Unit* u = new Unit();
+		groupCreateFeedback( 0, u, sgt );
+	}
+
+	SYNC_GROUP_1( myGroup1, zn, char, c )
+	{
+		SyncGroupTest* sgt = (SyncGroupTest*) zn->getUserDataPtr();
+
+		Unit* u = new Unit();
+		u->c = c;
+
+		groupCreateFeedback( 1, u, sgt );
+	}
+
+	SYNC_GROUP_2( myGroup2, zn, char, c, short, s )
+	{
+		SyncGroupTest* sgt = (SyncGroupTest*) zn->getUserDataPtr();
+		
+		Unit* u = new Unit();
+		u->c = c;
+		u->s = s;
+
+		groupCreateFeedback(2, u, sgt );
+	}
+
+	SYNC_GROUP_3( myGroup3, zn, char, c, short, s, int, i )
+	{
+		SyncGroupTest* sgt = (SyncGroupTest*) zn->getUserDataPtr();
+
+		Unit* u = new Unit();
+		u->c = c;
+		u->s = s;
+		u->i = i;
+
+		groupCreateFeedback( 3, u, sgt );
+	}
+
+	SYNC_GROUP_4( myGroup4, zn, char, c, short, s, int, i, float, f )
+	{
+		SyncGroupTest* sgt = (SyncGroupTest*) zn->getUserDataPtr();
+
+		Unit* u = new Unit();
+		u->c = c;
+		u->s = s;
+		u->i = i;
+		u->f = f;
+
+		groupCreateFeedback( 4, u, sgt );
+	}
+
+	SYNC_GROUP_5( myGroup5, zn, char, c, short, s, int, i, float, f, double, d )
+	{
+		SyncGroupTest* sgt = (SyncGroupTest*) zn->getUserDataPtr();
+
+		Unit* u = new Unit();
+		u->c = c;
+		u->s = s;
+		u->i = i;
+		u->f = f;
+		u->d = d;
+
+		groupCreateFeedback( 5, u, sgt );
+	}
+
+	SYNC_GROUP_6( myGroup6, zn, char, c, short, s, int, i, float, f, double, d, Vec3, vec )
+	{
+		SyncGroupTest* sgt = (SyncGroupTest*) zn->getUserDataPtr();
+
+		Unit* u = new Unit();
+		u->c = c;
+		u->s = s;
+		u->i = i;
+		u->f = f;
+		u->d = d;
+		u->vec = vec;
+
+		groupCreateFeedback( 6, u, sgt );
+	}
+
+	SYNC_GROUP_7( myGroup7, zn, char, c, short, s, int, i, float, f, double, d, Vec3, vec, Quat, quat )
+	{
+		SyncGroupTest* sgt = (SyncGroupTest*) zn->getUserDataPtr();
+
+		Unit* u = new Unit();
+		u->c = c;
+		u->s = s;
+		u->i = i;
+		u->f = f;
+		u->d = d;
+		u->vec  = vec;
+		u->quat = quat;
+
+		groupCreateFeedback( 7, u, sgt );
+	}
+
+	SYNC_GROUP_8( myGroup8, zn, char, c, short, s, int, i, float, f, double, d, Vec3, vec, Quat, quat, Mat3x3, m3x3 )
+	{
+		SyncGroupTest* sgt = (SyncGroupTest*) zn->getUserDataPtr();
+
+		Unit* u = new Unit();
+		u->c = c;
+		u->s = s;
+		u->i = i;
+		u->f = f;
+		u->d = d;
+		u->vec  = vec;
+		u->quat = quat;
+		u->mat  = m3x3;
+
+		groupCreateFeedback( 8, u, sgt );
+	}
+
+	SYNC_GROUP_9( myGroup9, zn, char, c, short, s, int, i, float, f, double, d, Vec3, vec, Quat, quat, Mat3x3, m3x3, Name2, name )
+	{
+		SyncGroupTest* sgt = (SyncGroupTest*) zn->getUserDataPtr();
+
+		Unit* u = new Unit();
+		u->c = c;
+		u->s = s;
+		u->i = i;
+		u->f = f;
+		u->d = d;
+		u->vec  = vec;
+		u->quat = quat;
+		u->mat  = m3x3;
+		strcpy_s( ((Name2&)u->name).m, 64, name.m );
+
+		groupCreateFeedback( 9, u, sgt );
 	}
 
 	void SyncGroupTest::initialize()
@@ -475,9 +598,47 @@ namespace UnitTests
 
 		g1->setUserDataPtr( this );
 		g2->setUserDataPtr( this );
-		create_myGroup( g1, 8.723, 88 );
 
-		g1->connect( "localhost", 27000 );
+		//create_myGroup1( g1, 'E' );
+		//create_myGroup2( g1, 'E', 6533 );
+		//create_myGroup3( g1, 'E', 6533, ~0 );
+		//create_myGroup4( g1, 'E', 6533, ~0, 2*10e20f );
+		//create_myGroup5( g1, 'E', 6533, ~0, 2*10e20f, 7172773.881238 );
+
+		Vec3 v;
+		v.x = 991.991f;
+		v.y = 881.882f;
+		v.z = 771.773f;
+	//	create_myGroup6( g1, 'E', 6533, ~0, 2*10e20f, 7172773.881238, v );
+
+		Quat q;
+		q.x = 0.f;
+		q.y = sqrt(2.f) * .5f;
+		q.z = sqrt(2.f) * .5f;
+		q.w = 1.f;
+	//	create_myGroup7( g1, 'E', 6533, ~0, 2*10e20f, 7172773.881238, v, q );
+
+		Mat3x3 mm; // set identity
+		for (int i = 0; i < 3 ; i++)
+		{
+			for (int j = 0; j < 3 ; j++)
+			{
+				if ( i == j )
+					mm.m[i][j] = 1.f;
+				else
+					mm.m[i][j] = 0.f;
+			}
+		}
+	//	create_myGroup8( g1, 'E', 6533, ~0, 2*10e20f, 7172773.881238, v, q, mm );
+
+		Name2 name;
+		char* c = name.m;
+		sprintf_s( c, 32, "a random name" );
+		create_myGroup9( g1, 'E', 6533, ~0, 2*10e20f, 7172773.881238, v, q, mm, name );
+
+		// -------------------------------------------------------------------------------------------------------------------------------
+
+	//	g1->connect( "localhost", 27000 );
 		g2->listenOn( 27000 );
 		g2->setIsNetworkIdProvider( true );
 
@@ -493,21 +654,7 @@ namespace UnitTests
 			// 50 is a sec
 			if ( kTicks == 50 )
 			{
-				if ( m_unitsSelf.size() )
-				{
-					Unit* u =  m_unitsSelf[0];
-					assert( u->nInt.getVarConrol() == EVarControl::Full );
-					u->nInt = 8819;
-					sprintf_s( u->playerName, 64, "super raket change");
-					printf("have control\n");
-				}
-
-				if ( m_unitsRemote.size() )
-				{
-					Unit* u =  m_unitsRemote[0];
-					assert( u->nInt.getVarConrol() == EVarControl::Remote );
-					printf("have NO control\n");
-				}
+				
 			}
 
 			if ( kTicks > 200 )

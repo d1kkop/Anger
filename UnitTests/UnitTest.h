@@ -57,35 +57,48 @@ namespace UnitTests
 		virtual void run() override;
 	};
 
+
+	struct Vec3
+	{
+		float x, y, z;
+	};
+
+	struct Quat
+	{
+		float x, y, z, w;
+	};
+
+	struct Mat3x3
+	{
+		float m[3][3];
+	};
+
+	struct Lobby
+	{
+		char names[10][128];
+	};
+
+	struct Name2
+	{
+		char m[64];
+	};
+
 	// Sync group unit
 	struct Unit
 	{
-	//	NetVarFloat nFloat2;
-		GenericNetVar<int> nInt;
-	//	GenericNetVar<double> nDouble;
-	//	GenericNetVar<float> nFloat;
-	//	GenericNetVar<float[3]> nFloat3;
-
-		GenericNetVar<char[64]> playerName;
-
+		GenericNetVar<char> c;
+		GenericNetVar<short> s;
+		GenericNetVar<int> i;
+		GenericNetVar<double> d;
+		GenericNetVar<float> f;
+		GenericNetVar<Vec3> vec;
+		GenericNetVar<Quat> quat;
+		GenericNetVar<Name2> name;
+		GenericNetVar<Mat3x3> mat;
 
 		Unit()
 		{
 			
-			nInt.OnPreWriteCallback = [](auto& fCurrent)
-			{
-				//printf("nCur %d\n", (int) fCurrent);
-			};
-
-			nInt.OnPostUpdateCallback = [] (auto& old, auto& newVal)
-			{
-				printf("old value %d , new value %d\n", (int)old, (int)newVal );
-			};
-
-			playerName.OnPostUpdateCallback = [] (auto& oldName, auto& newName)
-			{
-				printf("changed name from %s to %s\n", oldName, newName);
-			};
 		}
 	};
 

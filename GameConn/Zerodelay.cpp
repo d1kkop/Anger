@@ -171,13 +171,13 @@ namespace Zerodelay
 	void ZNode::send(unsigned char id, const char* data, int len, EPacketType type, unsigned char channel, bool relay)
 	{
 		ISocket* sock = p->getSocket();
-		if ( sock && sock->isBound() && sock->isOpen() )
+		if ( sock )
 		{
 			p->send( id, data, len, type, channel );
 		}
 		else
 		{
-			Platform::log( "trying to send data over invalid socket, ignoring send" );
+			Platform::log( "socket was not created, possibly a platform issue" );
 		}
 	}
 
