@@ -70,7 +70,7 @@ namespace Zerodelay
 		static const int sm_NumChannels  = 8;
 
 		typedef std::deque<Packet> sendQueueType;
-		typedef std::deque<Packet>  recvQueueType;
+		typedef std::deque<Packet> recvQueueType;
 		typedef std::deque<unsigned int> ackQueueType;
 		typedef std::map<unsigned int, Packet>  recvReliableOrderedQueueType;
 
@@ -116,11 +116,15 @@ namespace Zerodelay
 		void extractPayload( Packet& pack, const char* buff, int rawSize ) const;
 		bool isSequenceNewer( unsigned int incoming, unsigned int having ) const;
 
+		// send queues
 		sendQueueType m_SendQueue_reliable[sm_NumChannels];
 		sendQueueType m_SendQueue_unreliable;
-		recvQueueType m_RecvQueue_unreliable_order[sm_NumChannels];
+		// recv queues
+		recvQueueType m_RecvQueue_unreliable_sequenced[sm_NumChannels];
 		recvReliableOrderedQueueType m_RecvQueue_reliable_order[sm_NumChannels];
+		// ack queue
 		ackQueueType m_AckQueue[sm_NumChannels];
+		// other
 		mutable std::mutex m_SendMutex;
 		mutable std::mutex m_RecvMutex;
 		mutable std::mutex m_AckMutex;

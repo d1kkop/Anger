@@ -58,19 +58,43 @@ namespace UnitTests
 	};
 
 
-	struct Vec3
+	class Vec3
 	{
+	public:
 		float x, y, z;
 	};
 
 	struct Quat
 	{
 		float x, y, z, w;
+
+		Quat()
+		{
+			memset(this, 0, sizeof(*this));
+		}
+
+		Quat( const Quat& q )
+		{
+			x=q.x;
+			y=q.y;
+			z=q.z;
+			w=q.w;
+		}
 	};
 
 	struct Mat3x3
 	{
 		float m[3][3];
+
+		Mat3x3()
+		{
+			memset(this, 0, sizeof(*this));
+		}
+
+		Mat3x3(const Mat3x3& _m)
+		{
+			memcpy(m, _m.m, sizeof(*this));
+		}
 	};
 
 	struct Lobby

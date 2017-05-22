@@ -27,7 +27,7 @@ namespace Zerodelay
 		for ( auto& it : m_SendQueue_unreliable ) delete [] it.data;
 		for ( int i=0; i<sm_NumChannels; ++i ) for (auto& it : m_SendQueue_reliable[i] ) delete [] it.data;
 		for ( int i=0; i<sm_NumChannels; ++i ) for (auto& it : m_RecvQueue_reliable_order[i] ) delete [] it.second.data;
-		for ( int i=0; i<sm_NumChannels; ++i ) for (auto& it : m_RecvQueue_unreliable_order[i] ) delete [] it.data;
+		for ( int i=0; i<sm_NumChannels; ++i ) for (auto& it : m_RecvQueue_unreliable_sequenced[i] ) delete [] it.data;
 	}
 
 	void RUDPConnection::beginAddToSendQueue()
@@ -101,7 +101,7 @@ namespace Zerodelay
 		// try unreliable sequenced packets
 		for (int i=0; i<sm_NumChannels; i++)
 		{
-			auto& queue = m_RecvQueue_unreliable_order[i];
+			auto& queue = m_RecvQueue_unreliable_sequenced[i];
 			if ( !queue.empty() )
 			{
 				pack = queue.front();
@@ -266,7 +266,7 @@ namespace Zerodelay
 
 		Packet pack;
 		assemblePacket( pack, buff, rawSize, channel, relay, EPacketType::Unreliable_Sequenced );
-		m_RecvQueue_unreliable_order[channel].emplace_back( pack );
+		m_RecvQueue_unreliable_sequenced[channel].emplace_back( pack );
 	}
 
 	void RUDPConnection::receiveAck(const char * buff, int rawSize)

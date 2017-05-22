@@ -26,7 +26,7 @@ namespace Zerodelay
 		void setControl( EVarControl control )	{ m_Control = control; }
 
 		// Group is broken if one the variable's destructors is called. In that case, the group is no longer complete/valid.
-		void markBroken()	  { m_Broken = true; }
+		void markBroken()	  { m_Broken = true; /* lose all refs */ m_Variables.clear(); }
 		bool isBroken() const { return m_Broken; }
 
 		bool isDirty() const		{ return m_Dirty; }

@@ -142,7 +142,7 @@ namespace Zerodelay
 					if ( err != 0 )
 					{
 						std::lock_guard<std::mutex> lock(m_ConnectionListMutex);
-						m_SocketErrors.push_back( err );
+						m_SocketErrors.push_back( err ); // TODO is this how we want it?
 					}
 				}
 				continue;
@@ -156,8 +156,7 @@ namespace Zerodelay
 				{
 					for ( auto& kvp : m_Connections )
 					{
-						if ( kvp.second->isPendingDelete()  && 
-							 kvp.second->getTimeSincePendingDelete() > 5000 ) // if longer than 5 sec in delete state, actually delete it
+						if ( kvp.second->isPendingDelete() && kvp.second->getTimeSincePendingDelete() > 5000 ) // if longer than 5 sec in delete state, actually delete it
 						{
 							delete kvp.second;
 							m_Connections.erase(kvp.first);

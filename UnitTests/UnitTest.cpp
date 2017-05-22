@@ -582,9 +582,23 @@ namespace UnitTests
 		u->vec  = vec;
 		u->quat = quat;
 		u->mat  = m3x3;
+
+		Vec3 v;
+		v.x = 991.991f;
+		v.y = 881.882f;
+		v.z = 771.773f;
+		bool bComp = memcmp( &v, &(Vec3&)u->vec, sizeof(v))==0;
+		assert( bComp && "lel" );
 		strcpy_s( ((Name2&)u->name).m, 64, name.m );
 
 		groupCreateFeedback( 9, u, sgt );
+	}
+
+
+	void myTestFunc( Vec3 v )
+	{
+		int j = 0;
+		printf(" x %.3f y %.3f z %.3f \n", v.x, v.y, v.z );
 	}
 
 	void SyncGroupTest::initialize()
@@ -599,24 +613,16 @@ namespace UnitTests
 		g1->setUserDataPtr( this );
 		g2->setUserDataPtr( this );
 
-		//create_myGroup1( g1, 'E' );
-		//create_myGroup2( g1, 'E', 6533 );
-		//create_myGroup3( g1, 'E', 6533, ~0 );
-		//create_myGroup4( g1, 'E', 6533, ~0, 2*10e20f );
-		//create_myGroup5( g1, 'E', 6533, ~0, 2*10e20f, 7172773.881238 );
-
 		Vec3 v;
 		v.x = 991.991f;
 		v.y = 881.882f;
 		v.z = 771.773f;
-	//	create_myGroup6( g1, 'E', 6533, ~0, 2*10e20f, 7172773.881238, v );
 
 		Quat q;
 		q.x = 0.f;
 		q.y = sqrt(2.f) * .5f;
 		q.z = sqrt(2.f) * .5f;
 		q.w = 1.f;
-	//	create_myGroup7( g1, 'E', 6533, ~0, 2*10e20f, 7172773.881238, v, q );
 
 		Mat3x3 mm; // set identity
 		for (int i = 0; i < 3 ; i++)
@@ -629,16 +635,15 @@ namespace UnitTests
 					mm.m[i][j] = 0.f;
 			}
 		}
-	//	create_myGroup8( g1, 'E', 6533, ~0, 2*10e20f, 7172773.881238, v, q, mm );
 
 		Name2 name;
 		char* c = name.m;
 		sprintf_s( c, 32, "a random name" );
-		create_myGroup9( g1, 'E', 6533, ~0, 2*10e20f, 7172773.881238, v, q, mm, name );
+		myTestFunc( v );
 
 		// -------------------------------------------------------------------------------------------------------------------------------
 
-	//	g1->connect( "localhost", 27000 );
+		g1->connect( "localhost", 27000 );
 		g2->listenOn( 27000 );
 		g2->setIsNetworkIdProvider( true );
 
@@ -650,11 +655,55 @@ namespace UnitTests
 			std::this_thread::sleep_for(20ms);
 
 			kTicks++;
-
-			// 50 is a sec
-			if ( kTicks == 50 )
+			
+			int l = ::rand() % 10;
+			for (int i = 0; i < l ; i++)
 			{
-				
+				int kr = ::rand() % 10;
+				switch (kr)
+				{
+				case 0:
+				create_myGroup1( g1, 'E' );
+				break;
+				case 1:
+				create_myGroup2( g1, 'E', 6533 );
+				break;
+				case 2:
+				create_myGroup3( g1, 'E', 6533, ~0 );
+				break;
+				case 9:
+				create_myGroup4( g1, 'E', 6533, ~0, 2*10e20f );
+				break;
+				case 3:
+				create_myGroup5( g1, 'E', 6533, ~0, 2*10e20f, 7172773.881238 );
+				break;
+				case 4:
+				create_myGroup6( g1, 'E', 6533, ~0, 2*10e20f, 7172773.881238, v );
+				break;
+				case 5:
+				create_myGroup7( g1, 'E', 6533, ~0, 2*10e20f, 7172773.881238, v, q );
+				break;
+				case 6:
+				create_myGroup8( g1, 'E', 6533, ~0, 2*10e20f, 7172773.881238, v, q, mm );
+				break;
+				case 7:
+				create_myGroup9( g1, 'E', 6533, ~0, 2*10e20f, 7172773.881238, v, q, mm, name );
+				break;
+				case 8:
+				create_myGroup0( g1 );
+				break;
+				}	
+			}
+
+			// delete some unit groups
+			l = ::rand()%5;
+			for (int i = 0; i < 5 ; i++)
+			{
+				int ridx = rand() % m_unitsSelf.size();
+				auto* unit = m_unitsSelf.at(ridx);
+				if ( unit )
+					delete unit;
+				m_unitsSelf.at(ridx) = nullptr;
 			}
 
 			if ( kTicks > 200 )

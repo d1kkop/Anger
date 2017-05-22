@@ -102,6 +102,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 
     HACCEL hAccelTable = LoadAccelerators(hInstance, MAKEINTRESOURCE(IDC_CHAT));
     MSG msg;
+	memset(&msg, 0, sizeof(msg));
     // Main message loop:
 	while (!g_Done)
 	{

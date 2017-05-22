@@ -202,7 +202,7 @@ namespace Zerodelay
 		}
 		unsigned int networkId = *(unsigned int*)(pack.data+1);
 		VariableGroup* vg = findRemoteGroup(networkId, nullptr);
-		if ( vg )
+		if ( vg && !vg->isBroken() )
 		{
 			int buffLen = pack.len-1;
 			vg->sync( false, pack.data+1, buffLen );
@@ -214,6 +214,11 @@ namespace Zerodelay
 		// now that networkId is known, push it in front as first parameter of paramData
 		*(unsigned int*)(paramData + RPC_NAME_MAX_LENGTH) = networkId;
 		m_ZNode->sendSingle( (unsigned char)EGameNodePacketType::VariableGroupCreate, paramData, paramDataLen );
+	}
+
+	void VariableGroupNode::sendVariableGroupUpdate(const char* groupData, int bytesWritten, char channel)
+	{
+		m_ZNode->send((unsigned char)EGameNodePacketType::VariableGroupUpdate, groupData, bytesWritten, EPacketType::Unreliable_Sequenced, channel, true);
 	}
 
 	void VariableGroupNode::sendDestroyVariableGroup(unsigned int networkId)
@@ -287,12 +292,15 @@ namespace Zerodelay
 
 	void VariableGroupNode::sendVariableGroups()
 	{
-		m_ZNode->beginSend();
-		for ( auto& kvp : m_VariableGroups )
+		for ( auto kvp = m_VariableGroups.cbegin(); kvp!= m_VariableGroups.end();  )
+		//for ( auto& kvp : m_VariableGroups )
 		{
-			VariableGroup* vg = kvp.second;
+			VariableGroup* vg = kvp->second;
 			if ( vg->getNetworkId() == 0 )
+			{
+				kvp++;
 				continue;
+			}
 
 			if ( /*vg->isDirty() &&*/ !vg->isBroken() )
 			{
@@ -307,15 +315,17 @@ namespace Zerodelay
 				}
 				/// QQQ / TODO revise this because this makes it unreliable 
 				int bytesWritten = oldBuffLen - buffLen;
-				m_ZNode->send( (unsigned char)EGameNodePacketType::VariableGroupUpdate, groupData, bytesWritten, EPacketType::Unreliable_Sequenced, vg->getChannel(), true );
+				sendVariableGroupUpdate( groupData, bytesWritten, vg->getChannel() );
+				kvp++;
 			}
 			else if ( vg->isBroken() && !vg->isDestroySent() )
 			{
 				vg->markDestroySent();
 				sendDestroyVariableGroup( vg->getNetworkId() );
+				delete vg;
+				kvp = m_VariableGroups.erase(kvp);
 			}
 		}
-		m_ZNode->endSend();
 	}
 
 	VariableGroup* VariableGroupNode::findRemoteGroup(unsigned int networkId, const EndPoint* etp, bool removeOnFind)
@@ -329,11 +339,12 @@ namespace Zerodelay
 				auto groupIt = networkVariables.find( networkId );
 				if ( groupIt != networkVariables.end() )
 				{
+					VariableGroup* vg = groupIt->second;
 					if ( removeOnFind )
 					{
 						networkVariables.erase( groupIt );
 					}
-					return groupIt->second;
+					return vg;
 				}
 			}
 		}
@@ -345,14 +356,18 @@ namespace Zerodelay
 				auto groupIt = networkVariables.find( networkId );
 				if ( groupIt != kvp.second.end() )
 				{
+					VariableGroup* vg = groupIt->second;
 					if ( removeOnFind )
 					{
 						networkVariables.erase( groupIt );
 					}
-					return groupIt->second;
+					return vg;
 				}
 			}
 		}
 		return nullptr;
 	}
+
+
+
 }

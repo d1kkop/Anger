@@ -261,4 +261,3 @@
 		gn->endVariableGroup(); \
 	}\
 	void name( ZNode* _zn, a at, b bt, c ct, d dt, e et, f ft, h ht, i it, j jt )
-

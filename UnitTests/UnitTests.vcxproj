@@ -86,6 +86,7 @@
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>ZDLL_IMPORTING;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ExceptionHandling>Sync</ExceptionHandling>
     </ClCompile>
     <ProjectReference />
   </ItemDefinitionGroup>
