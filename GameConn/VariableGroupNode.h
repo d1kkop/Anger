@@ -55,10 +55,6 @@ namespace Zerodelay
 		void resolvePendingGroups();
 		void sendVariableGroups();
 
-		
-
-		//void syncVariablesThread();
-		/* helper */
 		VariableGroup* findRemoteGroup( unsigned int networkId, const EndPoint* etp = nullptr, bool removeOnFind = false );
 
 		bool m_IsNetworkIdProvider; // Only 1 node is the owner of all id's, it provides id's on request.

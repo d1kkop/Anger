@@ -190,6 +190,10 @@ namespace Zerodelay
 		{
 			vg->unrefGroup();
 			delete vg;
+		#if _DEBUG
+			vg =  findRemoteGroup( id, nullptr, false );
+			assert( vg == nullptr && "vg still available" );
+		#endif
 		}
 	}
 
@@ -207,6 +211,13 @@ namespace Zerodelay
 			int buffLen = pack.len-1;
 			vg->sync( false, pack.data+1, buffLen );
 		}
+		else if ( vg && vg->isBroken() )
+		{
+			// cleanup this group as it will never be used again
+			findRemoteGroup(networkId, nullptr, true);
+			vg->unrefGroup();
+			delete vg;
+		}
 	}
 
 	void VariableGroupNode::sendCreateVariableGroup(unsigned int networkId, const char* paramData, int paramDataLen)
@@ -218,7 +229,7 @@ namespace Zerodelay
 
 	void VariableGroupNode::sendVariableGroupUpdate(const char* groupData, int bytesWritten, char channel)
 	{
-		m_ZNode->send((unsigned char)EGameNodePacketType::VariableGroupUpdate, groupData, bytesWritten, EPacketType::Unreliable_Sequenced, channel, true);
+		m_ZNode->sendSingle((unsigned char)EGameNodePacketType::VariableGroupUpdate, groupData, bytesWritten, nullptr, false, EPacketType::Unreliable_Sequenced, channel, true);
 	}
 
 	void VariableGroupNode::sendDestroyVariableGroup(unsigned int networkId)
@@ -292,13 +303,13 @@ namespace Zerodelay
 
 	void VariableGroupNode::sendVariableGroups()
 	{
-		for ( auto kvp = m_VariableGroups.cbegin(); kvp!= m_VariableGroups.end();  )
+		for ( auto vgIt = m_VariableGroups.cbegin(); vgIt!= m_VariableGroups.end();  )
 		//for ( auto& kvp : m_VariableGroups )
 		{
-			VariableGroup* vg = kvp->second;
+			VariableGroup* vg = vgIt->second;
 			if ( vg->getNetworkId() == 0 )
 			{
-				kvp++;
+				vgIt++;
 				continue;
 			}
 
@@ -316,14 +327,14 @@ namespace Zerodelay
 				/// QQQ / TODO revise this because this makes it unreliable 
 				int bytesWritten = oldBuffLen - buffLen;
 				sendVariableGroupUpdate( groupData, bytesWritten, vg->getChannel() );
-				kvp++;
+				vgIt++;
 			}
 			else if ( vg->isBroken() && !vg->isDestroySent() )
 			{
 				vg->markDestroySent();
 				sendDestroyVariableGroup( vg->getNetworkId() );
 				delete vg;
-				kvp = m_VariableGroups.erase(kvp);
+				vgIt = m_VariableGroups.erase(vgIt);
 			}
 		}
 	}
@@ -336,7 +347,7 @@ namespace Zerodelay
 			if ( remoteGroupIt != m_RemoteVariableGroups.end() )
 			{
 				auto& networkVariables = remoteGroupIt->second;
-				auto groupIt = networkVariables.find( networkId );
+				auto& groupIt = networkVariables.find( networkId );
 				if ( groupIt != networkVariables.end() )
 				{
 					VariableGroup* vg = groupIt->second;
@@ -350,11 +361,11 @@ namespace Zerodelay
 		}
 		else
 		{
-			for ( auto kvp : m_RemoteVariableGroups )
+			for ( auto& kvp : m_RemoteVariableGroups )
 			{
 				auto& networkVariables = kvp.second;
-				auto groupIt = networkVariables.find( networkId );
-				if ( groupIt != kvp.second.end() )
+				auto& groupIt = networkVariables.find( networkId );
+				if ( groupIt != networkVariables.end() )
 				{
 					VariableGroup* vg = groupIt->second;
 					if ( removeOnFind )
@@ -367,7 +378,5 @@ namespace Zerodelay
 		}
 		return nullptr;
 	}
-
-
 
 }

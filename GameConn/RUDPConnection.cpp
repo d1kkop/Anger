@@ -184,6 +184,7 @@ namespace Zerodelay
 			for (auto& it : m_SendQueue_reliable[i])
 			{
 				auto& pack = it;
+				// reliable pack.data is deleted when it gets acked
 				socket->send(m_EndPoint, pack.data, pack.len);
 			}
 		}
@@ -191,6 +192,7 @@ namespace Zerodelay
 		{
 			auto& pack = it;
 			socket->send(m_EndPoint, pack.data, pack.len);
+			delete [] pack.data;
 		}
 		m_SendQueue_unreliable.clear(); // clear unreliable queue immediately
 	}
