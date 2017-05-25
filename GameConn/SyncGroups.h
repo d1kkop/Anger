@@ -8,12 +8,12 @@
 	void name( ZNode* _zn );\
 	struct sgp_struct_##name { char sgp_name[RPC_NAME_MAX_LENGTH]; unsigned int nId; };\
 	extern "C" {\
-		RPC_EXPORT void __sgp_deserialize_##name( ZNodePrivate* gn, char* data, int len, const ZEndpoint& ztp ) \
+		RPC_EXPORT void __sgp_deserialize_##name( ZNodePrivate* gn, char* data, int len, const ZEndpoint& ztp, EPacketType type ) \
 		{ \
 			sgp_struct_##name *t = reinterpret_cast<sgp_struct_##name*>(data); \
 			assert( len == sizeof(sgp_struct_##name) && "invalid size" ); \
 			memcpy(t, data, len); \
-			gn->priv_beginVarialbeGroupRemote(t->nId, ztp); \
+			gn->priv_beginVarialbeGroupRemote(t->nId, ztp, type); \
 			name( gn->priv_getUserNode() ); \
 			gn->priv_endVariableGroup(); \
 		}\
@@ -33,22 +33,22 @@
 	void name( ZNode* _zn, a at );\
 	struct sgp_struct_##name { char sgp_name[RPC_NAME_MAX_LENGTH]; unsigned int nId; a _a; };\
 	extern "C" {\
-		RPC_EXPORT void __sgp_deserialize_##name( ZNodePrivate* gn, char* data, int len, const ZEndpoint& ztp ) \
+		RPC_EXPORT void __sgp_deserialize_##name( ZNodePrivate* gn, char* data, int len, const ZEndpoint& ztp, EPacketType type ) \
 		{ \
 			sgp_struct_##name *t = reinterpret_cast<sgp_struct_##name*>(data); \
 			assert( len == sizeof(sgp_struct_##name) && "invalid size" ); \
 			memcpy(t, data, len); \
-			gn->priv_beginVarialbeGroupRemote(t->nId, ztp); \
+			gn->priv_beginVarialbeGroupRemote(t->nId, ztp, type); \
 			name( gn->priv_getUserNode(), t->_a ); \
 			gn->priv_endVariableGroup(); \
 		}\
 	}\
-	void create_##name( ZNode* gn, a at )\
+	void create_##name( ZNode* gn, EPacketType pt, a at )\
 	{\
 		sgp_struct_##name t;\
 		::sprintf_s( t.sgp_name, RPC_NAME_MAX_LENGTH, "%s", #name ); \
 		t._a = at; \
-		gn->beginVariableGroup((const char*)&t, sizeof(t)); \
+		gn->beginVariableGroup((const char*)&t, sizeof(t), 1, (pt)); \
 		name( gn, at ); \
 		gn->endVariableGroup(); \
 	}\
@@ -59,12 +59,12 @@
 	void name( ZNode* _zn, a at, b bt );\
 	struct sgp_struct_##name { char sgp_name[RPC_NAME_MAX_LENGTH]; unsigned int nId; a _a; b _b; };\
 	extern "C" {\
-		RPC_EXPORT void __sgp_deserialize_##name( ZNodePrivate* gn, char* data, int len, const ZEndpoint& ztp ) \
+		RPC_EXPORT void __sgp_deserialize_##name( ZNodePrivate* gn, char* data, int len, const ZEndpoint& ztp, EPacketType type ) \
 		{ \
 			sgp_struct_##name *t = reinterpret_cast<sgp_struct_##name*>(data); \
 			assert( len == sizeof(sgp_struct_##name) && "invalid size" ); \
 			memcpy(t, data, len); \
-			gn->priv_beginVarialbeGroupRemote(t->nId, ztp); \
+			gn->priv_beginVarialbeGroupRemote(t->nId, ztp, type); \
 			name( gn->priv_getUserNode(), t->_a, t->_b ); \
 			gn->priv_endVariableGroup(); \
 		}\
@@ -85,12 +85,12 @@
 	void name( ZNode* _zn, a at, b bt, c ct );\
 	struct sgp_struct_##name { char sgp_name[RPC_NAME_MAX_LENGTH]; unsigned int nId; a _a; b _b; c _c; };\
 	extern "C" {\
-		RPC_EXPORT void __sgp_deserialize_##name( ZNodePrivate* gn, char* data, int len, const ZEndpoint& ztp ) \
+		RPC_EXPORT void __sgp_deserialize_##name( ZNodePrivate* gn, char* data, int len, const ZEndpoint& ztp, EPacketType type ) \
 		{ \
 			sgp_struct_##name *t = reinterpret_cast<sgp_struct_##name*>(data); \
 			assert( len == sizeof(sgp_struct_##name) && "invalid size" ); \
 			memcpy(t, data, len); \
-			gn->priv_beginVarialbeGroupRemote(t->nId, ztp); \
+			gn->priv_beginVarialbeGroupRemote(t->nId, ztp, type); \
 			name( gn->priv_getUserNode(), t->_a, t->_b, t->_c ); \
 			gn->priv_endVariableGroup(); \
 		}\
@@ -111,12 +111,12 @@
 	void name( ZNode* _zn, a at, b bt, c ct, d dt );\
 	struct sgp_struct_##name { char sgp_name[RPC_NAME_MAX_LENGTH]; unsigned int nId; a _a; b _b; c _c; d _d; };\
 	extern "C" {\
-		RPC_EXPORT void __sgp_deserialize_##name( ZNodePrivate* gn, char* data, int len, const ZEndpoint& ztp ) \
+		RPC_EXPORT void __sgp_deserialize_##name( ZNodePrivate* gn, char* data, int len, const ZEndpoint& ztp, EPacketType type ) \
 		{ \
 			sgp_struct_##name *t = reinterpret_cast<sgp_struct_##name*>(data); \
 			assert( len == sizeof(sgp_struct_##name) && "invalid size" ); \
 			memcpy(t, data, len); \
-			gn->priv_beginVarialbeGroupRemote(t->nId, ztp); \
+			gn->priv_beginVarialbeGroupRemote(t->nId, ztp, type); \
 			name( gn->priv_getUserNode(), t->_a, t->_b, t->_c, t->_d ); \
 			gn->priv_endVariableGroup(); \
 		}\
@@ -137,12 +137,12 @@
 	void name( ZNode* _zn, a at, b bt, c ct, d dt, e et );\
 	struct sgp_struct_##name { char sgp_name[RPC_NAME_MAX_LENGTH]; unsigned int nId; a _a; b _b; c _c; d _d; e _e; };\
 	extern "C" {\
-		RPC_EXPORT void __sgp_deserialize_##name( ZNodePrivate* gn, char* data, int len, const ZEndpoint& ztp ) \
+		RPC_EXPORT void __sgp_deserialize_##name( ZNodePrivate* gn, char* data, int len, const ZEndpoint& ztp, EPacketType type ) \
 		{ \
 			sgp_struct_##name *t = reinterpret_cast<sgp_struct_##name*>(data); \
 			assert( len == sizeof(sgp_struct_##name) && "invalid size" ); \
 			memcpy(t, data, len); \
-			gn->priv_beginVarialbeGroupRemote(t->nId, ztp); \
+			gn->priv_beginVarialbeGroupRemote(t->nId, ztp, type); \
 			name( gn->priv_getUserNode(), t->_a, t->_b, t->_c, t->_d, t->_e ); \
 			gn->priv_endVariableGroup(); \
 		}\
@@ -163,12 +163,12 @@
 	void name( ZNode* _zn, a at, b bt, c ct, d dt, e et, f ft );\
 	struct sgp_struct_##name { char sgp_name[RPC_NAME_MAX_LENGTH]; unsigned int nId; a _a; b _b; c _c; d _d; e _e; f _f; };\
 	extern "C" {\
-		RPC_EXPORT void __sgp_deserialize_##name( ZNodePrivate* gn, char* data, int len, const ZEndpoint& ztp ) \
+		RPC_EXPORT void __sgp_deserialize_##name( ZNodePrivate* gn, char* data, int len, const ZEndpoint& ztp, EPacketType type ) \
 		{ \
 			sgp_struct_##name *t = reinterpret_cast<sgp_struct_##name*>(data); \
 			assert( len == sizeof(sgp_struct_##name) && "invalid size" ); \
 			memcpy(t, data, len); \
-			gn->priv_beginVarialbeGroupRemote(t->nId, ztp); \
+			gn->priv_beginVarialbeGroupRemote(t->nId, ztp, type); \
 			name( gn->priv_getUserNode(), t->_a, t->_b, t->_c, t->_d, t->_e, t->_f ); \
 			gn->priv_endVariableGroup(); \
 		}\
@@ -189,12 +189,12 @@
 	void name( ZNode* _zn, a at, b bt, c ct, d dt, e et, f ft, h ht );\
 	struct sgp_struct_##name { char sgp_name[RPC_NAME_MAX_LENGTH]; unsigned int nId; a _a; b _b; c _c; d _d; e _e; f _f; h _h; };\
 	extern "C" {\
-		RPC_EXPORT void __sgp_deserialize_##name( ZNodePrivate* gn, char* data, int len, const ZEndpoint& ztp ) \
+		RPC_EXPORT void __sgp_deserialize_##name( ZNodePrivate* gn, char* data, int len, const ZEndpoint& ztp, EPacketType type ) \
 		{ \
 			sgp_struct_##name *t = reinterpret_cast<sgp_struct_##name*>(data); \
 			assert( len == sizeof(sgp_struct_##name) && "invalid size" ); \
 			memcpy(t, data, len); \
-			gn->priv_beginVarialbeGroupRemote(t->nId, ztp); \
+			gn->priv_beginVarialbeGroupRemote(t->nId, ztp, type); \
 			name( gn->priv_getUserNode(), t->_a, t->_b, t->_c, t->_d, t->_e, t->_f, t->_h ); \
 			gn->priv_endVariableGroup(); \
 		}\
@@ -215,12 +215,12 @@
 	void name( ZNode* _zn, a at, b bt, c ct, d dt, e et, f ft, h ht, i it );\
 	struct sgp_struct_##name { char sgp_name[RPC_NAME_MAX_LENGTH]; unsigned int nId; a _a; b _b; c _c; d _d; e _e; f _f; h _h; i _i; };\
 	extern "C" {\
-		RPC_EXPORT void __sgp_deserialize_##name( ZNodePrivate* gn, char* data, int len, const ZEndpoint& ztp ) \
+		RPC_EXPORT void __sgp_deserialize_##name( ZNodePrivate* gn, char* data, int len, const ZEndpoint& ztp, EPacketType type ) \
 		{ \
 			sgp_struct_##name *t = reinterpret_cast<sgp_struct_##name*>(data); \
 			assert( len == sizeof(sgp_struct_##name) && "invalid size" ); \
 			memcpy(t, data, len); \
-			gn->priv_beginVarialbeGroupRemote(t->nId, ztp); \
+			gn->priv_beginVarialbeGroupRemote(t->nId, ztp, type); \
 			name( gn->priv_getUserNode(), t->_a, t->_b, t->_c, t->_d, t->_e, t->_f, t->_h, t->_i ); \
 			gn->priv_endVariableGroup(); \
 		}\
@@ -241,12 +241,12 @@
 	void name( ZNode* _zn, a at, b bt, c ct, d dt, e et, f ft, h ht, i it, j jt );\
 	struct sgp_struct_##name { char sgp_name[RPC_NAME_MAX_LENGTH]; unsigned int nId; a _a; b _b; c _c; d _d; e _e; f _f; h _h; i _i; j _j; };\
 	extern "C" {\
-		RPC_EXPORT void __sgp_deserialize_##name( ZNodePrivate* gn, char* data, int len, const ZEndpoint& ztp ) \
+		RPC_EXPORT void __sgp_deserialize_##name( ZNodePrivate* gn, char* data, int len, const ZEndpoint& ztp, EPacketType type ) \
 		{ \
 			sgp_struct_##name *t = reinterpret_cast<sgp_struct_##name*>(data); \
 			assert( len == sizeof(sgp_struct_##name) && "invalid size" ); \
 			memcpy(t, data, len); \
-			gn->priv_beginVarialbeGroupRemote(t->nId, ztp); \
+			gn->priv_beginVarialbeGroupRemote(t->nId, ztp, type); \
 			name( gn->priv_getUserNode(), t->_a, t->_b, t->_c, t->_d, t->_e, t->_f, t->_h, t->_i, t->_j ); \
 			gn->priv_endVariableGroup(); \
 		}\

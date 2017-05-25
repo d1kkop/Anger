@@ -444,12 +444,12 @@ namespace UnitTests
 	{
 		if ( u->c.getVarConrol() == EVarControl::Remote )
 		{
-			printf("group %d created remotely\n", groupIdx);
+		//	printf("group %d created remotely\n", groupIdx);
 			sgt->m_unitsRemote.emplace_back( u );
 		}
 		else
 		{
-			printf("group %d created locally\n", groupIdx);
+		//	printf("group %d created locally\n", groupIdx);
 			sgt->m_unitsSelf.emplace_back( u );
 		}
 	}
@@ -608,10 +608,16 @@ namespace UnitTests
 	void SyncGroupTest::run()
 	{
 		ZNode* g1 = new ZNode();
-		ZNode* g2 = new ZNode();
-
 		g1->setUserDataPtr( this );
-		g2->setUserDataPtr( this );
+
+		int kClients = 10;
+		std::vector<ZNode*> clients;
+		for (int i = 0; i < 10 ; i++)
+		{
+			clients.emplace_back( new ZNode() );
+			clients[i]->setUserDataPtr( this );
+		}
+		
 
 		Vec3 v;
 		v.x = 991.991f;
@@ -643,54 +649,58 @@ namespace UnitTests
 
 		// -------------------------------------------------------------------------------------------------------------------------------
 
-		g1->connect( "localhost", 27000 );
-		g2->listenOn( 27000 );
-		g2->setIsNetworkIdProvider( true );
+		g1->listenOn( 27000 );
+		g1->setIsNetworkIdProvider( true );
 
 		int kTicks = 0;
 		while ( true )
 		{
 			g1->update();
-			g2->update();
+			//g2->update();
+			for ( auto* z : clients )
+			{
+				z->update();
+			}
 			std::this_thread::sleep_for(20ms);
 
 			kTicks++;
-			
 			int l = ::rand() % 10;
+			int c = ::rand() % (int)clients.size();
+			ZNode* zz = clients[c];
 			for (int i = 0; i < l ; i++)
 			{
 				int kr = ::rand() % 10;
 				switch (kr)
 				{
 				case 0:
-				create_myGroup1( g1, 'E' );
+				create_myGroup1( zz, EPacketType::Reliable_Ordered, 'E' );
 				break;
 				case 1:
-				create_myGroup2( g1, 'E', 6533 );
+				create_myGroup2( zz, 'E', 6533 );
 				break;
 				case 2:
-				create_myGroup3( g1, 'E', 6533, ~0 );
+				create_myGroup3( zz, 'E', 6533, ~0 );
 				break;
 				case 9:
-				create_myGroup4( g1, 'E', 6533, ~0, 2*10e20f );
+				create_myGroup4( zz, 'E', 6533, ~0, 2*10e20f );
 				break;
 				case 3:
-				create_myGroup5( g1, 'E', 6533, ~0, 2*10e20f, 7172773.881238 );
+				create_myGroup5( zz, 'E', 6533, ~0, 2*10e20f, 7172773.881238 );
 				break;
 				case 4:
-				create_myGroup6( g1, 'E', 6533, ~0, 2*10e20f, 7172773.881238, v );
+				create_myGroup6( zz, 'E', 6533, ~0, 2*10e20f, 7172773.881238, v );
 				break;
 				case 5:
-				create_myGroup7( g1, 'E', 6533, ~0, 2*10e20f, 7172773.881238, v, q );
+				create_myGroup7( zz, 'E', 6533, ~0, 2*10e20f, 7172773.881238, v, q );
 				break;
 				case 6:
-				create_myGroup8( g1, 'E', 6533, ~0, 2*10e20f, 7172773.881238, v, q, mm );
+				create_myGroup8( zz, 'E', 6533, ~0, 2*10e20f, 7172773.881238, v, q, mm );
 				break;
 				case 7:
-				create_myGroup9( g1, 'E', 6533, ~0, 2*10e20f, 7172773.881238, v, q, mm, name );
+				create_myGroup9( zz, 'E', 6533, ~0, 2*10e20f, 7172773.881238, v, q, mm, name );
 				break;
 				case 8:
-				create_myGroup0( g1 );
+				create_myGroup0( zz );
 				break;
 				}	
 			}
@@ -715,7 +725,9 @@ namespace UnitTests
 		for (auto * u : m_unitsRemote )
 			delete u;
 		delete g1;
-		delete g2;
+		for ( auto z : clients )
+			delete z;
+		//delete g2;
 		Result = true;
 	}
 
@@ -729,10 +741,10 @@ namespace UnitTests
 		std::vector<BaseTest*> tests;
 
 		// add tests
-//		tests.emplace_back( new ConnectionLayerTest );
-//		tests.emplace_back( new MassConnectTest );
-//		tests.emplace_back( new ReliableOrderTest );
-//		tests.emplace_back( new RpcTest );
+	/*	tests.emplace_back( new ConnectionLayerTest );
+		tests.emplace_back( new MassConnectTest );
+		tests.emplace_back( new ReliableOrderTest );
+		tests.emplace_back( new RpcTest );*/
 		tests.emplace_back( new SyncGroupTest );
 			
 		// run them

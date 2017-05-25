@@ -11,7 +11,7 @@ namespace Zerodelay
 	class VariableGroup
 	{
 	public:
-		VariableGroup(char channel);
+		VariableGroup(char channel, EPacketType type);
 		virtual ~VariableGroup();
 
 		bool sync( bool isWriting, char* data, int& buffLen );
@@ -38,6 +38,8 @@ namespace Zerodelay
 		char getChannel() const		{ return m_Channel; }
 		bool isRemote() const		{ return m_Channel<0; }
 
+		EPacketType getType() const	{ return m_Type; }
+
 		void unrefGroup();
 
 	private:
@@ -49,6 +51,7 @@ namespace Zerodelay
 		bool m_DestroySent;
 	 	unsigned int m_NetworkId;
 		EVarControl m_Control;
+		EPacketType m_Type;
 		bool m_Dirty;
 		std::vector<NetVariable*> m_Variables;
 

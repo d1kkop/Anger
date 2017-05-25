@@ -32,8 +32,8 @@ namespace Zerodelay
 		void update();
 		bool recvPacket(const struct Packet& pack, const class IConnection* conn);
 
-		void beginGroup(const char* paramData, int paramDataLen, char channel);
-		void beginGroupFromRemote(unsigned int nid, const ZEndpoint& ztp );
+		void beginGroup(const char* paramData, int paramDataLen, char channel, EPacketType type);
+		void beginGroupFromRemote(unsigned int nid, const ZEndpoint& ztp, EPacketType type);
 		void endGroup();
 		void setIsNetworkIdProvider( bool isProvider );
 

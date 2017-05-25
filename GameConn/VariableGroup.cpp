@@ -9,13 +9,14 @@
 
 namespace Zerodelay
 {
-	VariableGroup::VariableGroup(char channel):
+	VariableGroup::VariableGroup(char channel, EPacketType type):
 		m_Channel(channel),
 		m_NumPreBytes(0),
 		m_NetworkId(0),
 		m_Broken(false),
 		m_DestroySent(false),
-		m_Control(EVarControl::Full)
+		m_Control(EVarControl::Full),
+		m_Type(type)
 	{
 	}
 

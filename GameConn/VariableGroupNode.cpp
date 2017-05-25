@@ -43,8 +43,8 @@ namespace Zerodelay
 	void VariableGroupNode::update()
 	{
 		intervalSendIdRequest();
-		resolvePendingGroups();
-		sendVariableGroups();
+		resolvePendingGroups();	// causes groups to be created
+		sendVariableGroups();	// syncs variables in the groups
 	}
 
 	bool VariableGroupNode::recvPacket(const Packet& pack, const IConnection* conn)
@@ -75,10 +75,10 @@ namespace Zerodelay
 		return true;
 	}
 
-	void VariableGroupNode::beginGroup( const char* paramData, int paramDataLen, char channel )
+	void VariableGroupNode::beginGroup( const char* paramData, int paramDataLen, char channel, EPacketType type)
 	{
 		assert( VariableGroup::Last == nullptr && "should be NULL" );
-		VariableGroup::Last = new VariableGroup(channel);
+		VariableGroup::Last = new VariableGroup(channel, type);
 
 		if ( paramDataLen >= PendingVariableGroup::MaxParamDataLength )
 		{
@@ -96,10 +96,10 @@ namespace Zerodelay
 		m_PendingGroups.emplace_back( pvg );
 	}
 
-	void VariableGroupNode::beginGroupFromRemote(unsigned int nid, const ZEndpoint& ztp)
+	void VariableGroupNode::beginGroupFromRemote(unsigned int nid, const ZEndpoint& ztp, EPacketType type)
 	{
 		assert( VariableGroup::Last == nullptr && "should be NULL" );
-		VariableGroup::Last = new VariableGroup(-1);
+		VariableGroup::Last = new VariableGroup(-1, type);
 		VariableGroup::Last->setNetworkId( nid );
 		VariableGroup::Last->setControl( EVarControl::Remote );
 		// ----------------------------
@@ -171,9 +171,9 @@ namespace Zerodelay
 		{
 			// function signature
 			ZEndpoint ztp = toZpt( etp );
-			void (*pfunc)(ZNodePrivate*, const char*, int, const ZEndpoint&);
+			void (*pfunc)(ZNodePrivate*, const char*, int, const ZEndpoint&, EPacketType);
 			pfunc = (decltype(pfunc)) pf;
-			pfunc( m_PrivZ, payload, len, ztp );
+			pfunc( m_PrivZ, payload, len, ztp, pack.type );
 		}
 		else
 		{

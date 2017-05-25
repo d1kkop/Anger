@@ -239,7 +239,7 @@ namespace Zerodelay
 			All GenericNetVar declared between this call end EndVariable group are 
 			put in a group with a unique ID.
 			The variables synchronize when they change. */
-		void beginVariableGroup( const char* constructData=nullptr, int constructDataLen=0, char channel=1 );
+		void beginVariableGroup( const char* constructData=nullptr, int constructDataLen=0, char channel=1, EPacketType syncType=EPacketType::Unreliable_Sequenced );
 		void endVariableGroup();
 
 	private:
@@ -257,7 +257,7 @@ namespace Zerodelay
 		friend class ZNode;
 
 	public:
-		void priv_beginVarialbeGroupRemote(unsigned int nid, const ZEndpoint& ztp );
+		void priv_beginVarialbeGroupRemote(unsigned int nid, const ZEndpoint& ztp, EPacketType type);
 		void priv_endVariableGroup();
 		ZNode* priv_getUserNode() const;
 

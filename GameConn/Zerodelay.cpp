@@ -239,9 +239,9 @@ namespace Zerodelay
 		return p->getUserDataIdx();
 	}
 
-	void ZNode::beginVariableGroup(const char* paramData, int paramDataLen, char channel)
+	void ZNode::beginVariableGroup(const char* paramData, int paramDataLen, char channel, EPacketType type)
 	{
-		vgn->beginGroup( paramData, paramDataLen, channel );
+		vgn->beginGroup( paramData, paramDataLen, channel, type );
 	}
 
 	void ZNode::endVariableGroup()
@@ -254,9 +254,9 @@ namespace Zerodelay
 	// -------- ZNodePrivate ----------------------------------------------------------------------------------------------
 
 
-	void ZNodePrivate::priv_beginVarialbeGroupRemote(unsigned int nid, const ZEndpoint& ztp )
+	void ZNodePrivate::priv_beginVarialbeGroupRemote(unsigned int nid, const ZEndpoint& ztp, EPacketType type)
 	{
-		vgn->beginGroupFromRemote(nid, ztp);
+		vgn->beginGroupFromRemote(nid, ztp, type);
 	}
 
 	void ZNodePrivate::priv_endVariableGroup()
