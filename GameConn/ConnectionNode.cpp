@@ -455,7 +455,7 @@ namespace Zerodelay
 			// function signature
 			void (*pfunc)(const char*, int);
 			pfunc = (decltype(pfunc)) pf;
-			pfunc( payload + RPC_NAME_MAX_LENGTH, len - RPC_NAME_MAX_LENGTH );
+			pfunc( payload, len );
 		}
 		else
 		{
