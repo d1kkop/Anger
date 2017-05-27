@@ -13,7 +13,8 @@ namespace Zerodelay
 		m_Group(VariableGroup::Last),
 		m_Data(new char[nBytes]),
 		m_PrevData(nullptr),
-		m_Length(nBytes)
+		m_Length(nBytes),
+		m_LastChangeTime(0)
 	{
 		assert( m_Group != nullptr && "VariableGroup::Last" );
 		if ( m_Group == nullptr )
@@ -94,6 +95,23 @@ namespace Zerodelay
 	const char* NetVariable::data() const
 	{
 		return m_Data;
+	}
+
+	void NetVariable::markChanged()
+	{
+		m_LastChangeTime = ::clock();
+		if ( m_Group )
+		{
+			m_Group->setDirty( true );
+		}
+	}
+
+	bool NetVariable::wasChanged() const
+	{
+		// TODO this is dirty, for now, if changed keep sending for 2 sec, after that consider no longer changed
+		clock_t t = ::clock();
+		float dt = float(t - m_LastChangeTime) / (float)CLOCKS_PER_SEC;
+		return dt < 2.f;
 	}
 
 	void NetVariable::bindOnPreWriteCallback(const std::function<void(const char*)>& callback)

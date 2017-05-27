@@ -57,12 +57,14 @@ namespace Zerodelay
 		// If is writing, skip the pre-bytes and first write all requested data
 		if ( isWriting )
 		{
+			bool variablesWereWritten = false;
 			*(unsigned int*)data = m_NetworkId;
 			memset( varBits, 0, m_NumPreBytes );
 			for (auto* v : m_Variables)
 			{
-				if ( v->wantsSync() )
+				if ( v->wasChanged() )
 				{
+					variablesWereWritten = true;
 					varBits[kByte] |= (1 << kBit);
 					if ( !v->sync( true, varData, buffLen ) )
 					{
@@ -72,6 +74,9 @@ namespace Zerodelay
 				}
 				incBitCounterAndWrap(kBit, kByte);
 			}
+			// If nothing was changed, return false
+			if  ( !variablesWereWritten )
+				return false;
 		}
 		else // Is reading..
 		{

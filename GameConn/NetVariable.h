@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Zerodelay.h"
+#include <ctime>
 #include <functional>
 
 
@@ -15,10 +16,12 @@ namespace Zerodelay
 		enum class EVarControl getVarControl() const;
 		int getGroupId() const;
 		bool sync(bool writing, char*& buff, int& buffLen);
-		bool wantsSync() const { return true; }
 		char* data();
 		const char* data() const;
 		void unrefGroup() { m_Group = nullptr; }
+
+		void markChanged();
+		bool wasChanged() const;
 
 		void bindOnPreWriteCallback( const std::function<void (const char*)>& callback );
 		void bindOnPostUpdateCallback( const std::function<void (const char*, const char*)>& callback );
@@ -28,6 +31,7 @@ namespace Zerodelay
 		char* m_Data;
 		char* m_PrevData;
 		int m_Length;
+		clock_t m_LastChangeTime;
 		std::function<void (const char*)> m_PreWriteCallback;
 		std::function<void (const char*, const char*)> m_PostUpdateCallback;
 	};

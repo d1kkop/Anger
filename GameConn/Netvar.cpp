@@ -24,6 +24,11 @@ namespace Zerodelay
 		return p->getGroupId();
 	}
 
+	void NetVar::markChanged()
+	{
+		p->markChanged();
+	}
+
 	void NetVar::bindOnPreWriteCallback(const std::function<void(const char*)>& rawCallback)
 	{
 		p->bindOnPreWriteCallback( rawCallback );

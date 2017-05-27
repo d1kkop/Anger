@@ -41,6 +41,7 @@ namespace Zerodelay
 
 
 	protected:
+		void markChanged();
 		void bindOnPreWriteCallback( const std::function<void (const char*)>& rawCallback );
 		void bindOnPostUpdateCallback( const std::function<void (const char*, const char*)>& rawCallback );
 
@@ -66,6 +67,7 @@ namespace Zerodelay
 		GenericNetVar<T>& operator = (const T& o)
 		{
 			*((T*) data()) = o;
+			markChanged();
 			return *this;
 		}
 

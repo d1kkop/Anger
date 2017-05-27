@@ -312,22 +312,22 @@ namespace Zerodelay
 				vgIt++;
 				continue;
 			}
-
-			if ( /*vg->isDirty() &&*/ !vg->isBroken() )
+			// see if group is dirty and not broken from variables
+			if ( vg->isDirty() && !vg->isBroken() )
 			{
 				char groupData[2048];
 				int buffLen = 2000; // leave room for hdr size
 				int oldBuffLen = buffLen;
-				if ( !vg->sync( true, groupData, buffLen ) )
+				if ( vg->sync( true, groupData, buffLen ) ) // Returns true if variables were written and all was ok
 				{
-					Platform::log("cannot sync variable group, because exceeding %d buff size", buffLen);
+					/// QQQ / TODO revise this because this makes it unreliable 
+					int bytesWritten = oldBuffLen - buffLen;
+					sendVariableGroupUpdate( groupData, bytesWritten, vg->getChannel() );
 					return;
 				}
-				/// QQQ / TODO revise this because this makes it unreliable 
-				int bytesWritten = oldBuffLen - buffLen;
-				sendVariableGroupUpdate( groupData, bytesWritten, vg->getChannel() );
 				vgIt++;
 			}
+			// if broken but this info is not yet transmitted, do so now
 			else if ( vg->isBroken() && !vg->isDestroySent() )
 			{
 				vg->markDestroySent();
