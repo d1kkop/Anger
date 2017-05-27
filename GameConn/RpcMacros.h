@@ -6,25 +6,10 @@
 #define RPC_NAME_MAX_LENGTH 32
 
 
-#ifdef _WIN32
-#define RPC_EXPORT __declspec(dllexport)
-#else
-		RPC_EXPORT
-#endif
-
-#define RPC_CPY_N_SEND \
-		gn->beginSend(specific, exclude);\
-		gn->send((unsigned char)EGameNodePacketType::Rpc, (const char*)&t, sizeof(temp), transType, channel, relay);\
-		gn->endSend();
-
 #define RPC_CPY_N_SEND2(name) \
 	gn->beginSend(specific, exclude);\
 	gn->send((unsigned char)EGameNodePacketType::Rpc, (const char*)&t, sizeof(name), transType, channel, relay);\
 	gn->endSend();
-
-#define RPC_ASSERT_N_CPY \
-			assert( len == (sizeof(temp)-offsetof(temp,_a)) && "invalid struct size" ); \
-			memcpy(&t._a, data, len);
 
 #define RPC_ASSERT_N_CPY2(name) \
 	assert( len == (sizeof(name)) && "invalid struct size" ); \
@@ -33,6 +18,7 @@
 
 #define RPC_FUNC_0( name) \
 	void name( );\
+	ALIGN(8) struct rpc_struct_##name { char rpc_name[RPC_NAME_MAX_LENGTH]; }; \
 	extern "C" {\
 		RPC_EXPORT void __rpc_deserialize_##name( const char* data, int len ) \
 		{ \
@@ -41,10 +27,10 @@
 	}\
 	void rpc_##name( ZNode* gn, bool localCall = true, const ZEndpoint* specific=nullptr, bool exclude=false, EPacketType transType=EPacketType::Reliable_Ordered, unsigned char channel=0, bool relay=true )\
 	{\
-		struct temp  { char rpc_name[RPC_NAME_MAX_LENGTH]; }; temp t;\
+		rpc_struct_##name t; \
 		t.rpc_name[0]='\0'; \
 		::sprintf_s( t.rpc_name, RPC_NAME_MAX_LENGTH, "%s", #name ); \
-		RPC_CPY_N_SEND \
+		RPC_CPY_N_SEND2(rpc_struct_##name) \
 		if ( localCall ) { name(); } \
 	}\
 	void name()
@@ -52,7 +38,7 @@
 
 #define RPC_FUNC_1( name, a, at ) \
 	void name( a at );\
-	struct rpc_struct_##name  { char rpc_name[RPC_NAME_MAX_LENGTH]; a _a; }; \
+	ALIGN(8) struct rpc_struct_##name  { char rpc_name[RPC_NAME_MAX_LENGTH]; a _a; }; \
 	extern "C" {\
 		RPC_EXPORT void __rpc_deserialize_##name( const char* data, int len ) \
 		{ \
@@ -75,7 +61,7 @@
 
 #define RPC_FUNC_2( name, a, at, b, bt ) \
 	void name( a at, b bt );\
-	struct rpc_struct_##name { char rpc_name[RPC_NAME_MAX_LENGTH]; a _a; b _b; }; \
+	ALIGN(8) struct rpc_struct_##name { char rpc_name[RPC_NAME_MAX_LENGTH]; a _a; b _b; }; \
 	extern "C" {\
 		RPC_EXPORT void __rpc_deserialize_##name( const char* data, int len ) \
 		{ \
@@ -98,7 +84,7 @@
 
 #define RPC_FUNC_3( name, a, at, b, bt, c, ct ) \
 	void name( a at, b bt, c ct );\
-	struct rpc_struct_##name  { char rpc_name[RPC_NAME_MAX_LENGTH]; a _a; b _b; c _c; }; \
+	ALIGN(8) struct rpc_struct_##name  { char rpc_name[RPC_NAME_MAX_LENGTH]; a _a; b _b; c _c; }; \
 	extern "C" {\
 		RPC_EXPORT void __rpc_deserialize_##name( const char* data, int len ) \
 		{ \
@@ -120,7 +106,7 @@
 
 
 #define RPC_FUNC_4( name, a, at, b, bt, c, ct, d, dt ) \
-	struct rpc_struct_##name { char rpc_name[RPC_NAME_MAX_LENGTH]; a _a; b _b; c _c; d _d; }; \
+	ALIGN(8) struct rpc_struct_##name { char rpc_name[RPC_NAME_MAX_LENGTH]; a _a; b _b; c _c; d _d; }; \
 	void name( a at, b bt, c ct, d dt );\
 	extern "C" {\
 		RPC_EXPORT void __rpc_deserialize_##name( const char* data, int len ) \
@@ -143,7 +129,7 @@
 
 
 #define RPC_FUNC_5( name, a, at, b, bt, c, ct, d, dt, e, et ) \
-	struct rpc_struct_##name  { char rpc_name[RPC_NAME_MAX_LENGTH]; a _a; b _b; c _c; d _d; e _e; }; \
+	ALIGN(8) struct rpc_struct_##name  { char rpc_name[RPC_NAME_MAX_LENGTH]; a _a; b _b; c _c; d _d; e _e; }; \
 	void name( a at, b bt, c ct, d dt, e et );\
 	extern "C" {\
 		RPC_EXPORT void __rpc_deserialize_##name( const char* data, int len ) \
@@ -165,7 +151,7 @@
 	void name( a at, b bt, c ct, d dt, e et )
 
 #define RPC_FUNC_6( name, a, at, b, bt, c, ct, d, dt, e, et, f, ft ) \
-	struct rpc_struct_##name  { char rpc_name[RPC_NAME_MAX_LENGTH]; a _a; b _b; c _c; d _d; e _e; f _f; }; \
+	ALIGN(8) struct rpc_struct_##name  { char rpc_name[RPC_NAME_MAX_LENGTH]; a _a; b _b; c _c; d _d; e _e; f _f; }; \
 	void name( a at, b bt, c ct, d dt, e et, f ft );\
 	extern "C" {\
 		RPC_EXPORT void __rpc_deserialize_##name( const char* data, int len ) \
@@ -188,7 +174,7 @@
 
 
 #define RPC_FUNC_7( name, a, at, b, bt, c, ct, d, dt, e, et, f, ft, h, ht ) \
-	struct rpc_struct_##name  { char rpc_name[RPC_NAME_MAX_LENGTH]; a _a; b _b; c _c; d _d; e _e; f _f; h _h; } ;\
+	ALIGN(8) struct rpc_struct_##name  { char rpc_name[RPC_NAME_MAX_LENGTH]; a _a; b _b; c _c; d _d; e _e; f _f; h _h; } ;\
 	void name( a at, b bt, c ct, d dt, e et, f ft, h ht );\
 	extern "C" {\
 		RPC_EXPORT void __rpc_deserialize_##name( const char* data, int len ) \
@@ -211,7 +197,7 @@
 
 
 #define RPC_FUNC_8( name, a, at, b, bt, c, ct, d, dt, e, et, f, ft, h, ht, i, it ) \
-	struct rpc_struct_##name  { char rpc_name[RPC_NAME_MAX_LENGTH]; a _a; b _b; c _c; d _d; e _e; f _f; h _h; i _i; }; \
+	ALIGN(8) struct rpc_struct_##name  { char rpc_name[RPC_NAME_MAX_LENGTH]; a _a; b _b; c _c; d _d; e _e; f _f; h _h; i _i; }; \
 	void name( a at, b bt, c ct, d dt, e et, f ft, h ht, i it );\
 	extern "C" {\
 		RPC_EXPORT void __rpc_deserialize_##name( const char* data, int len ) \
@@ -234,7 +220,7 @@
 
 
 #define RPC_FUNC_9( name, a, at, b, bt, c, ct, d, dt, e, et, f, ft, h, ht, i, it, j, jt ) \
-	struct rpc_struct_##name  { char rpc_name[RPC_NAME_MAX_LENGTH]; a _a; b _b; c _c; d _d; e _e; f _f; h _h; i _i; j _j; }; \
+	ALIGN(8) struct rpc_struct_##name  { char rpc_name[RPC_NAME_MAX_LENGTH]; a _a; b _b; c _c; d _d; e _e; f _f; h _h; i _i; j _j; }; \
 	void name( a at, b bt, c ct, d dt, e et, f ft, h ht, i it, j jt );\
 	extern "C" {\
 		RPC_EXPORT void __rpc_deserialize_##name( const char* data, int len ) \

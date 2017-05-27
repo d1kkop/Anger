@@ -2,6 +2,18 @@
 
 
 #ifdef _WIN32
+	#define RPC_EXPORT __declspec(dllexport)
+#else
+	#define RPC_EXPORT
+#endif
+
+#ifdef _WIN32
+	#define ALIGN(n) __declspec(align(n))
+#else
+	#define ALIGN(n)
+#endif
+
+#ifdef _WIN32
 #include <ws2tcpip.h>
 #include <ws2ipdef.h>
 #pragma comment(lib, "Ws2_32.lib")

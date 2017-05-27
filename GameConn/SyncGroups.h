@@ -6,7 +6,7 @@
 
 #define SYNC_GROUP_0( name, _zn) \
 	void name( ZNode* _zn );\
-	struct sgp_struct_##name { char sgp_name[RPC_NAME_MAX_LENGTH]; unsigned int nId; };\
+	ALIGN(8) struct sgp_struct_##name { char sgp_name[RPC_NAME_MAX_LENGTH]; unsigned int nId; };\
 	extern "C" {\
 		RPC_EXPORT void __sgp_deserialize_##name( ZNodePrivate* gn, char* data, int len, const ZEndpoint& ztp, EPacketType type ) \
 		{ \
@@ -31,7 +31,7 @@
 
 #define SYNC_GROUP_1( name, _zn, a, at) \
 	void name( ZNode* _zn, a at );\
-	struct sgp_struct_##name { char sgp_name[RPC_NAME_MAX_LENGTH]; unsigned int nId; a _a; };\
+	ALIGN(8) struct sgp_struct_##name { char sgp_name[RPC_NAME_MAX_LENGTH]; unsigned int nId; a _a; };\
 	extern "C" {\
 		RPC_EXPORT void __sgp_deserialize_##name( ZNodePrivate* gn, char* data, int len, const ZEndpoint& ztp, EPacketType type ) \
 		{ \
@@ -57,7 +57,7 @@
 
 #define SYNC_GROUP_2( name, _zn, a, at, b, bt ) \
 	void name( ZNode* _zn, a at, b bt );\
-	struct sgp_struct_##name { char sgp_name[RPC_NAME_MAX_LENGTH]; unsigned int nId; a _a; b _b; };\
+	ALIGN(8) struct sgp_struct_##name { char sgp_name[RPC_NAME_MAX_LENGTH]; unsigned int nId; a _a; b _b; };\
 	extern "C" {\
 		RPC_EXPORT void __sgp_deserialize_##name( ZNodePrivate* gn, char* data, int len, const ZEndpoint& ztp, EPacketType type ) \
 		{ \
@@ -83,7 +83,7 @@
 
 #define SYNC_GROUP_3( name, _zn, a, at, b, bt, c, ct ) \
 	void name( ZNode* _zn, a at, b bt, c ct );\
-	struct sgp_struct_##name { char sgp_name[RPC_NAME_MAX_LENGTH]; unsigned int nId; a _a; b _b; c _c; };\
+	ALIGN(8) struct sgp_struct_##name { char sgp_name[RPC_NAME_MAX_LENGTH]; unsigned int nId; a _a; b _b; c _c; };\
 	extern "C" {\
 		RPC_EXPORT void __sgp_deserialize_##name( ZNodePrivate* gn, char* data, int len, const ZEndpoint& ztp, EPacketType type ) \
 		{ \
@@ -109,7 +109,7 @@
 
 #define SYNC_GROUP_4( name, _zn, a, at, b, bt, c, ct, d, dt ) \
 	void name( ZNode* _zn, a at, b bt, c ct, d dt );\
-	struct sgp_struct_##name { char sgp_name[RPC_NAME_MAX_LENGTH]; unsigned int nId; a _a; b _b; c _c; d _d; };\
+	ALIGN(8) struct sgp_struct_##name { char sgp_name[RPC_NAME_MAX_LENGTH]; unsigned int nId; a _a; b _b; c _c; d _d; };\
 	extern "C" {\
 		RPC_EXPORT void __sgp_deserialize_##name( ZNodePrivate* gn, char* data, int len, const ZEndpoint& ztp, EPacketType type ) \
 		{ \
@@ -135,7 +135,7 @@
 
 #define SYNC_GROUP_5( name, _zn, a, at, b, bt, c, ct, d, dt, e, et ) \
 	void name( ZNode* _zn, a at, b bt, c ct, d dt, e et );\
-	struct sgp_struct_##name { char sgp_name[RPC_NAME_MAX_LENGTH]; unsigned int nId; a _a; b _b; c _c; d _d; e _e; };\
+	ALIGN(8) struct sgp_struct_##name { char sgp_name[RPC_NAME_MAX_LENGTH]; unsigned int nId; a _a; b _b; c _c; d _d; e _e; };\
 	extern "C" {\
 		RPC_EXPORT void __sgp_deserialize_##name( ZNodePrivate* gn, char* data, int len, const ZEndpoint& ztp, EPacketType type ) \
 		{ \
@@ -161,7 +161,7 @@
 
 #define SYNC_GROUP_6( name, _zn, a, at, b, bt, c, ct, d, dt, e, et, f, ft ) \
 	void name( ZNode* _zn, a at, b bt, c ct, d dt, e et, f ft );\
-	struct sgp_struct_##name { char sgp_name[RPC_NAME_MAX_LENGTH]; unsigned int nId; a _a; b _b; c _c; d _d; e _e; f _f; };\
+	ALIGN(8) struct sgp_struct_##name { char sgp_name[RPC_NAME_MAX_LENGTH]; unsigned int nId; a _a; b _b; c _c; d _d; e _e; f _f; };\
 	extern "C" {\
 		RPC_EXPORT void __sgp_deserialize_##name( ZNodePrivate* gn, char* data, int len, const ZEndpoint& ztp, EPacketType type ) \
 		{ \
@@ -187,7 +187,7 @@
 
 #define SYNC_GROUP_7( name, _zn, a, at, b, bt, c, ct, d, dt, e, et, f, ft, h, ht ) \
 	void name( ZNode* _zn, a at, b bt, c ct, d dt, e et, f ft, h ht );\
-	struct sgp_struct_##name { char sgp_name[RPC_NAME_MAX_LENGTH]; unsigned int nId; a _a; b _b; c _c; d _d; e _e; f _f; h _h; };\
+	ALIGN(8) struct sgp_struct_##name { char sgp_name[RPC_NAME_MAX_LENGTH]; unsigned int nId; a _a; b _b; c _c; d _d; e _e; f _f; h _h; };\
 	extern "C" {\
 		RPC_EXPORT void __sgp_deserialize_##name( ZNodePrivate* gn, char* data, int len, const ZEndpoint& ztp, EPacketType type ) \
 		{ \
@@ -213,7 +213,7 @@
 
 #define SYNC_GROUP_8( name, _zn, a, at, b, bt, c, ct, d, dt, e, et, f, ft, h, ht, i, it ) \
 	void name( ZNode* _zn, a at, b bt, c ct, d dt, e et, f ft, h ht, i it );\
-	struct sgp_struct_##name { char sgp_name[RPC_NAME_MAX_LENGTH]; unsigned int nId; a _a; b _b; c _c; d _d; e _e; f _f; h _h; i _i; };\
+	ALIGN(8) struct sgp_struct_##name { char sgp_name[RPC_NAME_MAX_LENGTH]; unsigned int nId; a _a; b _b; c _c; d _d; e _e; f _f; h _h; i _i; };\
 	extern "C" {\
 		RPC_EXPORT void __sgp_deserialize_##name( ZNodePrivate* gn, char* data, int len, const ZEndpoint& ztp, EPacketType type ) \
 		{ \
@@ -239,7 +239,7 @@
 
 #define SYNC_GROUP_9( name, _zn, a, at, b, bt, c, ct, d, dt, e, et, f, ft, h, ht, i, it, j, jt ) \
 	void name( ZNode* _zn, a at, b bt, c ct, d dt, e et, f ft, h ht, i it, j jt );\
-	struct sgp_struct_##name { char sgp_name[RPC_NAME_MAX_LENGTH]; unsigned int nId; a _a; b _b; c _c; d _d; e _e; f _f; h _h; i _i; j _j; };\
+	ALIGN(8) struct sgp_struct_##name { char sgp_name[RPC_NAME_MAX_LENGTH]; unsigned int nId; a _a; b _b; c _c; d _d; e _e; f _f; h _h; i _i; j _j; };\
 	extern "C" {\
 		RPC_EXPORT void __sgp_deserialize_##name( ZNodePrivate* gn, char* data, int len, const ZEndpoint& ztp, EPacketType type ) \
 		{ \
