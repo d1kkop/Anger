@@ -156,34 +156,17 @@ namespace Zerodelay
 		p->simulatePacketLoss( percentage );
 	}
 
-	void ZNode::sendSingle(unsigned char id, const char* data, int len, const ZEndpoint* specific, bool exclude, EPacketType type, unsigned char channel, bool relay)
-	{
-		p->beginSend( asEpt(specific), exclude );
-		send( id, data, len, type, channel, relay );
-		p->endSend();
-	}
-
-	void ZNode::beginSend(const ZEndpoint* specific, bool exclude)
-	{
-		p->beginSend( asEpt( specific ), exclude );
-	}
-
-	void ZNode::send(unsigned char id, const char* data, int len, EPacketType type, unsigned char channel, bool relay)
+	void ZNode::send(unsigned char id, const char* data, int len, const ZEndpoint* specific, bool exclude, EPacketType type, unsigned char channel, bool relay)
 	{
 		ISocket* sock = p->getSocket();
 		if ( sock )
 		{
-			p->send( id, data, len, type, channel );
+			p->send( id, data, len, asEpt(specific), exclude, type, channel );
 		}
 		else
 		{
 			Platform::log( "socket was not created, possibly a platform issue" );
 		}
-	}
-
-	void ZNode::endSend()
-	{
-		p->endSend();
 	}
 
 	void ZNode::setIsNetworkIdProvider(bool isProvider)

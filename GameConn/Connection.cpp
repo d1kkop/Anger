@@ -221,8 +221,6 @@ namespace Zerodelay
 	void Connection::sendSystemMessage( EGameNodePacketType packType, const char* payload, int payloadLen )
 	{
 		//	static_assert( sizeof(EGameNodePacketType)==1 );
-		beginAddToSendQueue();
 		addToSendQueue( (unsigned char)packType, payload, payloadLen, EPacketType::Reliable_Ordered );
-		endAddToSendQueue();
 	}
 }

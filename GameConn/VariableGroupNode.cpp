@@ -224,22 +224,22 @@ namespace Zerodelay
 	{
 		// now that networkId is known, push it in front as first parameter of paramData
 		*(unsigned int*)(paramData + RPC_NAME_MAX_LENGTH) = networkId;
-		m_ZNode->sendSingle( (unsigned char)EGameNodePacketType::VariableGroupCreate, paramData, paramDataLen );
+		m_ZNode->send( (unsigned char)EGameNodePacketType::VariableGroupCreate, paramData, paramDataLen );
 	}
 
 	void VariableGroupNode::sendVariableGroupUpdate(const char* groupData, int bytesWritten, char channel)
 	{
-		m_ZNode->sendSingle((unsigned char)EGameNodePacketType::VariableGroupUpdate, groupData, bytesWritten, nullptr, false, EPacketType::Unreliable_Sequenced, channel, true);
+		m_ZNode->send((unsigned char)EGameNodePacketType::VariableGroupUpdate, groupData, bytesWritten, nullptr, false, EPacketType::Unreliable_Sequenced, channel, true);
 	}
 
 	void VariableGroupNode::sendDestroyVariableGroup(unsigned int networkId)
 	{
-		m_ZNode->sendSingle( (unsigned char)EGameNodePacketType::VariableGroupDestroy, (const char*)&networkId, sizeof(networkId) );
+		m_ZNode->send( (unsigned char)EGameNodePacketType::VariableGroupDestroy, (const char*)&networkId, sizeof(networkId) );
 	}
 
 	void VariableGroupNode::sendIdPackRequest()
 	{
-		m_ZNode->sendSingle((unsigned char)EGameNodePacketType::IdPackRequest, nullptr, 0, nullptr, false, EPacketType::Reliable_Ordered, 0, false);
+		m_ZNode->send((unsigned char)EGameNodePacketType::IdPackRequest, nullptr, 0, nullptr, false, EPacketType::Reliable_Ordered, 0, false);
 	}
 
 	void VariableGroupNode::sendIdPackProvide(const EndPoint& etp, int numIds)
@@ -252,7 +252,7 @@ namespace Zerodelay
 		{
 			idPack[i] = m_UniqueIdCounter++;			
 		}
-		m_ZNode->sendSingle((unsigned char)EGameNodePacketType::IdPackProvide,
+		m_ZNode->send((unsigned char)EGameNodePacketType::IdPackProvide,
 							(const char*)idPack, sizeof(unsigned int)*numIds,
 							&toZpt(etp), false, EPacketType::Reliable_Ordered, 0, false);
 	}
@@ -321,7 +321,6 @@ namespace Zerodelay
 				if ( !vg->sync( true, groupData, buffLen ) )
 				{
 					Platform::log("cannot sync variable group, because exceeding %d buff size", buffLen);
-					m_ZNode->endSend(); // unlock
 					return;
 				}
 				/// QQQ / TODO revise this because this makes it unreliable 

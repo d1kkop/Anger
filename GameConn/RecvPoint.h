@@ -35,9 +35,8 @@ namespace Zerodelay
 		virtual class IConnection* createNewConnection( const EndPoint& endPoint ) const = 0;
 
 	public:
-		void beginSend( const EndPoint* specific=nullptr, bool exclude=false );
-		void send( unsigned char id, const char* data, int len, EPacketType type=EPacketType::Reliable_Ordered, unsigned char channel=0, bool relay=true );
-		void endSend();
+		void send( unsigned char id, const char* data, int len, const EndPoint* specific=nullptr, bool exclude=false, 
+				   EPacketType type=EPacketType::Reliable_Ordered, unsigned char channel=0, bool relay=true );
 
 		void  setUserDataPtr( void* ptr) { m_UserPtr = ptr; }
 		void* getUserDataPtr() const { return m_UserPtr; }
@@ -64,8 +63,6 @@ namespace Zerodelay
 		class ISocket* m_ListenSocket;
 		bool m_CaptureSocketErrors;
 		int  m_SendThreadSleepTimeMs;
-		const EndPoint* m_WasSpecific;
-		bool m_WasExclude;
 		std::thread* m_RecvThread;
 		std::thread* m_SendThread;
 		std::condition_variable m_SendThreadCv;

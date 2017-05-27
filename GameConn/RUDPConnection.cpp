@@ -30,11 +30,6 @@ namespace Zerodelay
 		for ( int i=0; i<sm_NumChannels; ++i ) for (auto& it : m_RecvQueue_unreliable_sequenced[i] ) delete [] it.data;
 	}
 
-	void RUDPConnection::beginAddToSendQueue()
-	{
-		m_SendMutex.lock();
-	}
-
 	void RUDPConnection::addToSendQueue(unsigned char id, const char* data, int len, EPacketType packetType, unsigned char channel, bool relay)
 	{
 		// user not allowed to send acks
@@ -53,26 +48,16 @@ namespace Zerodelay
 		pack.len = len + off_Norm_Data;
 		if ( packetType == EPacketType::Reliable_Ordered )
 		{
+			std::lock_guard<std::mutex> lock(m_SendMutex);
 			*(unsigned int*)&pack.data[off_Norm_Seq] = m_SendSeq_reliable[channel]++;
 			m_SendQueue_reliable[channel].emplace_back( pack );
 		}
 		else 
 		{
+			std::lock_guard<std::mutex> lock(m_SendMutex);
 			*(unsigned int*)&pack.data[off_Norm_Seq] = m_SendSeq_unreliable[channel]++;
 			m_SendQueue_unreliable.emplace_back( pack );
 		}
-	}
-
-	void RUDPConnection::endAddToSendQueue()
-	{
-		m_SendMutex.unlock();
-	}
-
-	void RUDPConnection::sendSingle(unsigned char id, const char* data, int len, EPacketType packetType, unsigned char channel)
-	{
-		beginAddToSendQueue();
-		addToSendQueue( id, data, len, packetType, channel );
-		endAddToSendQueue();
 	}
 
 	void RUDPConnection::beginPoll()

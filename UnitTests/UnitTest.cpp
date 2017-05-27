@@ -246,9 +246,7 @@ namespace UnitTests
 				if ( sendSeq[channel] != kSends )
 				{
 					int seq = sendSeq[channel];
-					g1->beginSend();
-					g1->send( (unsigned char)100, (const char*)&seq, sizeof(int), EPacketType::Reliable_Ordered, channel );
-					g1->endSend();
+					g1->send( (unsigned char)100, (const char*)&seq, sizeof(int), nullptr, false, EPacketType::Reliable_Ordered, channel );
 					sendSeq[channel]++;
 				}
 				// see if all is transmitted

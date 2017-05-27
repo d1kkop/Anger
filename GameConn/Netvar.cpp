@@ -14,7 +14,6 @@ namespace Zerodelay
 		delete p;
 	}
 
-
 	EVarControl NetVar::getVarConrol() const
 	{
 		return p->getVarControl();
@@ -25,12 +24,12 @@ namespace Zerodelay
 		return p->getGroupId();
 	}
 
-	void NetVar::bindOnPreWriteCallback(std::function<void(const char*)> rawCallback)
+	void NetVar::bindOnPreWriteCallback(const std::function<void(const char*)>& rawCallback)
 	{
 		p->bindOnPreWriteCallback( rawCallback );
 	}
 
-	void NetVar::bindOnPostUpdateCallback(std::function<void(const char*, const char*)> rawCallback)
+	void NetVar::bindOnPostUpdateCallback(const std::function<void(const char*, const char*)>& rawCallback)
 	{
 		p->bindOnPostUpdateCallback( rawCallback );
 	}

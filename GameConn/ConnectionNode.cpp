@@ -208,9 +208,8 @@ namespace Zerodelay
 			removeConnection( g, "removing conn, serialization error %s", __FUNCTION__ );
 			return;
 		}
-		beginSend( &etp, true ); // to all except
-		send( (unsigned char)EGameNodePacketType::RemoteConnected, buff, offs );
-		endSend();
+		// to all except
+		send( (unsigned char)EGameNodePacketType::RemoteConnected, buff, offs, &etp, true );
 	}
 
 	void ConnectionNode::sendRemoteDisconnected(const Connection* g, EDisconnectReason reason)
@@ -229,9 +228,8 @@ namespace Zerodelay
 			removeConnection( g, "removing conn, serialization error %s", __FUNCTION__ );
 			return;
 		}
-		beginSend( &etp, true ); // to all except
-		send( (unsigned char)EGameNodePacketType::RemoteDisconnected, buff, offs+1 );
-		endSend();
+		// to all except
+		send( (unsigned char)EGameNodePacketType::RemoteDisconnected, buff, offs+1, &etp, true );
 	}
 
 	bool ConnectionNode::recvPacket(struct Packet& pack, class Connection* g)
@@ -467,9 +465,8 @@ namespace Zerodelay
 	{
 		if ( pack.relay ) // send through to others
 		{
-			beginSend( &g->getEndPoint(), true );
-			send( pack.data[0], pack.data+1, pack.len-1, pack.type, pack.channel, false /* relay only once */ );
-			endSend();
+			// except self
+			send( pack.data[0], pack.data+1, pack.len-1, &g->getEndPoint(), true, pack.type, pack.channel, false /* relay only once */ );
 		}
 		forEachCallback(m_CustomDataCallbacks, [&](auto& fcb)
 		{

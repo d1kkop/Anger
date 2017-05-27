@@ -20,8 +20,8 @@ namespace Zerodelay
 		const char* data() const;
 		void unrefGroup() { m_Group = nullptr; }
 
-		void bindOnPreWriteCallback( std::function<void (const char*)> callback );
-		void bindOnPostUpdateCallback( std::function<void (const char*, const char*)> callback );
+		void bindOnPreWriteCallback( const std::function<void (const char*)>& callback );
+		void bindOnPostUpdateCallback( const std::function<void (const char*, const char*)>& callback );
 
 	private:
 		class VariableGroup* m_Group;

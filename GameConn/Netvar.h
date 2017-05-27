@@ -41,8 +41,8 @@ namespace Zerodelay
 
 
 	protected:
-		void bindOnPreWriteCallback( std::function<void (const char*)> rawCallback );
-		void bindOnPostUpdateCallback( std::function<void (const char*, const char*)> rawCallback );
+		void bindOnPreWriteCallback( const std::function<void (const char*)>& rawCallback );
+		void bindOnPostUpdateCallback( const std::function<void (const char*, const char*)>& rawCallback );
 
 		char* data();
 		const char* data() const;

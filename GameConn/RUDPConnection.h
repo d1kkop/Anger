@@ -22,9 +22,7 @@ namespace Zerodelay
 		virtual ~IConnection() = default;
 
 		// --- All functions thread safe ---
-		virtual void beginAddToSendQueue() = 0;
 		virtual void addToSendQueue(unsigned char id, const char* data, int len, EPacketType packetType, unsigned char channel=0, bool relay=true) = 0;
-		virtual void endAddToSendQueue() = 0;
 		virtual void beginPoll() = 0;
 		virtual bool poll(Packet& packet) = 0;
 		virtual void endPoll() = 0;
@@ -81,15 +79,10 @@ namespace Zerodelay
 		// Thread safe
 		//------------------------------
 			// Acquires the lock
-			virtual void beginAddToSendQueue() override;
 			// In case of 'Ordered', the channel specifies on which channel a packet should arrive ordered.
 			// Num of channels is 8, so 0 to 7 is valid channel.
 			virtual void addToSendQueue( unsigned char id, const char* data, int len, EPacketType packetType, unsigned char channel=0, bool relay=true ) override;
-			virtual void endAddToSendQueue() override; // releases the lock
 		
-			// Calls beginSend-send-endSend in a chain
-			void sendSingle( unsigned char id, const char* data, int len, EPacketType packetType, unsigned char channel=0 );
-
 			// Always first call beginPoll, then repeatedly poll until no more packets, then endPoll
 			virtual void beginPoll() override;
 			virtual bool poll(Packet& pack) override;

@@ -96,12 +96,12 @@ namespace Zerodelay
 		return m_Data;
 	}
 
-	void NetVariable::bindOnPreWriteCallback(std::function<void(const char*)> callback)
+	void NetVariable::bindOnPreWriteCallback(const std::function<void(const char*)>& callback)
 	{
 		m_PreWriteCallback = callback;
 	}
 
-	void NetVariable::bindOnPostUpdateCallback(std::function<void(const char*, const char*)> callback)
+	void NetVariable::bindOnPostUpdateCallback(const std::function<void(const char*, const char*)>& callback)
 	{
 		m_PostUpdateCallback = callback;
 	}

@@ -186,15 +186,8 @@ namespace Zerodelay
 						Reliable_Ordered: Packets are reliable and will be received in the order they were sent.
 			[channel]	On what channel to sent the message. Packets are sequenced and ordered per channel. Max of 8 channels.
 			[relay]		Whether to relay the message to other connected clients when it arrives. */
-		void sendSingle( unsigned char id, const char* data, int len, const ZEndpoint* specific=nullptr, bool exclude=false, 
-						 EPacketType type=EPacketType::Reliable_Ordered, unsigned char channel=0, bool relay=true );
-
-
-		/*	See above for explenation. 
-			It is slightly faster to use beginSend/endSend when calling multiple sendSingle with the same parameters. */
-		void beginSend( const ZEndpoint* specific=nullptr, bool exclude=false );
-		void send( unsigned char id, const char* data, int len, EPacketType type=EPacketType::Reliable_Ordered, unsigned char channel=0, bool relay=true );
-		void endSend();
+		void send( unsigned char id, const char* data, int len, const ZEndpoint* specific=nullptr, bool exclude=false, 
+				   EPacketType type=EPacketType::Reliable_Ordered, unsigned char channel=0, bool relay=true );
 
 
 		/*	Only one node in the network provides new network id's on request.

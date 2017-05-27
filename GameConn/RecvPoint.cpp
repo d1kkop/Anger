@@ -16,8 +16,6 @@ namespace Zerodelay
 		m_CaptureSocketErrors(captureSocketErrors),
 		m_SendThreadSleepTimeMs(sendThreadSleepTimeMs),
 		m_ListenSocket(ISocket::create()),
-		m_WasSpecific(nullptr),
-		m_WasExclude(false),
 		m_RecvThread(nullptr),
 		m_SendThread(nullptr),
 		m_UserPtr(nullptr),
@@ -49,32 +47,13 @@ namespace Zerodelay
 		delete m_ListenSocket;
 	}
 
-	void RecvPoint::beginSend(const EndPoint* specific, bool exclude)
+	void RecvPoint::send(unsigned char id, const char* data, int len, const EndPoint* specific, bool exclude, EPacketType type, unsigned char channel, bool relay)
 	{
-		m_ConnectionListMutex.lock();
-		m_WasSpecific = specific;
-		m_WasExclude  = exclude;
-		forEachConnection( specific, exclude, [] (IConnection* conn) 
-		{
-			conn->beginAddToSendQueue();
-		});
-	}
-
-	void RecvPoint::send(unsigned char id, const char* data, int len, EPacketType type, unsigned char channel, bool relay)
-	{
-		forEachConnection( m_WasSpecific, m_WasExclude, [=] (IConnection* conn) 
+		std::lock_guard<std::mutex> lock(m_ConnectionListMutex);
+		forEachConnection( specific, exclude, [&] (IConnection* conn) 
 		{
 			conn->addToSendQueue( id, data, len, type, channel, relay );
 		});
-	}
-
-	void RecvPoint::endSend()
-	{
-		forEachConnection( m_WasSpecific, m_WasExclude, [] (IConnection* conn) 
-		{
-			conn->endAddToSendQueue();
-		});
-		m_ConnectionListMutex.unlock();
 	}
 
 	void RecvPoint::simulatePacketLoss(int percentage)
