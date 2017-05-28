@@ -81,7 +81,9 @@ namespace Zerodelay
 	{
 		Reliable_Ordered,
 		Unreliable_Sequenced,
-		Ack
+		Reliable_Newest,
+		Ack,
+		Ack_Reliable_Newest
 	};
 
 

@@ -741,7 +741,7 @@ namespace UnitTests
 		// add tests
 	//	tests.emplace_back( new ConnectionLayerTest );
 	//	tests.emplace_back( new MassConnectTest );
-	//	tests.emplace_back( new ReliableOrderTest );
+		tests.emplace_back( new ReliableOrderTest );
 		tests.emplace_back( new RpcTest );
 		tests.emplace_back( new SyncGroupTest );
 			

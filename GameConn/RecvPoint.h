@@ -18,6 +18,7 @@ namespace Zerodelay
 		char* data;
 		char channel;
 		bool relay;
+		unsigned int dataId; // for ReliableNewest
 		EPacketType type;
 	};
 
