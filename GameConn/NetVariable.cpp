@@ -13,8 +13,7 @@ namespace Zerodelay
 		m_Group(VariableGroup::Last),
 		m_Data(new char[nBytes]),
 		m_PrevData(nullptr),
-		m_Length(nBytes),
-		m_LastChangeTime(0)
+		m_Length(nBytes)
 	{
 		assert( m_Group != nullptr && "VariableGroup::Last" );
 		if ( m_Group == nullptr )
@@ -51,37 +50,28 @@ namespace Zerodelay
 		return m_Group->getNetworkId();
 	}
 
-	bool NetVariable::sync(bool writing, char*& buff, int& buffLen)
+	bool NetVariable::read(const char*& buff, int& buffLen)
 	{
 		if ( buffLen < m_Length )
 		{
 			Platform::log( "serialize error in: %f", __FUNCTION__ );
 			return false;
 		}
-		if ( writing )
+		
+		if ( m_PostUpdateCallback )
 		{
-			if ( m_PreWriteCallback )
+			if ( !m_PrevData )
 			{
-				m_PreWriteCallback( m_Data );
+				m_PrevData = new char[m_Length];
 			}
-			memcpy( buff, m_Data, m_Length );
+			Platform::memCpy( m_PrevData, m_Length, m_Data, m_Length );
 		}
-		else
+		Platform::memCpy( m_Data, m_Length, buff, m_Length );
+		if ( m_PostUpdateCallback && memcmp( m_Data, m_PrevData, m_Length ) != 0 )
 		{
-			if ( m_PostUpdateCallback )
-			{
-				if ( !m_PrevData )
-				{
-					m_PrevData = new char[m_Length];
-				}
-				memcpy( m_PrevData, m_Data, m_Length );
-			}
-			memcpy( m_Data, buff, m_Length );
-			if ( m_PostUpdateCallback && memcmp( m_Data, m_PrevData, m_Length ) != 0 )
-			{
-				m_PostUpdateCallback( m_PrevData, m_Data );
-			}
+			m_PostUpdateCallback( m_PrevData, m_Data );
 		}
+		
 		buff += m_Length;
 		buffLen -= m_Length;
 		return true;
@@ -99,24 +89,16 @@ namespace Zerodelay
 
 	void NetVariable::markChanged()
 	{
-		m_LastChangeTime = ::clock();
 		if ( m_Group )
 		{
 			m_Group->setDirty( true );
 		}
 	}
 
-	bool NetVariable::wasChanged() const
+	void NetVariable::sendNewest(ZNode* node, int groupBit)
 	{
-		// TODO this is dirty, for now, if changed keep sending for 2 sec, after that consider no longer changed
-		clock_t t = ::clock();
-		float dt = float(t - m_LastChangeTime) / (float)CLOCKS_PER_SEC;
-		return dt < 2.f;
-	}
-
-	void NetVariable::bindOnPreWriteCallback(const std::function<void(const char*)>& callback)
-	{
-		m_PreWriteCallback = callback;
+		assert(groupBit >= 0 && groupBit < 16 );
+		node->sendReliableNewest( (unsigned char)EGameNodePacketType::VariableGroupUpdate, getGroupId(), groupBit, m_Data, m_Length, nullptr, false, true );
 	}
 
 	void NetVariable::bindOnPostUpdateCallback(const std::function<void(const char*, const char*)>& callback)

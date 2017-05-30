@@ -18,7 +18,9 @@ namespace Zerodelay
 		char* data;
 		char channel;
 		bool relay;
-		unsigned int dataId; // for ReliableNewest
+		// reliable newest
+		unsigned int groupId;
+		unsigned short groupBits;
 		EPacketType type;
 	};
 
@@ -38,6 +40,7 @@ namespace Zerodelay
 	public:
 		void send( unsigned char id, const char* data, int len, const EndPoint* specific=nullptr, bool exclude=false, 
 				   EPacketType type=EPacketType::Reliable_Ordered, unsigned char channel=0, bool relay=true );
+		void sendReliableNewest( unsigned char id, unsigned int groupId, char groupBit, const char* data, int len, const EndPoint* specific=nullptr, bool exclude=false, bool relay=true );
 
 		void  setUserDataPtr( void* ptr) { m_UserPtr = ptr; }
 		void* getUserDataPtr() const { return m_UserPtr; }

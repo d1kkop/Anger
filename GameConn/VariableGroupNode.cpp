@@ -199,22 +199,16 @@ namespace Zerodelay
 
 	void VariableGroupNode::recvVariableGroupUpdate(const Packet& pack, const EndPoint& etp)
 	{
-		if ( pack.len < 5 )
-		{
-			Platform::log( "serialization error in: %s", __FUNCTION__ );
-			return;
-		}
-		unsigned int networkId = *(unsigned int*)(pack.data+1);
-		VariableGroup* vg = findRemoteGroup(networkId, nullptr);
+		// try find group and update its contents with the latest data
+		VariableGroup* vg = findRemoteGroup(pack.groupId, nullptr);
 		if ( vg && !vg->isBroken() )
 		{
-			int buffLen = pack.len-1;
-			vg->sync( false, pack.data+1, buffLen );
+			vg->read(pack.data, pack.len, pack.groupBits);
 		}
 		else if ( vg && vg->isBroken() )
 		{
 			// cleanup this group as it will never be used again
-			findRemoteGroup(networkId, nullptr, true);
+			findRemoteGroup(pack.groupId, nullptr, true);
 			vg->unrefGroup();
 			delete vg;
 		}
@@ -224,22 +218,17 @@ namespace Zerodelay
 	{
 		// now that networkId is known, push it in front as first parameter of paramData
 		*(unsigned int*)(paramData + RPC_NAME_MAX_LENGTH) = networkId;
-		m_ZNode->send( (unsigned char)EGameNodePacketType::VariableGroupCreate, paramData, paramDataLen );
-	}
-
-	void VariableGroupNode::sendVariableGroupUpdate(const char* groupData, int bytesWritten, char channel)
-	{
-		m_ZNode->send((unsigned char)EGameNodePacketType::VariableGroupUpdate, groupData, bytesWritten, nullptr, false, EPacketType::Unreliable_Sequenced, channel, true);
+		m_ZNode->sendReliableOrdered( (unsigned char)EGameNodePacketType::VariableGroupCreate, paramData, paramDataLen );
 	}
 
 	void VariableGroupNode::sendDestroyVariableGroup(unsigned int networkId)
 	{
-		m_ZNode->send( (unsigned char)EGameNodePacketType::VariableGroupDestroy, (const char*)&networkId, sizeof(networkId) );
+		m_ZNode->sendReliableOrdered( (unsigned char)EGameNodePacketType::VariableGroupDestroy, (const char*)&networkId, sizeof(networkId) );
 	}
 
 	void VariableGroupNode::sendIdPackRequest()
 	{
-		m_ZNode->send((unsigned char)EGameNodePacketType::IdPackRequest, nullptr, 0, nullptr, false, EPacketType::Reliable_Ordered, 0, false);
+		m_ZNode->sendReliableOrdered((unsigned char)EGameNodePacketType::IdPackRequest, nullptr, 0, nullptr, false, 0, false);
 	}
 
 	void VariableGroupNode::sendIdPackProvide(const EndPoint& etp, int numIds)
@@ -252,9 +241,9 @@ namespace Zerodelay
 		{
 			idPack[i] = m_UniqueIdCounter++;			
 		}
-		m_ZNode->send((unsigned char)EGameNodePacketType::IdPackProvide,
-							(const char*)idPack, sizeof(unsigned int)*numIds,
-							&toZpt(etp), false, EPacketType::Reliable_Ordered, 0, false);
+		m_ZNode->sendReliableOrdered((unsigned char)EGameNodePacketType::IdPackProvide,
+									(const char*)idPack, sizeof(unsigned int)*numIds,
+									&toZpt(etp), false, 0, false);
 	}
 
 	void VariableGroupNode::intervalSendIdRequest()
@@ -315,16 +304,7 @@ namespace Zerodelay
 			// see if group is dirty and not broken from variables
 			if ( vg->isDirty() && !vg->isBroken() )
 			{
-				char groupData[2048];
-				int buffLen = 2000; // leave room for hdr size
-				int oldBuffLen = buffLen;
-				if ( vg->sync( true, groupData, buffLen ) ) // Returns true if variables were written and all was ok
-				{
-					/// QQQ / TODO revise this because this makes it unreliable 
-					int bytesWritten = oldBuffLen - buffLen;
-					sendVariableGroupUpdate( groupData, bytesWritten, vg->getChannel() );
-					return;
-				}
+				vg->sendGroup(m_ZNode);
 				vgIt++;
 			}
 			// if broken but this info is not yet transmitted, do so now

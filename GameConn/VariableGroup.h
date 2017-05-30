@@ -14,7 +14,7 @@ namespace Zerodelay
 		VariableGroup(char channel, EPacketType type);
 		virtual ~VariableGroup();
 
-		bool sync( bool isWriting, char* data, int& buffLen );
+		bool read( const char* data, int buffLen, unsigned short groupBits );
 		void addVariable( NetVariable* nv ) { m_Variables.emplace_back( nv ); }
 		EVarControl getVarControl() const	{ return m_Control; }
 		unsigned int getNetworkId() const   { return m_NetworkId; }
@@ -35,18 +35,14 @@ namespace Zerodelay
 		bool isDestroySent() const	{ return m_DestroySent; }
 		void markDestroySent()		{ m_DestroySent = true; }
 
-		char getChannel() const		{ return m_Channel; }
-		bool isRemote() const		{ return m_Channel<0; }
-
 		EPacketType getType() const	{ return m_Type; }
+
+		void sendGroup(ZNode* node);
 
 		void unrefGroup();
 
 	private:
-		void incBitCounterAndWrap(int &kBit, int &kByte);
-
 		char m_Channel;
-		int  m_NumPreBytes;
 		bool m_Broken;
 		bool m_DestroySent;
 	 	unsigned int m_NetworkId;

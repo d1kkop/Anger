@@ -119,7 +119,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 
 		if ( isServ )
 		{
-			g_Node->send( g_LobbyId, (const char*)&g_lobby, sizeof(g_lobby) );
+			g_Node->sendReliableOrdered( g_LobbyId, (const char*)&g_lobby, sizeof(g_lobby) );
 		}
 		RefreshLobby();
     }
@@ -337,7 +337,7 @@ void Send()
 	int kLen = (int)strlen(text);
 	if ( kLen <= 0 )
 		return;
-	g_Node->send(100, text, kLen + 1);
+	g_Node->sendReliableOrdered(100, text, kLen + 1);
 	g_lines.emplace_back(text);
 	RefreshTextField();
 }

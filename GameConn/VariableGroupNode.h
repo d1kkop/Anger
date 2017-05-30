@@ -46,7 +46,6 @@ namespace Zerodelay
 		void recvVariableGroupUpdate(const Packet& pack, const EndPoint& etp);
 		/* sends */
 		void sendCreateVariableGroup( unsigned int networkId, const char* paramData, int paramDataLen );
-		void sendVariableGroupUpdate(const char * groupData, int bytesWritten, char channel);
 		void sendDestroyVariableGroup( unsigned int networkId );
 		void sendIdPackRequest();
 		void sendIdPackProvide(const EndPoint& etp, int numIds);

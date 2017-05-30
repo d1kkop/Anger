@@ -3,6 +3,7 @@
 #include "EndPoint.h"
 #include "VariableGroup.h"
 #include "RUDPConnection.h"
+#include "Platform.h"
 
 #include <cassert>
 #include <chrono>
@@ -53,6 +54,15 @@ namespace Zerodelay
 		forEachConnection( specific, exclude, [&] (IConnection* conn) 
 		{
 			conn->addToSendQueue( id, data, len, type, channel, relay );
+		});
+	}
+
+	void RecvPoint::sendReliableNewest(unsigned char id, unsigned int groupId, char groupBit, const char* data, int len, const EndPoint* specific, bool exclude, bool relay)
+	{
+		std::lock_guard<std::mutex> lock(m_ConnectionListMutex);
+		forEachConnection( specific, exclude, [&] (IConnection* conn ) 
+		{
+			conn->addReliableNewest( id, data, len, groupId, groupBit, relay );
 		});
 	}
 

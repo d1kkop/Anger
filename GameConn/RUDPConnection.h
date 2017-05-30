@@ -23,7 +23,7 @@ namespace Zerodelay
 
 		// --- All functions thread safe ---
 		virtual void addToSendQueue(unsigned char id, const char* data, int len, EPacketType packetType, unsigned char channel=0, bool relay=true) = 0;
-		virtual void addReliableNewest( unsigned char id, const char* data, int len, unsigned int dataId, bool relay=true ) = 0;
+		virtual void addReliableNewest( unsigned char id, const char* data, int len, unsigned int groupId, char groupBit, bool relay=true ) = 0;
 		virtual void beginPoll() = 0;
 		virtual bool poll(Packet& packet) = 0;
 		virtual void endPoll() = 0;
@@ -54,6 +54,21 @@ namespace Zerodelay
 		clock_t m_MarkDeleteTS;
 	};
 
+	struct reliableNewestItem
+	{
+		unsigned int localRevision;
+		unsigned int remoteRevision;
+		char* data;
+		int dataLen, dataCapacity;
+	};
+
+	struct reliableNewestData
+	{
+		unsigned int groupSeq;
+		unsigned short writeMask;
+		reliableNewestItem groupItems[16];
+	};
+
 	class RUDPConnection: public IConnection
 	{
 		// Packet layout offsets
@@ -65,17 +80,18 @@ namespace Zerodelay
 		static const int off_Norm_Seq  = 2; // Normal, Seq numb
 		static const int off_Norm_Id   = 6;	// Normal, Packet Id
 		static const int off_Norm_Data = 7; // Normal, Payload
-		static const int off_RelNew_DataId = 7;		// ReliableNew, Data Id
-		static const int off_RelNew_Data   = 13;	// ReliableNew, Payload
+		static const int off_RelNew_GroupId   = 7;	// ReliableNew, Data Id
+		static const int off_RelNew_GroupBits = 11;	// 2 Bytes (max 16 vars per group)
+		static const int off_RelNew_Data  = 13;	// ReliableNew, Payload
 
 		static const int sm_NumChannels  = 8;
 
 		typedef std::deque<Packet> sendQueueType;
 		typedef std::deque<Packet> recvQueueType;
 		typedef std::deque<unsigned int> ackQueueType;
-		typedef std::deque<std::pair<unsigned int, unsigned>> ackRelNewestQueueType; // dataId, seq
+		typedef std::deque<std::pair<unsigned int, unsigned>> ackRelNewestQueueType; // groupId, seq
 		typedef std::map<unsigned int, Packet> recvReliableOrderedQueueType;
-		typedef std::map<unsigned int, std::tuple<unsigned int, unsigned int, Packet>> sendReliableNewestQueueType;  // sendSeq, recvSeq, Packet
+		typedef std::map<unsigned int, reliableNewestData> sendReliableNewestQueueType; 
 
 	public:
 		RUDPConnection(const struct EndPoint& endPoint);
@@ -83,14 +99,8 @@ namespace Zerodelay
 
 		// Thread safe
 		//------------------------------
-			// Acquires the lock
-			// In case of 'Ordered', the channel specifies on which channel a packet should arrive ordered.
-			// Num of channels is 8, so 0 to 7 is valid channel.
 			virtual void addToSendQueue( unsigned char id, const char* data, int len, EPacketType packetType, unsigned char channel=0, bool relay=true ) override;
-
-			// Sends reliable newest, that is, the newest version of a given piece of data is guarenteed to arrive.
-			// Eg. If twice data is transmitted on the same dataId, then it is only guarenteed that the latter will arive. No ordering takes place.
-			virtual void addReliableNewest( unsigned char id, const char* data, int len, unsigned int dataId, bool relay=true ) override;
+			virtual void addReliableNewest( unsigned char id, const char* data, int len, unsigned int groupId, char groupBit, bool relay=true ) override;
 		
 			// Always first call beginPoll, then repeatedly poll until no more packets, then endPoll
 			virtual void beginPoll() override;
@@ -100,7 +110,6 @@ namespace Zerodelay
 			virtual void flushSendQueue( ISocket* socket ) override;
 			virtual void recvData( const char* buff, int len ) override;
 
-			// Returns true if all packets for all reliable send queues have been acked
 			bool areAllReliableSendQueuesEmpty() const;
 		//------------------------------
 
@@ -109,13 +118,13 @@ namespace Zerodelay
 
 	private:
 		void addAckToAckQueue( char channel, unsigned int seq );
-		void addAckToRelNewestAckQueue( unsigned int seq, unsigned int dataId );
+		void addAckToRelNewestAckQueue( unsigned int seq, unsigned int groupId );
 		void dispatchSendQueue(ISocket* socket);
 		void dispatchAckQueue(ISocket* socket);
 		void dispatchRelNewestAckQueue(ISocket* socket);
 		void receiveReliableOrdered(const char * buff, int rawSize);
 		void receiveUnreliableSequenced(const char * buff, int rawSize);
-		void receiveReliableNewest(const char* buff, int rawSize, unsigned int& seq, unsigned int& dataId);
+		void receiveReliableNewest(const char* buff, int rawSize, unsigned int& seq, unsigned int& groupId);
 		void receiveAck(const char* buff, int rawSize);
 		void receiveAckRelNewest(const char* buff, int rawSize);
 		void assembleNormalPacket( Packet& pack, EPacketType packetType, unsigned char id, const char* data, int len, int hdrSize, char channel, bool relay );

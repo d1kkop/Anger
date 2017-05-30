@@ -156,17 +156,31 @@ namespace Zerodelay
 		p->simulatePacketLoss( percentage );
 	}
 
-	void ZNode::send(unsigned char id, const char* data, int len, const ZEndpoint* specific, bool exclude, EPacketType type, unsigned char channel, bool relay)
+	void ZNode::sendReliableOrdered(unsigned char id, const char* data, int len, const ZEndpoint* specific, bool exclude, unsigned char channel, bool relay)
 	{
 		ISocket* sock = p->getSocket();
 		if ( sock )
-		{
-			p->send( id, data, len, asEpt(specific), exclude, type, channel );
-		}
+			p->send( id, data, len, asEpt(specific), exclude, EPacketType::Reliable_Ordered, channel );
 		else
-		{
 			Platform::log( "socket was not created, possibly a platform issue" );
-		}
+	}
+
+	void ZNode::sendReliableNewest(unsigned char packId, unsigned int groupId, char groupBit, const char* data, int len, const ZEndpoint* specific, bool exclude, bool relay)
+	{
+		ISocket* sock = p->getSocket();
+		if ( sock )
+			p->sendReliableNewest( packId, groupId, groupBit, data, len, asEpt(specific), exclude, relay );
+		else
+			Platform::log( "socket was not created, possibly a platform issue" );
+	}
+
+	void ZNode::sendUnreliableSequenced(unsigned char packId, const char* data, int len, const ZEndpoint* specific, bool exclude, unsigned char channel, bool relay)
+	{
+		ISocket* sock = p->getSocket();
+		if ( sock )
+			p->send( packId, data, len, asEpt(specific), exclude, EPacketType::Unreliable_Sequenced, channel );
+		else
+			Platform::log( "socket was not created, possibly a platform issue" );
 	}
 
 	void ZNode::setIsNetworkIdProvider(bool isProvider)

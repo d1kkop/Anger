@@ -28,6 +28,7 @@ namespace Zerodelay
 		for ( int i=0; i<sm_NumChannels; ++i ) for (auto& it : m_SendQueue_reliable[i] ) delete [] it.data;
 		for ( int i=0; i<sm_NumChannels; ++i ) for (auto& it : m_RecvQueue_reliable_order[i] ) delete [] it.second.data;
 		for ( int i=0; i<sm_NumChannels; ++i ) for (auto& it : m_RecvQueue_unreliable_sequenced[i] ) delete [] it.data;
+		for ( auto& kvp : m_SendQueue_reliable_newest ) for (int i = 0; i < 16 ; i++) delete [] kvp.second.groupItems[i].data;
 	}
 
 	void RUDPConnection::addToSendQueue(unsigned char id, const char* data, int len, EPacketType packetType, unsigned char channel, bool relay)
@@ -54,24 +55,44 @@ namespace Zerodelay
 		}
 	}
 
-	void RUDPConnection::addReliableNewest(unsigned char id, const char* data, int len, unsigned int dataId, bool relay)
+	void RUDPConnection::addReliableNewest(unsigned char id, const char* data, int len, unsigned int groupId, char groupBit, bool relay)
 	{
-		Packet pack;
-		assembleNormalPacket( pack, EPacketType::Reliable_Newest, id, data, len, off_RelNew_Data, 0, relay );
-		*(unsigned int*)(pack.data + off_RelNew_DataId) = dataId;
 		std::lock_guard<std::mutex> lock(m_SendMutex);
-		auto it = m_SendQueue_reliable_newest.find( dataId );
+		auto it = m_SendQueue_reliable_newest.find( groupId );
 		if ( it == m_SendQueue_reliable_newest.end() )
 		{
-			m_SendQueue_reliable_newest.insert( std::make_pair( dataId, std::make_tuple(1, 0, pack) ) );
-			pack.data[off_Norm_Seq] = 1;
+			// item in group
+			reliableNewestItem item;
+			item.localRevision  = 1;
+			item.remoteRevision = 0;
+			item.dataLen = len;
+			item.dataCapacity = len;
+			item.data = new char[len];
+			Platform::memCpy(item.data, len, data, len);
+			// group
+			reliableNewestData rd;
+			rd.groupSeq  = 1;
+			rd.writeMask = 0;
+			assert( groupBit >= 0 && groupBit < 16 );
+			rd.groupItems[groupBit] = item;
+			// put in map
+			m_SendQueue_reliable_newest.insert( std::make_pair( groupId, rd ) );
 		}
 		else
 		{
-			std::tuple<unsigned int, unsigned int, Packet>& tuple = m_SendQueue_reliable_newest[dataId];
-			delete [] std::get<2>(tuple).data; // TODO change this for packet recycle
-			pack.data[off_Norm_Seq] = (++std::get<0>(tuple)); // inc seq numb
-			std::get<2>(tuple) = pack;
+			reliableNewestData& rd = it->second;
+			rd.groupSeq++;
+			assert( groupBit >= 0 && groupBit < 16 );
+			reliableNewestItem& item = rd.groupItems[groupBit];
+			item.localRevision++;
+			if ( item.dataCapacity < len )
+			{
+				delete [] item.data;
+				item.data = new char[len];
+				item.dataCapacity = len;
+			}
+			Platform::memCpy( item.data, len, data, len );
+			item.dataLen = len;
 		}
 	}
 
@@ -108,6 +129,13 @@ namespace Zerodelay
 				queue.pop_front();
 				return true;
 			}
+		}
+		// try reliable newest packets
+		if ( !m_RecvQueue_reliable_newest.empty() )
+		{
+			pack = m_RecvQueue_reliable_newest.front();
+			m_RecvQueue_reliable_newest.pop_front();
+			return true;
 		}
 		// no packets
 		return false;
@@ -171,9 +199,9 @@ namespace Zerodelay
 
 		case EPacketType::Reliable_Newest:
 			{
-				unsigned int seq, dataId;
-				receiveReliableNewest(buff, rawSize, seq, dataId );
-				addAckToRelNewestAckQueue( seq, dataId ); // ack it (even if we already processed this packet)
+				unsigned int seq, groupId;
+				receiveReliableNewest(buff, rawSize, seq, groupId );
+				addAckToRelNewestAckQueue( seq, groupId ); // ack it (even if we already processed this packet)
 			}
 			break;
 		}
@@ -189,24 +217,22 @@ namespace Zerodelay
 		}
 	}
 
-	void RUDPConnection::addAckToRelNewestAckQueue(unsigned int seq, unsigned int dataId)
+	void RUDPConnection::addAckToRelNewestAckQueue(unsigned int seq, unsigned int groupId)
 	{
 		std::lock_guard<std::mutex> lock(m_AckRelNewestMutex);
 		auto it = std::find_if( m_AckQueueRelNewest.begin(), m_AckQueueRelNewest.end(), [&] (auto& pair) 
 		{
-			return pair.first == dataId;
+			return pair.first == groupId;
 		});
-		// overwrite seq with newer if dataId is already in list and seq is newer
+		// overwrite seq with newer if groupId is already in list and seq is newer
 		if ( it != m_AckQueueRelNewest.end() )
 		{
-			if ( isSequenceNewer( seq, it->second ) )
-			{
-				it->second = seq; 
-			}
+			assert( isSequenceNewer( seq, it->second ) );
+			it->second = seq; 
 		}
 		else
 		{
-			m_AckQueueRelNewest.emplace_back( std::make_pair( dataId, seq ) );
+			m_AckQueueRelNewest.emplace_back( std::make_pair( groupId, seq ) );
 		}
 	}
 
@@ -232,14 +258,29 @@ namespace Zerodelay
 		}
 		m_SendQueue_unreliable.clear(); // clear unreliable queue immediately
 		// reliable newest
+		// format per entry: groupId(4bytes) | groupBits( (items.size()+7)/8 bytes ) | n x groupData (sum( item_data_size, n ) bytes )
 		for ( auto& kvp : m_SendQueue_reliable_newest )
 		{
-			auto& tuple = kvp.second;
-			if ( isSequenceNewer( std::get<0>(tuple), std::get<1>(tuple) ))
+			const int maxBufferSize = RecvPoint::sm_MaxRecvBuffSize-64; // account for hdr
+			char dataBuffer[maxBufferSize];
+			*(unsigned int*)dataBuffer = kvp.first; // groupId
+			int dataOffset = 4 + 2; // max 16 data pieces (16 bits)
+			unsigned short writeMask = 0;
+			int kBit = 0;
+			for ( auto& it : kvp.second.groupItems )
 			{
-				auto& pack = std::get<2>(tuple);
-				socket->send(m_EndPoint, pack.data, pack.len);
+				reliableNewestItem& item = it;
+				if ( isSequenceNewer( item.localRevision, item.remoteRevision ) )
+				{
+					writeMask |= (1 << kBit);
+					assert( dataOffset + item.dataLen <= maxBufferSize ); // TODO emit error and disconnect , this is critical!
+					Platform::memCpy(dataBuffer + dataOffset, item.dataLen, item.data, item.dataLen);
+					dataOffset += item.dataLen;
+				}
+				kBit++;
 			}
+			*(unsigned short*)(dataBuffer + 4) = writeMask;
+			socket->send( m_EndPoint, dataBuffer, dataOffset );
 		}
 	}
 
@@ -281,20 +322,20 @@ namespace Zerodelay
 		int  ackEntrySize = sizeof(unsigned int)*2;
 		for (auto& it : m_AckQueueRelNewest)
 		{
-			unsigned int dataId  = it.first;
+			unsigned int groupId = it.first;
 			unsigned int sequenc = it.second;
 			*(unsigned int*)&buff[kSizeWritten + off_Ack_Payload] = sequenc;
-			*(unsigned int*)&buff[kSizeWritten + off_Ack_Payload + sizeof(unsigned int)] = dataId;
+			*(unsigned int*)&buff[kSizeWritten + off_Ack_Payload + sizeof(unsigned int)] = groupId;
 			kSizeWritten += ackEntrySize;
 			if (kSizeWritten >= maxWriteSize)
 				break; // TODO emit warning
 		}
 		m_AckQueueRelNewest.clear();
-
-		if (kSizeWritten > 0) // only transmit acks if there was still something in the queue
+		// only transmit acks if there was still something in the queue
+		if (kSizeWritten > 0) 
 		{
 			buff[off_Type] = (char)EPacketType::Ack_Reliable_Newest;
-			buff[off_Ack_Chan] = (char)0; // channel TODO perhaps change in future
+			buff[off_Ack_Chan] = (char)0; // channel not used for reliable newest
 			*(unsigned int*)&buff[off_Ack_Num] = kSizeWritten / ackEntrySize; // num of acks
 			socket->send(m_EndPoint, buff, kSizeWritten + off_Ack_Payload);
 		}
@@ -350,14 +391,14 @@ namespace Zerodelay
 		m_RecvQueue_unreliable_sequenced[channel].emplace_back( pack );
 	}
 
-	void RUDPConnection::receiveReliableNewest(const char* buff, int rawSize, unsigned int& seq, unsigned int& dataId)
+	void RUDPConnection::receiveReliableNewest(const char* buff, int rawSize, unsigned int& seq, unsigned int& groupId)
 	{
 		char channel;
 		bool relay;
 		extractChannelRelayAndSeq( buff, rawSize, channel, relay, seq );
-		dataId = *(unsigned int*)(buff + off_RelNew_DataId);
+		groupId = *(unsigned int*)(buff + off_RelNew_GroupId);
 
-		auto it = m_RecvSeq_reliable_newest.find( dataId );
+		auto it = m_RecvSeq_reliable_newest.find( groupId );
 		if ( it != m_RecvSeq_reliable_newest.end() )
 		{
 			if ( !isSequenceNewer( seq, it->second ) )
@@ -366,13 +407,14 @@ namespace Zerodelay
 		}
 		else
 		{
-			m_RecvSeq_reliable_newest.insert( std::make_pair( dataId, seq ) );
+			m_RecvSeq_reliable_newest.insert( std::make_pair( groupId, seq ) );
 		}
 		
 		Packet pack;
-		pack.dataId = dataId;
 		setPacketChannelRelayAndType( pack, buff, rawSize, channel, relay, EPacketType::Reliable_Newest );
 		setPacketPayloadRelNewest( pack, buff, rawSize );
+		pack.groupId   = groupId;
+		pack.groupBits = *(unsigned short*)(buff + off_RelNew_GroupBits);
 
 		std::lock_guard<std::mutex> lock(m_RecvMutex);
 		m_RecvQueue_reliable_newest.emplace_back( pack );
@@ -407,26 +449,25 @@ namespace Zerodelay
 		int num = *(int*)(buff + off_Ack_Num); // num of acks
 		std::lock_guard<std::mutex> lock(m_SendMutex);
 		auto& queue = m_SendQueue_reliable_newest;
-		for (int i = 0; i < num; ++i) // for each ack, try to find it, and remove as was succesfully transmitted
+		for (int i = 0; i < num; ++i) // for each ack, try to find it
 		{
-			// update sequence of dataId to received so that possibly it is no longer necessary to transmit the data
-			// from the dataId, unless th seq was in the meantime changed
-			unsigned int seq    = *(unsigned int*)(buff + (i*8) + off_Ack_Payload);
-			unsigned int dataId = *(unsigned int*)(buff + (i*8+4) + off_Ack_Payload);
-			// obtain the data on the dataId
-			auto it = m_SendQueue_reliable_newest.find( dataId );
+			unsigned int groupSeq = *(unsigned int*)(buff + (i*8) + off_Ack_Payload);
+			unsigned int groupId  = *(unsigned int*)(buff + (i*8+4) + off_Ack_Payload);
+			// obtain the data on the groupId
+			auto it = m_SendQueue_reliable_newest.find( groupId );
 			if ( it != m_SendQueue_reliable_newest.end() )
 			{
-				auto& tuple = it->second;
-				if ( isSequenceNewer( seq, std::get<1>(tuple) ) )
+				for ( auto& item : it->second.groupItems )
 				{
-					// replace with newer
-					std::get<1>(tuple) = seq;
+					if ( isSequenceNewer( groupSeq, item.remoteRevision ) )
+					{
+						item.remoteRevision = groupSeq;
+					}
 				}
 			}
 			else
 			{
-				// TODO emit warning, received ack for unknown dataId
+				// TODO emit warning, received ack for unknown groupId
 			}
 		}
 	}

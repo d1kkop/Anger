@@ -15,15 +15,15 @@ namespace Zerodelay
 
 		enum class EVarControl getVarControl() const;
 		int getGroupId() const;
-		bool sync(bool writing, char*& buff, int& buffLen);
+		bool read( const char*& buff, int& buffLen);
 		char* data();
 		const char* data() const;
+		int length() const { return m_Length; }
 		void unrefGroup() { m_Group = nullptr; }
 
+		// If any of the variables in a group is changed, then the group becomes dirty and will write data
 		void markChanged();
-		bool wasChanged() const;
-
-		void bindOnPreWriteCallback( const std::function<void (const char*)>& callback );
+		void sendNewest(ZNode* node, int groupBit);
 		void bindOnPostUpdateCallback( const std::function<void (const char*, const char*)>& callback );
 
 	private:
@@ -31,8 +31,6 @@ namespace Zerodelay
 		char* m_Data;
 		char* m_PrevData;
 		int m_Length;
-		clock_t m_LastChangeTime;
-		std::function<void (const char*)> m_PreWriteCallback;
 		std::function<void (const char*, const char*)> m_PostUpdateCallback;
 	};
 }

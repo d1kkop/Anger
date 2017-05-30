@@ -42,12 +42,14 @@ namespace Zerodelay
 
 	protected:
 		void markChanged();
-		void bindOnPreWriteCallback( const std::function<void (const char*)>& rawCallback );
 		void bindOnPostUpdateCallback( const std::function<void (const char*, const char*)>& rawCallback );
 
 		char* data();
 		const char* data() const;
 		class NetVariable* p;
+
+	private:
+		NetVar(const NetVar& nv) { }
 	};
 
 	
@@ -86,13 +88,6 @@ namespace Zerodelay
 	private: 
 		void forwardCallbacks()
 		{
-			bindOnPreWriteCallback( [this] (const char* currentRaw)
-			{
-				if ( OnPreWriteCallback )
-				{
-					OnPreWriteCallback( *(const T*)currentRaw );
-				}
-			});
 			bindOnPostUpdateCallback( [this] (const char* oldData, const char* newData)
 			{
 				if ( OnPostUpdateCallback )

@@ -7,7 +7,7 @@
 
 
 #define RPC_CPY_N_SEND2(name) \
-	gn->send((unsigned char)EGameNodePacketType::Rpc, (const char*)&t, sizeof(name), specific, exclude, transType, channel, relay);\
+	gn->sendReliableOrdered((unsigned char)EGameNodePacketType::Rpc, (const char*)&t, sizeof(name), specific, exclude, channel, relay);\
 
 #define RPC_ASSERT_N_CPY2(name) \
 	assert( len == (sizeof(name)) && "invalid struct size" ); \
@@ -23,7 +23,7 @@
 			name(); \
 		}\
 	}\
-	void rpc_##name( ZNode* gn, bool localCall = true, const ZEndpoint* specific=nullptr, bool exclude=false, EPacketType transType=EPacketType::Reliable_Ordered, unsigned char channel=0, bool relay=true )\
+	void rpc_##name( ZNode* gn, bool localCall = true, const ZEndpoint* specific=nullptr, bool exclude=false, unsigned char channel=0, bool relay=true )\
 	{\
 		rpc_struct_##name t; \
 		t.rpc_name[0]='\0'; \
@@ -45,7 +45,7 @@
 			name( t._a ); \
 		}\
 	}\
-	void rpc_##name( ZNode* gn, a at, bool localCall = true, const ZEndpoint* specific=nullptr, bool exclude=false, EPacketType transType=EPacketType::Reliable_Ordered, unsigned char channel=0, bool relay=true )\
+	void rpc_##name( ZNode* gn, a at, bool localCall = true, const ZEndpoint* specific=nullptr, bool exclude=false, unsigned char channel=0, bool relay=true )\
 	{\
 		rpc_struct_##name t; \
 		t._a = at; \
@@ -68,7 +68,7 @@
 			name( t._a, t._b ); \
 		}\
 	}\
-	void rpc_##name( ZNode* gn, a at, b bt, bool localCall = true, const ZEndpoint* specific=nullptr, bool exclude=false, EPacketType transType=EPacketType::Reliable_Ordered, unsigned char channel=0, bool relay=true )\
+	void rpc_##name( ZNode* gn, a at, b bt, bool localCall = true, const ZEndpoint* specific=nullptr, bool exclude=false, unsigned char channel=0, bool relay=true )\
 	{\
 		rpc_struct_##name t; \
 		t._a = at; t._b = bt; \
@@ -91,7 +91,7 @@
 			name( t._a, t._b, t._c ); \
 		}\
 	}\
-	void rpc_##name( ZNode* gn, a at, b bt, c ct, bool localCall = true, const ZEndpoint* specific=nullptr, bool exclude=false, EPacketType transType=EPacketType::Reliable_Ordered, unsigned char channel=0, bool relay=true )\
+	void rpc_##name( ZNode* gn, a at, b bt, c ct, bool localCall = true, const ZEndpoint* specific=nullptr, bool exclude=false, unsigned char channel=0, bool relay=true )\
 	{\
 		rpc_struct_##name t;\
 		t._a = at; t._b = bt; t._c = ct;\
@@ -114,7 +114,7 @@
 			name( t._a, t._b, t._c, t._d ); \
 		}\
 	}\
-	void rpc_##name( ZNode* gn, a at, b bt, c ct, d dt, bool localCall = true, const ZEndpoint* specific=nullptr, bool exclude=false, EPacketType transType=EPacketType::Reliable_Ordered, unsigned char channel=0, bool relay=true )\
+	void rpc_##name( ZNode* gn, a at, b bt, c ct, d dt, bool localCall = true, const ZEndpoint* specific=nullptr, bool exclude=false, unsigned char channel=0, bool relay=true )\
 	{\
 		rpc_struct_##name t;\
 		t._a = at; t._b = bt; t._c = ct; t._d = dt; \
@@ -137,7 +137,7 @@
 			name( t._a, t._b, t._c, t._d, t._e ); \
 		}\
 	}\
-	void rpc_##name( ZNode* gn, a at, b bt, c ct, d dt, e et, bool localCall = true, const ZEndpoint* specific=nullptr, bool exclude=false, EPacketType transType=EPacketType::Reliable_Ordered, unsigned char channel=0, bool relay=true )\
+	void rpc_##name( ZNode* gn, a at, b bt, c ct, d dt, e et, bool localCall = true, const ZEndpoint* specific=nullptr, bool exclude=false, unsigned char channel=0, bool relay=true )\
 	{\
 		rpc_struct_##name t;\
 		t._a = at; t._b = bt; t._c = ct; t._d = dt; t._e = et; \
@@ -159,7 +159,7 @@
 			name( t._a, t._b, t._c, t._d, t._e, t._f ); \
 		}\
 	}\
-	void rpc_##name( ZNode* gn, a at, b bt, c ct, d dt, e et, f ft, bool localCall = true, const ZEndpoint* specific=nullptr, bool exclude=false, EPacketType transType=EPacketType::Reliable_Ordered, unsigned char channel=0, bool relay=true )\
+	void rpc_##name( ZNode* gn, a at, b bt, c ct, d dt, e et, f ft, bool localCall = true, const ZEndpoint* specific=nullptr, bool exclude=false, unsigned char channel=0, bool relay=true )\
 	{\
 		rpc_struct_##name t;\
 		t._a = at; t._b = bt; t._c = ct; t._d = dt; t._e = et; t._f = ft; \
@@ -182,7 +182,7 @@
 			name( t._a, t._b, t._c, t._d, t._e, t._f, t._h ); \
 		}\
 	}\
-	void rpc_##name( ZNode* gn, a at, b bt, c ct, d dt, e et, f ft, h ht, bool localCall = true, const ZEndpoint* specific=nullptr, bool exclude=false, EPacketType transType=EPacketType::Reliable_Ordered, unsigned char channel=0, bool relay=true )\
+	void rpc_##name( ZNode* gn, a at, b bt, c ct, d dt, e et, f ft, h ht, bool localCall = true, const ZEndpoint* specific=nullptr, bool exclude=false, unsigned char channel=0, bool relay=true )\
 	{\
 		rpc_struct_##name t; \
 		t._a = at; t._b = bt; t._c = ct; t._d = dt; t._e = et; t._f = ft; t._h = ht; \
@@ -205,7 +205,7 @@
 			name( t._a, t._b, t._c, t._d, t._e, t._f, t._h, t._i ); \
 		}\
 	}\
-	void rpc_##name( ZNode* gn, a at, b bt, c ct, d dt, e et, f ft, h ht, i it, bool localCall = true, const ZEndpoint* specific=nullptr, bool exclude=false, EPacketType transType=EPacketType::Reliable_Ordered, unsigned char channel=0, bool relay=true )\
+	void rpc_##name( ZNode* gn, a at, b bt, c ct, d dt, e et, f ft, h ht, i it, bool localCall = true, const ZEndpoint* specific=nullptr, bool exclude=false, unsigned char channel=0, bool relay=true )\
 	{\
 		rpc_struct_##name t; \
 		t._a = at; t._b = bt; t._c = ct; t._d = dt; t._e = et; t._f = ft; t._h = ht; t._i = it; \
@@ -228,7 +228,7 @@
 			name( t._a, t._b, t._c, t._d, t._e, t._f, t._h, t._i, t._j ); \
 		}\
 	}\
-	void rpc_##name( ZNode* gn, a at, b bt, c ct, d dt, e et, f ft, h ht, i it, j jt, bool localCall = true, const ZEndpoint* specific=nullptr, bool exclude=false, EPacketType transType=EPacketType::Reliable_Ordered, unsigned char channel=0, bool relay=true )\
+	void rpc_##name( ZNode* gn, a at, b bt, c ct, d dt, e et, f ft, h ht, i it, j jt, bool localCall = true, const ZEndpoint* specific=nullptr, bool exclude=false, unsigned char channel=0, bool relay=true )\
 	{\
 		rpc_struct_##name t;\
 		t._a = at; t._b = bt; t._c = ct; t._d = dt; t._e = et; t._f = ft; t._h = ht; t._i = it; t._j = jt; \

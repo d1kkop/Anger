@@ -29,11 +29,6 @@ namespace Zerodelay
 		p->markChanged();
 	}
 
-	void NetVar::bindOnPreWriteCallback(const std::function<void(const char*)>& rawCallback)
-	{
-		p->bindOnPreWriteCallback( rawCallback );
-	}
-
 	void NetVar::bindOnPostUpdateCallback(const std::function<void(const char*, const char*)>& rawCallback)
 	{
 		p->bindOnPostUpdateCallback( rawCallback );
