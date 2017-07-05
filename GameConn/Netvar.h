@@ -7,9 +7,9 @@ namespace Zerodelay
 {
 	enum class EVarControl
 	{
-		Full,
-		Semi,
-		Remote
+		Full,		// The variable is controlled at this machine. A change to it will be broadcasted to others.
+		Semi,		// The variable is partially controlled on this machine. A change will be broadcasted, but it may be overwritten later by the authoritive node if it did not agree on the change.
+		Remote		// The variable is controlled remotely. Any change to it on this machine is unsafe and will be overwritten.
 	};
 
 
@@ -27,7 +27,7 @@ namespace Zerodelay
 		/*	Specifies how this variable is controlled.
 			[Full]		This means that the variable is controlled locally, therefore any writes to this variable from this machine
 						will be synchronized to others. The variable will never be overwritten from the network. 
-			[Semi]		This means that the variable is controlled locally, that is, it can be written to. But, it functions as a prediction,
+			[Semi]		This means that the variable is controlled locally, that is, it can be written to but it functions as a prediction,
 						the variable may be overwritten later by a remote connection if the remote (say: 'server') did not accept the change
 						or wants the value to be different.
 			[Remote]	The variable is completely owned remotely, that is, if you write to the variable, it will automatically be 

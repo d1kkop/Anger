@@ -70,7 +70,7 @@ namespace Zerodelay
 			item.data = new char[len];
 			Platform::memCpy(item.data, len, data, len);
 			// group
-			reliableNewestData rd;
+			reliableNewestDataGroup rd;
 			rd.groupSeq  = 1;
 			rd.writeMask = 0;
 			assert( groupBit >= 0 && groupBit < 16 );
@@ -80,13 +80,14 @@ namespace Zerodelay
 		}
 		else
 		{
-			reliableNewestData& rd = it->second;
-			rd.groupSeq++;
+			reliableNewestDataGroup& rd = it->second;
+			rd.groupSeq++; // inc revision of group as it has changed
 			assert( groupBit >= 0 && groupBit < 16 );
 			reliableNewestItem& item = rd.groupItems[groupBit];
-			item.localRevision++;
+			item.localRevision++; // inc revision of group item as it has changed (locally)
 			if ( item.dataCapacity < len )
 			{
+				// cannot recycle this data, delete and reallocate
 				delete [] item.data;
 				item.data = new char[len];
 				item.dataCapacity = len;
@@ -227,8 +228,8 @@ namespace Zerodelay
 		// overwrite seq with newer if groupId is already in list and seq is newer
 		if ( it != m_AckQueueRelNewest.end() )
 		{
-			assert( isSequenceNewer( seq, it->second ) );
-			it->second = seq; 
+			if ( isSequenceNewer( seq, it->second ) )
+				it->second = seq; 
 		}
 		else
 		{
@@ -264,7 +265,7 @@ namespace Zerodelay
 			const int maxBufferSize = RecvPoint::sm_MaxRecvBuffSize-64; // account for hdr
 			char dataBuffer[maxBufferSize];
 			*(unsigned int*)dataBuffer = kvp.first; // groupId
-			int dataOffset = 4 + 2; // max 16 data pieces (16 bits)
+			const int dataOffset = 4 + 2; // max 16 data pieces (16 bits)
 			unsigned short writeMask = 0;
 			int kBit = 0;
 			for ( auto& it : kvp.second.groupItems )
@@ -410,12 +411,14 @@ namespace Zerodelay
 			m_RecvSeq_reliable_newest.insert( std::make_pair( groupId, seq ) );
 		}
 		
+		// unwrap reliable newest packet
 		Packet pack;
 		setPacketChannelRelayAndType( pack, buff, rawSize, channel, relay, EPacketType::Reliable_Newest );
 		setPacketPayloadRelNewest( pack, buff, rawSize );
 		pack.groupId   = groupId;
 		pack.groupBits = *(unsigned short*)(buff + off_RelNew_GroupBits);
 
+		// enqueue item to be processed by user
 		std::lock_guard<std::mutex> lock(m_RecvMutex);
 		m_RecvQueue_reliable_newest.emplace_back( pack );
 	}

@@ -248,6 +248,7 @@ namespace Zerodelay
 
 	void VariableGroupNode::intervalSendIdRequest()
 	{
+		// The network id provides will never need to request Id's because it owns them.
 		if ( m_IsNetworkIdProvider )
 			return;
 

@@ -54,7 +54,9 @@ namespace Zerodelay
 		clock_t m_MarkDeleteTS;
 	};
 
-	struct reliableNewestItem
+	// Represents an item in a group of newest reliable data.
+	// If a at least a single item in a group changes, the group with the new item is transmitted.
+	struct reliableNewestItem 
 	{
 		unsigned int localRevision;
 		unsigned int remoteRevision;
@@ -62,7 +64,8 @@ namespace Zerodelay
 		int dataLen, dataCapacity;
 	};
 
-	struct reliableNewestData
+	// Represents a group of data that guarentees that the last piece of data (update) is always transmitted.
+	struct reliableNewestDataGroup
 	{
 		unsigned int groupSeq;
 		unsigned short writeMask;
@@ -91,7 +94,7 @@ namespace Zerodelay
 		typedef std::deque<unsigned int> ackQueueType;
 		typedef std::deque<std::pair<unsigned int, unsigned>> ackRelNewestQueueType; // groupId, seq
 		typedef std::map<unsigned int, Packet> recvReliableOrderedQueueType;
-		typedef std::map<unsigned int, reliableNewestData> sendReliableNewestQueueType; 
+		typedef std::map<unsigned int, reliableNewestDataGroup> sendReliableNewestQueueType; 
 
 	public:
 		RUDPConnection(const struct EndPoint& endPoint);

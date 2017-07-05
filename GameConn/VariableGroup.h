@@ -29,6 +29,9 @@ namespace Zerodelay
 		void markBroken()	  { m_Broken = true; /* lose all refs */ m_Variables.clear(); }
 		bool isBroken() const { return m_Broken; }
 
+		// If set dirty, it means that at least a single variable was changed in the group since the last time the group was submitted to the 
+		// ConnectionNode using SendReliableNewest. It says nothing about whether the variable is succesfully synced to a remote machine. This is entirely
+		// managed in the RUDPConnection.
 		bool isDirty() const		{ return m_Dirty; }
 		void setDirty(bool dirty)	{ m_Dirty = dirty; }
 

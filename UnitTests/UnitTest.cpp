@@ -608,7 +608,7 @@ namespace UnitTests
 		ZNode* g1 = new ZNode();
 		g1->setUserDataPtr( this );
 
-		int kClients = 10;
+		int kClients = 1;
 		std::vector<ZNode*> clients;
 		for (int i = 0; i < 10 ; i++)
 		{
@@ -662,8 +662,8 @@ namespace UnitTests
 			std::this_thread::sleep_for(20ms);
 
 			kTicks++;
-			int l = ::rand() % 10;
-			int c = ::rand() % (int)clients.size();
+			int l = ::rand() % kClients;
+			int c = ::rand() % kClients;
 			ZNode* zz = clients[c];
 			for (int i = 0; i < l ; i++)
 			{
@@ -741,8 +741,8 @@ namespace UnitTests
 		// add tests
 	//	tests.emplace_back( new ConnectionLayerTest );
 	//	tests.emplace_back( new MassConnectTest );
-		tests.emplace_back( new ReliableOrderTest );
-		tests.emplace_back( new RpcTest );
+	//	tests.emplace_back( new ReliableOrderTest );
+	//	tests.emplace_back( new RpcTest );
 		tests.emplace_back( new SyncGroupTest );
 			
 		// run them
