@@ -18,7 +18,15 @@
 
 namespace Zerodelay
 {
-	enum class EGameNodePacketType: unsigned char
+	using i8_t  = char;
+	using u8_t  = unsigned char;
+	using i16_t = short;
+	using u16_t = unsigned short;
+	using i32_t = int;
+	using u32_t = unsigned int;
+
+
+	enum class EGameNodePacketType: u8_t
 	{
 		ConnectRequest,
 		ConnectAccept,
@@ -38,7 +46,7 @@ namespace Zerodelay
 		UserOffset
 	};
 
-	#define  USER_ID_OFFSET (unsigned char)(EGameNodePacketType::UserOffset)
+	#define  USER_ID_OFFSET (u8_t)(EGameNodePacketType::UserOffset)
 
 	enum class EConnectCallResult
 	{
@@ -71,13 +79,13 @@ namespace Zerodelay
 		MaxConnectionsReached
 	};
 
-	enum class EDisconnectReason : unsigned char
+	enum class EDisconnectReason : u8_t
 	{
 		Closed,
 		Lost
 	};
 
-	enum class EPacketType : unsigned char
+	enum class EPacketType : u8_t
 	{
 		Reliable_Ordered,
 		Unreliable_Sequenced,
@@ -97,7 +105,7 @@ namespace Zerodelay
 
 
 		/*	Use to see if a host can be connected to. If false is erturned, use getLastError to obtain more info. */
-		bool resolve( const std::string& name, unsigned short port );
+		bool resolve( const std::string& name, u16_t port );
 
 
 		/*	Formats to common ipv4 notation or ipv6 notation and adds port to it with a double dot in between.
@@ -106,10 +114,10 @@ namespace Zerodelay
 
 
 		/*	Returns the last underlaying socket error. Returns 0 on no error. */
-		int getLastError() const;
+		i32_t getLastError() const;
 
 	private:
-		char pod[256];
+		i8_t pod[256];
 	};
 
 
@@ -120,15 +128,15 @@ namespace Zerodelay
 	class ZDLL_DECLSPEC ZNode
 	{
 	public:
-		ZNode(int sendThreadSleepTimeMs=2, int keepAliveIntervalSeconds=8, bool captureSocketErrors=true);
+		ZNode(i32_t sendThreadSleepTimeMs=2, i32_t keepAliveIntervalSeconds=8, bool captureSocketErrors=true);
 		virtual ~ZNode();
 
 
 		/*	Connect  to specific endpoint. 
 			A succesful call does not mean a connection is established.
 			To know if a connection is established, bindOnConnectResult. */
-		EConnectCallResult connect( const ZEndpoint& endPoint, const std::string& pw="", int timeoutSeconds=8 );
-		EConnectCallResult connect( const std::string& name, int port, const std::string& pw="", int timeoutSeconds=8 );
+		EConnectCallResult connect( const ZEndpoint& endPoint, const std::string& pw="", i32_t timeoutSeconds=8 );
+		EConnectCallResult connect( const std::string& name, i32_t port, const std::string& pw="", i32_t timeoutSeconds=8 );
 
 
 		/*	Listen on a specific port for incoming connections.
@@ -137,7 +145,7 @@ namespace Zerodelay
 			[pw]				Password string.
 			[maxConnections]	Maximum number of connections. 
 			[relayEvents]		If true, events such as ´disconnect´ will be relayed to other connections. */
-		EListenCallResult listenOn( int port, const std::string& pw="", int maxConnections=32, bool relayEvents=true );
+		EListenCallResult listenOn( i32_t port, const std::string& pw="", i32_t maxConnections=32, bool relayEvents=true );
 
 
 		/*	Disconnect a specific endpoint. */
@@ -163,7 +171,7 @@ namespace Zerodelay
 		/*	Max number of incoming connections this node will accept. 
 			This excludes connections created with 'connect'. 
 			Default is 32. */
-		void setMaxIncomingConnections( int maxNumConnections );
+		void setMaxIncomingConnections( i32_t maxNumConnections );
 
 
 		/*	If true, client events such as disconnect are relayed to other clients.
@@ -174,7 +182,7 @@ namespace Zerodelay
 
 		/*	Simulate packet loss to test Quality of Service in game. 
 			Precentage is value between 0 and 100. */
-		void simulatePacketLoss( int percentage );
+		void simulatePacketLoss( i32_t percentage );
 
 
 		/*	Messages are guarenteed to arrive and also in the order they were sent. This applies per channel.
@@ -186,7 +194,7 @@ namespace Zerodelay
 						- If not nullptr and exclude is true, then message is sent to all except the specific.
 			[channel]	On what channel to sent the message. Packets are sequenced and ordered per channel. Max of 8 channels.
 			[relay]		Whether to relay the message to other connected clients when it arrives. */
-		void sendReliableOrdered( unsigned char packId, const char* data, int len, const ZEndpoint* specific=nullptr, bool exclude=false, unsigned char channel=0, bool relay=true );
+		void sendReliableOrdered( u8_t packId, const i8_t* data, i32_t len, const ZEndpoint* specific=nullptr, bool exclude=false, u8_t channel=0, bool relay=true );
 
 
 		/*	The last message of a certain 'dataId' is guarenteed to arrive. That is, if twice data is send with the same 'dataId' the first one may not arrive.
@@ -199,7 +207,7 @@ namespace Zerodelay
 			- If not nullptr and exclude is false, then message is only sent to the specific address.
 			- If not nullptr and exclude is true, then message is sent to all except the specific.
 			[relay]		Whether to relay the message to other connected clients when it arrives. */
-		void sendReliableNewest( unsigned char packId, unsigned int groupId, char groupBit, const char* data, int len, const ZEndpoint* specific=nullptr, bool exclude=false, bool relay=true );
+		void sendReliableNewest( u8_t packId, u32_t groupId, i8_t groupBit, const i8_t* data, i32_t len, const ZEndpoint* specific=nullptr, bool exclude=false, bool relay=true );
 
 
 		/*	Messages are unreliable (they may not arrive) but older or duplicate packets are ignored. This applies per channel.
@@ -211,7 +219,7 @@ namespace Zerodelay
 			- If not nullptr and exclude is true, then message is sent to all except the specific.
 			[channel]	On what channel to sent the message. Packets are sequenced and ordered per channel. Max of 8 channels.
 			[relay]		Whether to relay the message to other connected clients when it arrives. */
-		void sendUnreliableSequenced( unsigned char packId, const char* data, int len, const ZEndpoint* specific=nullptr, bool exclude=false, unsigned char channel=0, bool relay=true );
+		void sendUnreliableSequenced( u8_t packId, const i8_t* data, i32_t len, const ZEndpoint* specific=nullptr, bool exclude=false, u8_t channel=0, bool relay=true );
 
 
 		/*	Only one node in the network provides new network id's on request.
@@ -237,7 +245,7 @@ namespace Zerodelay
 
 		/*	For all other data that is specific to the application. 
 			The 'length' parameter is the size of the 'data' parameter. */
-		void bindOnCustomData( std::function<void (const ZEndpoint&, unsigned char id, const char* data, int length, unsigned char channel)> cb );
+		void bindOnCustomData( std::function<void (const ZEndpoint&, u8_t id, const i8_t* data, i32_t length, u8_t channel)> cb );
 
 
 		/*	----- End Callbacks ----------------------------------------------------------------------------------------------- */
@@ -249,15 +257,15 @@ namespace Zerodelay
 
 
 		/*	Custom handle to provide a way to come from a 'global' variable group or rpc functions to application code. */
-		void setUserDataIdx( int idx );
-		int  gtUserDataIdx() const;
+		void setUserDataIdx( i32_t idx );
+		i32_t  gtUserDataIdx() const;
 
 
 		/*	Begin constructing a new variable group.
 			All GenericNetVar declared between this call end EndVariable group are 
 			put in a group with a unique ID.
 			The variables synchronize when they change. */
-		void beginVariableGroup( const char* constructData=nullptr, int constructDataLen=0, char channel=1, EPacketType syncType=EPacketType::Unreliable_Sequenced );
+		void beginVariableGroup( const i8_t* constructData=nullptr, i32_t constructDataLen=0, i8_t channel=1, EPacketType syncType=EPacketType::Unreliable_Sequenced );
 		void endVariableGroup();
 
 
@@ -276,7 +284,7 @@ namespace Zerodelay
 		friend class ZNode;
 
 	public:
-		void priv_beginVarialbeGroupRemote(unsigned int nid, const ZEndpoint& ztp, EPacketType type);
+		void priv_beginVarialbeGroupRemote(u32_t nid, const ZEndpoint& ztp, EPacketType type);
 		void priv_endVariableGroup();
 		ZNode* priv_getUserNode() const;
 

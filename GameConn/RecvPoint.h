@@ -14,13 +14,13 @@ namespace Zerodelay
 {
 	struct Packet 
 	{
-		int len; 
-		char* data;
-		char channel;
+		i32_t len; 
+		i8_t* data;
+		i8_t channel;
 		bool relay;
 		// reliable newest
-		unsigned int groupId;
-		unsigned short groupBits;
+		u32_t groupId;
+		u16_t groupBits;
 		EPacketType type;
 	};
 
@@ -28,27 +28,27 @@ namespace Zerodelay
 	class RecvPoint
 	{
 	public:
-		static const int sm_MaxRecvBuffSize = 8192;
+		static const i32_t sm_MaxRecvBuffSize = 8192;
 
 	protected:
-		RecvPoint(bool captureSocketErrors=true, int sendThreadSleepTimeMs=2);
+		RecvPoint(bool captureSocketErrors=true, i32_t sendThreadSleepTimeMs=2);
 		virtual ~RecvPoint();
 
 		// Called on recv thread
 		virtual class IConnection* createNewConnection( const EndPoint& endPoint ) const = 0;
 
 	public:
-		void send( unsigned char id, const char* data, int len, const EndPoint* specific=nullptr, bool exclude=false, 
-				   EPacketType type=EPacketType::Reliable_Ordered, unsigned char channel=0, bool relay=true );
-		void sendReliableNewest( unsigned char id, unsigned int groupId, char groupBit, const char* data, int len, const EndPoint* specific=nullptr, bool exclude=false, bool relay=true );
+		void send( u8_t id, const i8_t* data, i32_t len, const EndPoint* specific=nullptr, bool exclude=false, 
+				   EPacketType type=EPacketType::Reliable_Ordered, u8_t channel=0, bool relay=true );
+		void sendReliableNewest( u8_t id, u32_t groupId, i8_t groupBit, const i8_t* data, i32_t len, const EndPoint* specific=nullptr, bool exclude=false, bool relay=true );
 
 		void  setUserDataPtr( void* ptr) { m_UserPtr = ptr; }
 		void* getUserDataPtr() const { return m_UserPtr; }
 
-		void setUserDataIdx( int idx ) { m_UserIndex = idx; }
-		int  getUserDataIdx() const { return m_UserIndex; }
+		void setUserDataIdx( i32_t idx ) { m_UserIndex = idx; }
+		i32_t  getUserDataIdx() const { return m_UserIndex; }
 
-		void simulatePacketLoss( int percentage );
+		void simulatePacketLoss( i32_t percentage );
 		class ISocket* getSocket() const { return m_ListenSocket; }
 
 	protected:
@@ -66,15 +66,15 @@ namespace Zerodelay
 		volatile bool m_IsClosing;
 		class ISocket* m_ListenSocket;
 		bool m_CaptureSocketErrors;
-		int  m_SendThreadSleepTimeMs;
+		i32_t  m_SendThreadSleepTimeMs;
 		std::thread* m_RecvThread;
 		std::thread* m_SendThread;
 		std::condition_variable m_SendThreadCv;
 		std::mutex m_ConnectionListMutex;
-		std::vector<int> m_SocketErrors;
+		std::vector<i32_t> m_SocketErrors;
 		std::map<EndPoint, class IConnection*, EndPoint::STLCompare> m_Connections;
 		void* m_UserPtr;
-		int  m_UserIndex;
+		i32_t  m_UserIndex;
 	};
 
 	template <typename Callback>

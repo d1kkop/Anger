@@ -17,22 +17,22 @@ namespace Zerodelay
 		typedef std::function<void (const EndPoint&, EConnectResult)>					ConnectResultCallback;
 		typedef std::function<void (bool, const EndPoint&, EDisconnectReason)>			DisconnectCallback;
 		typedef std::function<void (const EndPoint&)>									NewConnectionCallback;
-		typedef std::function<void (const EndPoint&, unsigned char, const char*, int, unsigned char)>	CustomDataCallback;
+		typedef std::function<void (const EndPoint&, u8_t, const i8_t*, i32_t, u8_t)>	CustomDataCallback;
 
 	public:
-		ConnectionNode(int sendThreadSleepTimeMs=10, int keepAliveIntervalSeconds=8, bool captureSocketErrors=true);
+		ConnectionNode(i32_t sendThreadSleepTimeMs=10, i32_t keepAliveIntervalSeconds=8, bool captureSocketErrors=true);
 		virtual ~ConnectionNode();
 
 	public:
 		// Connect  to specific endpoint. 
 		// A succesful call does not mean a connection is established.
 		// To know if a connection is established, bindOnConnectResult.
-		EConnectCallResult connect( const EndPoint& endPoint, const std::string& pw="", int timeoutSeconds=8 );
-		EConnectCallResult connect( const std::string& name, int port, const std::string& pw="", int timeoutSeconds=8 );
+		EConnectCallResult connect( const EndPoint& endPoint, const std::string& pw="", i32_t timeoutSeconds=8 );
+		EConnectCallResult connect( const std::string& name, i32_t port, const std::string& pw="", i32_t timeoutSeconds=8 );
 
 		// Listen on a specific port for incoming connections.
 		// Bind onNewConnection to do something with the new connections.
-		EListenCallResult listenOn( int port, const std::string& pw="" );
+		EListenCallResult listenOn( i32_t port, const std::string& pw="" );
 
 		// Disconnect a specific endpoint.
 		EDisconnectCallResult disconnect( const EndPoint& endPoint );
@@ -53,7 +53,7 @@ namespace Zerodelay
 		// Max number of connections of all incoming connection attempts. 
 		// Thus if listening on multiple ports, this value is not per port!
 		// Default is 32.
-		void setMaxIncomingConnections(int maxNumConnections);
+		void setMaxIncomingConnections(i32_t maxNumConnections);
 
 		// Callbacks ----------------------------------------------------------------------------------------------------------
 
@@ -75,26 +75,26 @@ namespace Zerodelay
 
 		// For all other data that is specific to the application
 		// Function signature:
-		// void (const EndPoint&, unsigned char, const char*, int, unsigned char)
+		// void (const EndPoint&, u8_t, const i8_t*, i32_t, u8_t)
 		void bindOnCustomData(CustomDataCallback cb)			{ bindCallback(m_CustomDataCallbacks, cb); }
 
 	private:
 		// Called by recv thread
 		virtual class IConnection* createNewConnection( const EndPoint& endPoint ) const override;
-		void removeConnection( const class Connection* g, const char* frmtReason, ... );
+		void removeConnection( const class Connection* g, const i8_t* frmtReason, ... );
 		// sends
 		void sendRemoteConnected( const class Connection* g );
 		void sendRemoteDisconnected( const class Connection* g, EDisconnectReason reason );
 		// recvs (Game thread)
 		bool recvPacket( struct Packet& pack, class Connection* g );
-		void recvConnectPacket(const char* payload, int len, class Connection* g);
+		void recvConnectPacket(const i8_t* payload, i32_t len, class Connection* g);
 		void recvConnectAccept(class Connection* g);
-		void recvDisconnectPacket( const char* payload, int len, class Connection* g );
-		void recvRemoteConnected(class Connection* g, const char* payload, int payloadLen);
-		void recvRemoteDisconnected(class Connection* g, const char* payload, int payloadLen);
-		void recvInvalidPassword(class Connection* g, const char* payload, int payloadLen);
-		void recvMaxConnectionsReached(class Connection* g, const char* payload, int payloadLen);
-		void recvRpcPacket( const char* payload, int len, class Connection* g);
+		void recvDisconnectPacket( const i8_t* payload, i32_t len, class Connection* g );
+		void recvRemoteConnected(class Connection* g, const i8_t* payload, i32_t payloadLen);
+		void recvRemoteDisconnected(class Connection* g, const i8_t* payload, i32_t payloadLen);
+		void recvInvalidPassword(class Connection* g, const i8_t* payload, i32_t payloadLen);
+		void recvMaxConnectionsReached(class Connection* g, const i8_t* payload, i32_t payloadLen);
+		void recvRpcPacket( const i8_t* payload, i32_t len, class Connection* g);
 		void recvUserPacket(class Connection* g, const Packet& pack);
 		// updating
 		void updateConnecting( class Connection* g );
@@ -102,7 +102,7 @@ namespace Zerodelay
 		void updateDisconnecting( class Connection* g );
 		// socket
 		bool openSocket();
-		bool bindSocket(unsigned short port);
+		bool bindSocket(u16_t port);
 
 		template <typename List, typename Callback>
 		void bindCallback( List& list, Callback cb );
@@ -111,9 +111,9 @@ namespace Zerodelay
 
 		bool m_SocketIsOpened;
 		bool m_SocketIsBound;
-		int	 m_KeepAliveIntervalSeconds;
+		i32_t	 m_KeepAliveIntervalSeconds;
 		bool m_RelayClientEvents;
-		int  m_MaxIncomingConnections;
+		i32_t  m_MaxIncomingConnections;
 		std::string m_Password;
 		std::vector<ConnectResultCallback>	m_ConnectResultCallbacks;
 		std::vector<DisconnectCallback>		m_DisconnectCallbacks;

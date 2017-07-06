@@ -11,16 +11,16 @@ namespace Zerodelay
 	class VariableGroup
 	{
 	public:
-		VariableGroup(char channel, EPacketType type);
+		VariableGroup(i8_t channel, EPacketType type);
 		virtual ~VariableGroup();
 
-		bool read( const char* data, int buffLen, unsigned short groupBits );
+		bool read( const i8_t* data, i32_t buffLen, u16_t groupBits );
 		void addVariable( NetVariable* nv ) { m_Variables.emplace_back( nv ); }
 		EVarControl getVarControl() const	{ return m_Control; }
-		unsigned int getNetworkId() const   { return m_NetworkId; }
+		u32_t getNetworkId() const   { return m_NetworkId; }
 
 		// Only when networkId is assigned, the group can be submitted network wide
-		void setNetworkId( unsigned int id );
+		void setNetworkId( u32_t id );
 		bool isNetworkIdValid() const			{ return m_NetworkId != 0; }
 
 		void setControl( EVarControl control )	{ m_Control = control; }
@@ -45,10 +45,10 @@ namespace Zerodelay
 		void unrefGroup();
 
 	private:
-		char m_Channel;
+		i8_t m_Channel;
 		bool m_Broken;
 		bool m_DestroySent;
-	 	unsigned int m_NetworkId;
+	 	u32_t m_NetworkId;
 		EVarControl m_Control;
 		EPacketType m_Type;
 		bool m_Dirty;

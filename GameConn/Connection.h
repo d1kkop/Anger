@@ -19,13 +19,13 @@ namespace Zerodelay
 		Disconnected
 	};
 
-	enum class EGameNodePacketType:unsigned char;
-	enum class EDisconnectReason:unsigned char;
+	enum class EGameNodePacketType:u8_t;
+	enum class EDisconnectReason:u8_t;
 
 	class Connection: public RUDPConnection
 	{
 	public:
-		Connection( const struct EndPoint& endPoint, int timeoutSeconds=8, int keepAliveIntervalSeconds=8, int lingerTimeMs = 300 );
+		Connection( const struct EndPoint& endPoint, i32_t timeoutSeconds=8, i32_t keepAliveIntervalSeconds=8, i32_t lingerTimeMs = 300 );
 		virtual ~Connection();
 		bool disconnect();
 		bool acceptDisconnect();
@@ -41,8 +41,8 @@ namespace Zerodelay
 		bool sendMaxConnectionsReached();
 		// -- receives
 		bool onReceiveConnectAccept();
-		bool onReceiveRemoteConnected(const char* data, int len, EndPoint& ept);
-		bool onReceiveRemoteDisconnected(const char* data, int len, EndPoint& ept, EDisconnectReason& reason);
+		bool onReceiveRemoteConnected(const i8_t* data, i32_t len, EndPoint& ept);
+		bool onReceiveRemoteDisconnected(const i8_t* data, i32_t len, EndPoint& ept, EDisconnectReason& reason);
 		bool onReceiveKeepAliveRequest();
 		bool onReceiveKeepAliveAnswer();
 		// -- updates
@@ -50,15 +50,15 @@ namespace Zerodelay
 		bool updateKeepAlive();		// same
 		bool updateDisconnecting();	// same
 		// -- getters
-		int getTimeSince(int timestamp) const;  // in milliseconds
+		i32_t getTimeSince(i32_t timestamp) const;  // in milliseconds
 		EConnectionState getState() const { return m_State; }
 
 	private:
-		void sendSystemMessage( EGameNodePacketType type, const char* payload=nullptr, int payloadLen=0 );
+		void sendSystemMessage( EGameNodePacketType type, const i8_t* payload=nullptr, i32_t payloadLen=0 );
 
-		int m_ConnectTimeoutSeconMs;
-		int m_KeepAliveIntervalMs;
-		int m_LingerTimeMs;
+		i32_t m_ConnectTimeoutSeconMs;
+		i32_t m_KeepAliveIntervalMs;
+		i32_t m_LingerTimeMs;
 		clock_t m_StartConnectingTS;
 		clock_t m_KeepAliveTS;
 		clock_t m_DisconnectTS;

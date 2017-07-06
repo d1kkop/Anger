@@ -9,7 +9,7 @@
 
 namespace Zerodelay
 {
-	VariableGroup::VariableGroup(char channel, EPacketType type):
+	VariableGroup::VariableGroup(i8_t channel, EPacketType type):
 		m_Channel(channel),
 		m_NetworkId(0),
 		m_Broken(false),
@@ -23,10 +23,10 @@ namespace Zerodelay
 	{
 	}
 
-	bool VariableGroup::read(const char* data, int buffLen, unsigned short groupBits )
+	bool VariableGroup::read(const i8_t* data, i32_t buffLen, u16_t groupBits )
 	{
-		assert ( (int)m_Variables.size() <= 16 );
-		for (int i = 0; i < (int)m_Variables.size() ; i++)
+		assert ( (i32_t)m_Variables.size() <= 16 );
+		for (i32_t i = 0; i < (i32_t)m_Variables.size() ; i++)
 		{
 			auto* v = m_Variables[i];
 			bool isWritten = (groupBits & (1 << i)) != 0;
@@ -39,7 +39,7 @@ namespace Zerodelay
 		return true;
 	}
 
-	void VariableGroup::setNetworkId(unsigned int id)
+	void VariableGroup::setNetworkId(u32_t id)
 	{
 		assert ( m_NetworkId == 0 && "network id already set" );
 		if ( m_NetworkId != 0 )
@@ -49,7 +49,7 @@ namespace Zerodelay
 
 	void VariableGroup::sendGroup(ZNode* node)
 	{
-		for (int i = 0; i < (int)m_Variables.size(); i++)
+		for (i32_t i = 0; i < (i32_t)m_Variables.size(); i++)
 		{
 			auto* v = m_Variables[i];
 			v->sendNewest( node, i );

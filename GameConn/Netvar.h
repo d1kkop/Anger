@@ -20,7 +20,7 @@ namespace Zerodelay
 	class ZDLL_DECLSPEC NetVar
 	{
 	public:
-		NetVar(int nBytes);
+		NetVar(i32_t nBytes);
 		virtual ~NetVar();
 
 
@@ -37,15 +37,15 @@ namespace Zerodelay
 
 		/*	The NetVar is part of a group that has an id. This id is network wide unique.
 			Use this networkGroupId to target specific group's remotely. */
-		unsigned int getNetworkGroupId() const;
+		u32_t getNetworkGroupId() const;
 
 
 	protected:
 		void markChanged();
-		void bindOnPostUpdateCallback( const std::function<void (const char*, const char*)>& rawCallback );
+		void bindOnPostUpdateCallback( const std::function<void (const i8_t*, const i8_t*)>& rawCallback );
 
-		char* data();
-		const char* data() const;
+		i8_t* data();
+		const i8_t* data() const;
 		class NetVariable* p;
 
 	private:
@@ -88,7 +88,7 @@ namespace Zerodelay
 	private: 
 		void forwardCallbacks()
 		{
-			bindOnPostUpdateCallback( [this] (const char* oldData, const char* newData)
+			bindOnPostUpdateCallback( [this] (const i8_t* oldData, const i8_t* newData)
 			{
 				if ( OnPostUpdateCallback )
 				{
@@ -98,8 +98,8 @@ namespace Zerodelay
 		}
 	};
 
-	using NetVarChar  = GenericNetVar<char>;
-	using NetVarInt	  = GenericNetVar<int>;
+	using NetVarChar  = GenericNetVar<i8_t>;
+	using NetVarInt	  = GenericNetVar<i32_t>;
 	using NetVarFloat = GenericNetVar<float>;
 
 }

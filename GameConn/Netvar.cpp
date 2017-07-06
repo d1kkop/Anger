@@ -4,7 +4,7 @@
 
 namespace Zerodelay
 {
-	NetVar::NetVar(int nBytes):
+	NetVar::NetVar(i32_t nBytes):
 		p(new NetVariable(nBytes))
 	{
 	}
@@ -19,7 +19,7 @@ namespace Zerodelay
 		return p->getVarControl();
 	}
 
-	unsigned int NetVar::getNetworkGroupId() const
+	u32_t NetVar::getNetworkGroupId() const
 	{
 		return p->getGroupId();
 	}
@@ -29,17 +29,17 @@ namespace Zerodelay
 		p->markChanged();
 	}
 
-	void NetVar::bindOnPostUpdateCallback(const std::function<void(const char*, const char*)>& rawCallback)
+	void NetVar::bindOnPostUpdateCallback(const std::function<void(const i8_t*, const i8_t*)>& rawCallback)
 	{
 		p->bindOnPostUpdateCallback( rawCallback );
 	}
 
-	char* NetVar::data()
+	i8_t* NetVar::data()
 	{
 		return p->data();
 	}
 
-	const char* NetVar::data() const
+	const i8_t* NetVar::data() const
 	{
 		return p->data();
 	}

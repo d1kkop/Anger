@@ -28,6 +28,8 @@
 #include <map>
 #include <mutex>
 
+#include "Zerodelay.h"
+
 
 namespace Zerodelay
 {
@@ -35,16 +37,16 @@ namespace Zerodelay
 	{
 	public:
 		// Call once before all network code. Returns 0 on succes, socket error code otherwise.
-		static int initialize();
+		static i32_t initialize();
 		// Call upon application close or no network code is to be execute anymore
 		static void shutdown();
 		// Obtain ptr to address in executing img, given that the function was exported
-		static void* getPtrFromName(const char* name);
+		static void* getPtrFromName(const i8_t* name);
 		// Do thread safe logging
-		static void log(const char* format, ...);
+		static void log(const i8_t* format, ...);
 
-		static bool memCpy( char* dst, int dstSize, const char* src, int srcSize );
-		static bool formatPrint( char* dst, int dstSize, const char* frmt, ... );
+		static bool memCpy( i8_t* dst, i32_t dstSize, const i8_t* src, i32_t srcSize );
+		static bool formatPrint( i8_t* dst, i32_t dstSize, const i8_t* frmt, ... );
 
 	private:
 		static bool wasInitialized;

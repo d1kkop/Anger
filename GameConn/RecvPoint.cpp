@@ -12,7 +12,7 @@ using namespace std::chrono_literals;
 
 namespace Zerodelay
 {
-	RecvPoint::RecvPoint(bool captureSocketErrors, int sendThreadSleepTimeMs):
+	RecvPoint::RecvPoint(bool captureSocketErrors, i32_t sendThreadSleepTimeMs):
 		m_IsClosing(false),
 		m_CaptureSocketErrors(captureSocketErrors),
 		m_SendThreadSleepTimeMs(sendThreadSleepTimeMs),
@@ -48,7 +48,7 @@ namespace Zerodelay
 		delete m_ListenSocket;
 	}
 
-	void RecvPoint::send(unsigned char id, const char* data, int len, const EndPoint* specific, bool exclude, EPacketType type, unsigned char channel, bool relay)
+	void RecvPoint::send(u8_t id, const i8_t* data, i32_t len, const EndPoint* specific, bool exclude, EPacketType type, u8_t channel, bool relay)
 	{
 		std::lock_guard<std::mutex> lock(m_ConnectionListMutex);
 		forEachConnection( specific, exclude, [&] (IConnection* conn) 
@@ -57,7 +57,7 @@ namespace Zerodelay
 		});
 	}
 
-	void RecvPoint::sendReliableNewest(unsigned char id, unsigned int groupId, char groupBit, const char* data, int len, const EndPoint* specific, bool exclude, bool relay)
+	void RecvPoint::sendReliableNewest(u8_t id, u32_t groupId, i8_t groupBit, const i8_t* data, i32_t len, const EndPoint* specific, bool exclude, bool relay)
 	{
 		std::lock_guard<std::mutex> lock(m_ConnectionListMutex);
 		forEachConnection( specific, exclude, [&] (IConnection* conn ) 
@@ -66,7 +66,7 @@ namespace Zerodelay
 		});
 	}
 
-	void RecvPoint::simulatePacketLoss(int percentage)
+	void RecvPoint::simulatePacketLoss(i32_t percentage)
 	{
 		std::lock_guard<std::mutex> lock(m_ConnectionListMutex);
 		for (auto& kvp : m_Connections )
@@ -118,8 +118,8 @@ namespace Zerodelay
 				std::this_thread::sleep_for(100ms);
 			}
 
-			char buff[RecvPoint::sm_MaxRecvBuffSize];
-			int  rawSize = sm_MaxRecvBuffSize;
+			i8_t buff[RecvPoint::sm_MaxRecvBuffSize];
+			i32_t  rawSize = sm_MaxRecvBuffSize;
 			auto eResult = m_ListenSocket->recv( buff, rawSize, endPoint );
 
 			if ( eResult != ERecvResult::Succes || rawSize <= 0 )
@@ -127,7 +127,7 @@ namespace Zerodelay
 				// optionally capture the socket errors
 				if ( m_CaptureSocketErrors )
 				{
-					int err = m_ListenSocket->getUnderlayingSocketError();
+					i32_t err = m_ListenSocket->getUnderlayingSocketError();
 					if ( err != 0 )
 					{
 						std::lock_guard<std::mutex> lock(m_ConnectionListMutex);

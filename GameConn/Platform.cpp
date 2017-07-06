@@ -5,7 +5,7 @@
 
 namespace Zerodelay
 {
-	int Platform::initialize()
+	i32_t Platform::initialize()
 	{
 		if ( wasInitialized )
 			return 0;
@@ -14,7 +14,7 @@ namespace Zerodelay
 
 		WORD wVersionRequested;
 		WSADATA wsaData;
-		int err;
+		i32_t err;
 
 		/* Use the MAKEWORD(lowbyte, highbyte) macro declared in Windef.h */
 		wVersionRequested = MAKEWORD(2, 2);
@@ -55,7 +55,7 @@ namespace Zerodelay
 		wasInitialized = false;
 	}
 
-	void* Platform::getPtrFromName(const char* name)
+	void* Platform::getPtrFromName(const i8_t* name)
 	{
 		std::lock_guard<std::mutex> lock(mapMutex);
 		auto it = name2RpcFunction.find( name );
@@ -75,12 +75,12 @@ namespace Zerodelay
 		return it->second;
 	}
 
-	void Platform::log(const char* fmt, ...)
+	void Platform::log(const i8_t* fmt, ...)
 	{
 		std::lock_guard<std::mutex> lock(logMutex);
 
 		/* Declare a va_list type variable */
-		char buff[2048];
+		i8_t buff[2048];
 		va_list myargs;
 		va_start(myargs, fmt);
 #if _WIN32
@@ -104,9 +104,9 @@ namespace Zerodelay
 			struct tm timeinfo;
 			time (&rawtime);
 			localtime_s(&timeinfo, &rawtime);
-			char asciitime[128];
+			i8_t asciitime[128];
 			asctime_s(asciitime, 128, &timeinfo);
-			char* p = strstr(asciitime, "\n");
+			i8_t* p = strstr(asciitime, "\n");
 			if ( p )
 				*p ='\0';
 			if ( isFirstOpen )
@@ -123,7 +123,7 @@ namespace Zerodelay
 #endif
 	}
 
-	bool Platform::memCpy(char* dst, int dstSize, const char* src, int srcSize)
+	bool Platform::memCpy(i8_t* dst, i32_t dstSize, const i8_t* src, i32_t srcSize)
 	{
 		if ( srcSize > dstSize )
 			return false;
@@ -135,7 +135,7 @@ namespace Zerodelay
 		return true;
 	}
 
-	bool Platform::formatPrint(char* dst, int dstSize, const char* fmt, ...)
+	bool Platform::formatPrint(i8_t* dst, i32_t dstSize, const i8_t* fmt, ...)
 	{
 		va_list myargs;
 		va_start(myargs, fmt);

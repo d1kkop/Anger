@@ -10,11 +10,11 @@ namespace Zerodelay
 		return new BSDSocket();
 	}
 
-	bool ISocket::readString(char* buff, int buffSize, const char* buffIn, int buffInSize)
+	bool ISocket::readString(i8_t* buff, i32_t buffSize, const i8_t* buffIn, i32_t buffInSize)
 	{
 		if ( !buff || !buffIn )
 			return false;
-		int k = 0;
+		i32_t k = 0;
 		while ((*buffIn != '\0') && (k < buffSize-1) && (k < buffInSize))
 		{
 			*buff++ = *buffIn++;
@@ -28,7 +28,7 @@ namespace Zerodelay
 		return false;
 	}
 
-	bool ISocket::readFixed(char* dst, int dstSize, const char* buffIn, int buffInSize)
+	bool ISocket::readFixed(i8_t* dst, i32_t dstSize, const i8_t* buffIn, i32_t buffInSize)
 	{
 		if ( !dst || !buffIn || buffInSize < dstSize )
 			return false;
@@ -50,7 +50,7 @@ namespace Zerodelay
 		}
 	}
 
-	ESendResult FakeSocket::send( const struct EndPoint& endPoint, const char* data, int len )
+	ESendResult FakeSocket::send( const struct EndPoint& endPoint, const i8_t* data, i32_t len )
 	{
 		// Normally, the endpoint is not to be altered but in the fake setup it owns the socket of the recipient
 		// so that the data can be artificially placed there..
@@ -59,7 +59,7 @@ namespace Zerodelay
 		return ESendResult::Succes;
 	}
 
-	ERecvResult FakeSocket::recv( char* buff, int& kSize, EndPoint& endPoint )
+	ERecvResult FakeSocket::recv( i8_t* buff, i32_t& kSize, EndPoint& endPoint )
 	{
 		std::lock_guard<std::mutex> lock(m_Mutex);
 		if ( !m_Packets.empty() )
@@ -82,11 +82,11 @@ namespace Zerodelay
 		return ERecvResult::NoData;
 	}
 
-	void FakeSocket::storeData( const char* data, int len, const EndPoint& srcPoint )
+	void FakeSocket::storeData( const i8_t* data, i32_t len, const EndPoint& srcPoint )
 	{
 		std::lock_guard<std::mutex> lock(m_Mutex);
 		FakePacket pack;
-		pack.data = new char[len];
+		pack.data = new i8_t[len];
 		pack.len  = len;
 		pack.ep   = srcPoint;
 		memcpy( pack.data, data, len);
@@ -121,7 +121,7 @@ namespace Zerodelay
 		}
 
 		BOOL bReuseAddr = reuseAddr ? TRUE : FALSE;
-		if ( SOCKET_ERROR == setsockopt(m_Socket, SOL_SOCKET, SO_REUSEADDR, (char*)&bReuseAddr, sizeof(BOOL)) )
+		if ( SOCKET_ERROR == setsockopt(m_Socket, SOL_SOCKET, SO_REUSEADDR, (i8_t*)&bReuseAddr, sizeof(BOOL)) )
 		{
 			setLastError();
 			return false;
@@ -131,7 +131,7 @@ namespace Zerodelay
 		return true;
 	}
 
-	bool BSDSocket::bind(unsigned short port)
+	bool BSDSocket::bind(u16_t port)
 	{
 		if ( m_Socket == INVALID_SOCKET )
 			return false;
@@ -149,7 +149,7 @@ namespace Zerodelay
 		hints.ai_protocol = IPPROTO_UDP;
 		hints.ai_flags = AI_PASSIVE; // <-- means that we intend to bind the socket
 
-		char portBuff[64];
+		i8_t portBuff[64];
 #if _WIN32
 		sprintf_s(portBuff, 64, "%d", port);
 #else
@@ -165,7 +165,7 @@ namespace Zerodelay
 		// try binding on the found host addresses
 		for (addrinfo* inf = addrInfo; inf != nullptr; inf = inf->ai_next)
 		{
-			if (0 == ::bind(m_Socket, inf->ai_addr, (int)inf->ai_addrlen))
+			if (0 == ::bind(m_Socket, inf->ai_addr, (i32_t)inf->ai_addrlen))
 			{
 				freeaddrinfo(addrInfo);
 				m_Bound = true;
@@ -179,7 +179,7 @@ namespace Zerodelay
 
 	bool BSDSocket::close()
 	{
-		int result = 0;
+		i32_t result = 0;
 		if ( m_Socket != INVALID_SOCKET )
 		{
 #if _WIN32
@@ -213,13 +213,13 @@ namespace Zerodelay
 		}
 	}
 
-	ESendResult BSDSocket::send(const EndPoint& endPoint, const char* data, int len)
+	ESendResult BSDSocket::send(const EndPoint& endPoint, const i8_t* data, i32_t len)
 	{
 		if ( m_Socket == INVALID_SOCKET )
 			return ESendResult::SocketClosed;
 				
 		const void* addr= endPoint.getLowLevelAddr();
-		int addrSize	= endPoint.getLowLevelAddrSize();
+		i32_t addrSize	= endPoint.getLowLevelAddrSize();
 
 		if ( SOCKET_ERROR == sendto( m_Socket, data, len, 0, (const sockaddr*)addr, addrSize ) )
 		{
@@ -230,12 +230,12 @@ namespace Zerodelay
 		return ESendResult::Succes;
 	}
 
-	ERecvResult BSDSocket::recv(char* buff, int& rawSize, EndPoint& endPoint)
+	ERecvResult BSDSocket::recv(i8_t* buff, i32_t& rawSize, EndPoint& endPoint)
 	{
 		if ( m_Socket == INVALID_SOCKET )
 			return ERecvResult::SocketClosed;
 
-		int addrSize = endPoint.getLowLevelAddrSize();
+		i32_t addrSize = endPoint.getLowLevelAddrSize();
 		rawSize = recvfrom(m_Socket, buff, rawSize, 0, (sockaddr*)endPoint.getLowLevelAddr(), &addrSize);
 
 		if ( rawSize < 0 )
@@ -247,7 +247,7 @@ namespace Zerodelay
 		return ERecvResult::Succes;
 	}
 
-	int BSDSocket::getUnderlayingSocketError() const
+	i32_t BSDSocket::getUnderlayingSocketError() const
 	{
 		return m_LastError;
 	}

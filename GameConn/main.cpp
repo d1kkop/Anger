@@ -20,20 +20,20 @@ using namespace std::chrono_literals;
 
 struct myGameStruct
 {
-	char namePlayer1[64];
-	char namePlayer2[64];
-	char namePlayer3[64];
-	char namePlayer4[64];
-	char namePlayer5[64];
+	i8_t namePlayer1[64];
+	i8_t namePlayer2[64];
+	i8_t namePlayer3[64];
+	i8_t namePlayer4[64];
+	i8_t namePlayer5[64];
 };
 
 
-RPC_FUNC_3( myRcpTest, int, tank, char, henk, bool, bert )
+RPC_FUNC_3( myRcpTest, i32_t, tank, i8_t, henk, bool, bert )
 {
 	printf("tank = %d, henk = %c, bert = %d\n", tank, henk, bert );
 }
 
-RPC_FUNC_3( myRcpTest2, myGameStruct, gs, int, d1, int, d2 )
+RPC_FUNC_3( myRcpTest2, myGameStruct, gs, i32_t, d1, i32_t, d2 )
 {
 	printf( "%s %s %s %s %s\n", gs.namePlayer1, gs.namePlayer2, gs.namePlayer3, gs.namePlayer4, gs.namePlayer5 );
 }
@@ -60,7 +60,7 @@ public:
 	{
 		//EndPoint ept;
 		//if ( ept.resolve( "localhost", 27000 ) )
-		for ( int i =0; i < 2; i++ )
+		for ( i32_t i =0; i < 2; i++ )
 		{
 			auto eRes = m_GameNode->connect( ept );
 			switch ( eRes )
@@ -146,7 +146,7 @@ public:
 };
 
 
-int main(int argc, char** argv)
+i32_t main(i32_t argc, i8_t** argv)
 {
 	//if ( 0 == Platform::initialize() )
 	{

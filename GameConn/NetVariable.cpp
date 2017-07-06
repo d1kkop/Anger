@@ -9,9 +9,9 @@
 
 namespace Zerodelay
 {
-	NetVariable::NetVariable(int nBytes):
+	NetVariable::NetVariable(i32_t nBytes):
 		m_Group(VariableGroup::Last),
-		m_Data(new char[nBytes]),
+		m_Data(new i8_t[nBytes]),
 		m_PrevData(nullptr),
 		m_Length(nBytes)
 	{
@@ -43,14 +43,14 @@ namespace Zerodelay
 		return m_Group->getVarControl();
 	}
 
-	int NetVariable::getGroupId() const
+	i32_t NetVariable::getGroupId() const
 	{
 		if ( !m_Group )
 			return 0;
 		return m_Group->getNetworkId();
 	}
 
-	bool NetVariable::read(const char*& buff, int& buffLen)
+	bool NetVariable::read(const i8_t*& buff, i32_t& buffLen)
 	{
 		if ( buffLen < m_Length )
 		{
@@ -62,7 +62,7 @@ namespace Zerodelay
 		{
 			if ( !m_PrevData )
 			{
-				m_PrevData = new char[m_Length];
+				m_PrevData = new i8_t[m_Length];
 			}
 			Platform::memCpy( m_PrevData, m_Length, m_Data, m_Length );
 		}
@@ -77,12 +77,12 @@ namespace Zerodelay
 		return true;
 	}
 
-	char* NetVariable::data()
+	i8_t* NetVariable::data()
 	{
 		return m_Data;
 	}
 
-	const char* NetVariable::data() const
+	const i8_t* NetVariable::data() const
 	{
 		return m_Data;
 	}
@@ -95,13 +95,13 @@ namespace Zerodelay
 		}
 	}
 
-	void NetVariable::sendNewest(ZNode* node, int groupBit)
+	void NetVariable::sendNewest(ZNode* node, i32_t groupBit)
 	{
 		assert(groupBit >= 0 && groupBit < 16 );
-		node->sendReliableNewest( (unsigned char)EGameNodePacketType::VariableGroupUpdate, getGroupId(), groupBit, m_Data, m_Length, nullptr, false, true );
+		node->sendReliableNewest( (u8_t)EGameNodePacketType::VariableGroupUpdate, getGroupId(), groupBit, m_Data, m_Length, nullptr, false, true );
 	}
 
-	void NetVariable::bindOnPostUpdateCallback(const std::function<void(const char*, const char*)>& callback)
+	void NetVariable::bindOnPostUpdateCallback(const std::function<void(const i8_t*, const i8_t*)>& callback)
 	{
 		m_PostUpdateCallback = callback;
 	}

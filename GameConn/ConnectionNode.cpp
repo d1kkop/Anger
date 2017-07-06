@@ -7,7 +7,7 @@
 
 namespace Zerodelay
 {
-	ConnectionNode::ConnectionNode(int sendThreadSleepTimeMs, int keepAliveIntervalSeconds, bool captureSocketErrors):
+	ConnectionNode::ConnectionNode(i32_t sendThreadSleepTimeMs, i32_t keepAliveIntervalSeconds, bool captureSocketErrors):
 		RecvPoint(captureSocketErrors, sendThreadSleepTimeMs),
 		m_SocketIsOpened(false),
 		m_SocketIsBound(false),
@@ -21,7 +21,7 @@ namespace Zerodelay
 	{
 	}
 
-	EConnectCallResult ConnectionNode::connect(const std::string& name, int port, const std::string& pw, int timeoutSeconds)
+	EConnectCallResult ConnectionNode::connect(const std::string& name, i32_t port, const std::string& pw, i32_t timeoutSeconds)
 	{
 		EndPoint endPoint;
 		if ( !endPoint.resolve( name, port ) )
@@ -31,7 +31,7 @@ namespace Zerodelay
 		return connect( endPoint, pw, timeoutSeconds );
 	}
 
-	EConnectCallResult ConnectionNode::connect(const EndPoint& endPoint, const std::string& pw, int timeoutSeconds)
+	EConnectCallResult ConnectionNode::connect(const EndPoint& endPoint, const std::string& pw, i32_t timeoutSeconds)
 	{
 		if ( !m_ListenSocket )
 		{
@@ -65,7 +65,7 @@ namespace Zerodelay
 		return EConnectCallResult::Succes;
 	}
 
-	EListenCallResult ConnectionNode::listenOn(int port, const std::string& pw)
+	EListenCallResult ConnectionNode::listenOn(i32_t port, const std::string& pw)
 	{
 		if ( !m_ListenSocket )
 		{
@@ -167,7 +167,7 @@ namespace Zerodelay
 		m_Password = pw;
 	}
 
-	void ConnectionNode::setMaxIncomingConnections(int maxNumConnections)
+	void ConnectionNode::setMaxIncomingConnections(i32_t maxNumConnections)
 	{
 		m_MaxIncomingConnections = maxNumConnections;
 	}
@@ -177,12 +177,12 @@ namespace Zerodelay
 		return new Connection( endPoint, m_KeepAliveIntervalSeconds );
 	}
 
-	void ConnectionNode::removeConnection(const class Connection* g, const char* fmt, ...)
+	void ConnectionNode::removeConnection(const class Connection* g, const i8_t* fmt, ...)
 	{
 		m_DeadConnections.emplace_back( const_cast<Connection*>(g) );
 		if ( fmt )
 		{
-			char buff[2048];
+			i8_t buff[2048];
 			va_list myargs;
 			va_start(myargs, fmt);
 		#if _WIN32
@@ -201,15 +201,15 @@ namespace Zerodelay
 		if ( !m_RelayClientEvents )
 			return; // only if is true server, relay message
 		auto& etp = g->getEndPoint();
-		char buff[128];
-		int offs = etp.write( buff, 128 );
+		i8_t buff[128];
+		i32_t offs = etp.write( buff, 128 );
 		if ( offs < 0 )
 		{
 			removeConnection( g, "removing conn, serialization error %s", __FUNCTION__ );
 			return;
 		}
 		// to all except
-		send( (unsigned char)EGameNodePacketType::RemoteConnected, buff, offs, &etp, true );
+		send( (u8_t)EGameNodePacketType::RemoteConnected, buff, offs, &etp, true );
 	}
 
 	void ConnectionNode::sendRemoteDisconnected(const Connection* g, EDisconnectReason reason)
@@ -217,11 +217,11 @@ namespace Zerodelay
 		if ( !m_RelayClientEvents )
 			return; // only if is true server, relay message
 		auto& etp = g->getEndPoint();
-		char buff[128];
-		int offs = etp.write( buff, 128 );
+		i8_t buff[128];
+		i32_t offs = etp.write( buff, 128 );
 		if ( offs >= 0 )
 		{
-			buff[offs] = (unsigned char)reason;
+			buff[offs] = (u8_t)reason;
 		}
 		else
 		{
@@ -229,14 +229,14 @@ namespace Zerodelay
 			return;
 		}
 		// to all except
-		send( (unsigned char)EGameNodePacketType::RemoteDisconnected, buff, offs+1, &etp, true );
+		send( (u8_t)EGameNodePacketType::RemoteDisconnected, buff, offs+1, &etp, true );
 	}
 
 	bool ConnectionNode::recvPacket(struct Packet& pack, class Connection* g)
 	{
 		EGameNodePacketType packType = (EGameNodePacketType)pack.data[0];
-		const char* payload  = pack.data+1; // first byte is PacketType
-		int payloadLen = pack.len-1;  // len includes the packetType byte
+		const i8_t* payload  = pack.data+1; // first byte is PacketType
+		i32_t payloadLen = pack.len-1;  // len includes the packetType byte
 		switch (packType)
 		{
 		case EGameNodePacketType::ConnectRequest:
@@ -270,7 +270,7 @@ namespace Zerodelay
 			recvRpcPacket(payload, payloadLen, g);
 			break;
 		default:
-			if ( (char)packType >= USER_ID_OFFSET )
+			if ( (i8_t)packType >= USER_ID_OFFSET )
 			{
 				recvUserPacket(g, pack );
 			}
@@ -284,10 +284,10 @@ namespace Zerodelay
 		return true;
 	}
 
-	void ConnectionNode::recvConnectPacket(const char* payload, int payloadLen, class Connection* g)
+	void ConnectionNode::recvConnectPacket(const i8_t* payload, i32_t payloadLen, class Connection* g)
 	{
-		static const int kBuffSize=1024;
-		char pw[kBuffSize];
+		static const i32_t kBuffSize=1024;
+		i8_t pw[kBuffSize];
 		if ( !ISocket::readString( pw, kBuffSize, payload, payloadLen ))
 		{
 			removeConnection( g, "removing conn, serialization error %s", __FUNCTION__ );
@@ -300,10 +300,10 @@ namespace Zerodelay
 		}
 		else
 		{
-			int numConnections;
+			i32_t numConnections;
 			{
 				std::lock_guard<std::mutex> lock(m_ConnectionListMutex);
-				numConnections = (int)m_Connections.size();
+				numConnections = (i32_t)m_Connections.size();
 			}
 			if ( numConnections >= m_MaxIncomingConnections+1 )
 			{
@@ -344,7 +344,7 @@ namespace Zerodelay
 		}
 	}
 
-	void ConnectionNode::recvDisconnectPacket(const char* payload, int len, class Connection* g)
+	void ConnectionNode::recvDisconnectPacket(const i8_t* payload, i32_t len, class Connection* g)
 	{
 		if ( g->acceptDisconnect() )
 		{
@@ -365,7 +365,7 @@ namespace Zerodelay
 		}
 	}
 
-	void ConnectionNode::recvRemoteConnected(class Connection* g, const char* payload, int payloadLen)
+	void ConnectionNode::recvRemoteConnected(class Connection* g, const i8_t* payload, i32_t payloadLen)
 	{
 		EndPoint etp;
 		if (g->onReceiveRemoteConnected(payload, payloadLen, etp))
@@ -382,7 +382,7 @@ namespace Zerodelay
 		}
 	}
 
-	void ConnectionNode::recvRemoteDisconnected(class Connection* g, const char* payload, int payloadLen)
+	void ConnectionNode::recvRemoteDisconnected(class Connection* g, const i8_t* payload, i32_t payloadLen)
 	{
 		EndPoint etp;
 		EDisconnectReason reason;
@@ -401,7 +401,7 @@ namespace Zerodelay
 		}
 	}
 
-	void ConnectionNode::recvInvalidPassword(class Connection* g, const char* payload, int payloadLen)
+	void ConnectionNode::recvInvalidPassword(class Connection* g, const i8_t* payload, i32_t payloadLen)
 	{
 		if ( g->setInvalidPassword() )
 		{
@@ -417,7 +417,7 @@ namespace Zerodelay
 		}
 	}
 
-	void ConnectionNode::recvMaxConnectionsReached(class Connection* g, const char* payload, int payloadLen)
+	void ConnectionNode::recvMaxConnectionsReached(class Connection* g, const i8_t* payload, i32_t payloadLen)
 	{
 		if ( g->setMaxConnectionsReached() )
 		{
@@ -433,15 +433,15 @@ namespace Zerodelay
 		}
 	}
 
-	void ConnectionNode::recvRpcPacket(const char* payload, int len, class Connection* g)
+	void ConnectionNode::recvRpcPacket(const i8_t* payload, i32_t len, class Connection* g)
 	{
-		char name[RPC_NAME_MAX_LENGTH];
+		i8_t name[RPC_NAME_MAX_LENGTH];
 		if ( !ISocket::readFixed( name, RPC_NAME_MAX_LENGTH, payload, (RPC_NAME_MAX_LENGTH<len?RPC_NAME_MAX_LENGTH:len)) )
 		{
 			removeConnection( g, "rpc serialiation error %s", __FUNCTION__ );
 			return;
 		}
-		char fname[RPC_NAME_MAX_LENGTH*2];
+		i8_t fname[RPC_NAME_MAX_LENGTH*2];
 	#if _WIN32
 		sprintf_s(fname, RPC_NAME_MAX_LENGTH*2, "__rpc_deserialize_%s", name);
 	#else	
@@ -451,7 +451,7 @@ namespace Zerodelay
 		if ( pf )
 		{
 			// function signature
-			void (*pfunc)(const char*, int);
+			void (*pfunc)(const i8_t*, i32_t);
 			pfunc = (decltype(pfunc)) pf;
 			pfunc( payload, len );
 		}
@@ -529,7 +529,7 @@ namespace Zerodelay
 		return m_SocketIsOpened;
 	}
 
-	bool ConnectionNode::bindSocket(unsigned short port)
+	bool ConnectionNode::bindSocket(u16_t port)
 	{
 		if ( m_SocketIsBound )
 			return true;

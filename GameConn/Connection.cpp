@@ -19,7 +19,7 @@ namespace Zerodelay
 	}
 
 
-	Connection::Connection(const EndPoint& endPoint, int timeoutSeconds, int keepAliveIntervalSeconds, int lingerTimeMs):
+	Connection::Connection(const EndPoint& endPoint, i32_t timeoutSeconds, i32_t keepAliveIntervalSeconds, i32_t lingerTimeMs):
 		RUDPConnection(endPoint),
 		m_ConnectTimeoutSeconMs(timeoutSeconds*1000),
 		m_KeepAliveIntervalMs(keepAliveIntervalSeconds*1000),
@@ -70,7 +70,7 @@ namespace Zerodelay
 		Ensure_State( Idle );
 		m_State = EConnectionState::Connecting;
 		m_StartConnectingTS = ::clock();
-		sendSystemMessage( EGameNodePacketType::ConnectRequest, pw.c_str(), (int)pw.size()+1 );
+		sendSystemMessage( EGameNodePacketType::ConnectRequest, pw.c_str(), (i32_t)pw.size()+1 );
 		return true;
 	}
 
@@ -119,7 +119,7 @@ namespace Zerodelay
 		return true;
 	}
 
-	bool Connection::onReceiveRemoteConnected(const char* data, int len, EndPoint& ept)
+	bool Connection::onReceiveRemoteConnected(const i8_t* data, i32_t len, EndPoint& ept)
 	{
 		// Deliberately no state ensurance
 		if (ept.read( data, len ) < 0)
@@ -130,10 +130,10 @@ namespace Zerodelay
 		return true;
 	}
 
-	bool Connection::onReceiveRemoteDisconnected(const char* data, int len, EndPoint& etp, EDisconnectReason& reason)
+	bool Connection::onReceiveRemoteDisconnected(const i8_t* data, i32_t len, EndPoint& etp, EDisconnectReason& reason)
 	{
 		// Deliberately no state ensurance
-		int offs = etp.read(data, len);
+		i32_t offs = etp.read(data, len);
 		if ( offs >= 0 )
 		{
 			if ( etp == this->getEndPoint() ) // Remote endpoint can only disconnect once
@@ -211,16 +211,16 @@ namespace Zerodelay
 		return false;
 	}
 
-	int Connection::getTimeSince(int timestamp) const
+	i32_t Connection::getTimeSince(i32_t timestamp) const
 	{
 		clock_t now = ::clock();
 		float elapsedSeconds = float(now - timestamp) / (float)CLOCKS_PER_SEC;
-		return int(elapsedSeconds * 1000.f);
+		return i32_t(elapsedSeconds * 1000.f);
 	}
 
-	void Connection::sendSystemMessage( EGameNodePacketType packType, const char* payload, int payloadLen )
+	void Connection::sendSystemMessage( EGameNodePacketType packType, const i8_t* payload, i32_t payloadLen )
 	{
 		//	static_assert( sizeof(EGameNodePacketType)==1 );
-		addToSendQueue( (unsigned char)packType, payload, payloadLen, EPacketType::Reliable_Ordered );
+		addToSendQueue( (u8_t)packType, payload, payloadLen, EPacketType::Reliable_Ordered );
 	}
 }

@@ -15,7 +15,7 @@ namespace Zerodelay
 		Platform::initialize();
 
 		// Ip
-		char ipBuff[128] = { 0 };
+		i8_t ipBuff[128] = { 0 };
 
 #if _WIN32
 		inet_ntop(m_SockAddr.si_family, (PVOID)&m_SockAddr.Ipv4, ipBuff, 128);
@@ -24,7 +24,7 @@ namespace Zerodelay
 #endif
 
 		// Port
-		char portBuff[32] = { 0 };
+		i8_t portBuff[32] = { 0 };
 #if _WIN32
 		sprintf_s(portBuff, 32, "%d", getPortHostOrder());
 #else
@@ -33,7 +33,7 @@ namespace Zerodelay
 		return std::string(ipBuff) + ":" + portBuff;
 	}
 
-	bool EndPoint::resolve(const std::string& name, unsigned short port)
+	bool EndPoint::resolve(const std::string& name, u16_t port)
 	{
 		addrinfo hints;
 		addrinfo *addrInfo = nullptr;
@@ -45,8 +45,8 @@ namespace Zerodelay
 		hints.ai_protocol = IPPROTO_UDP;
 		// hints.ai_flags = AI_PASSIVE; <-- use this for binding, otherwise connecting
 
-		char ipBuff[128];
-		char portBuff[32];
+		i8_t ipBuff[128];
+		i8_t portBuff[32];
 #if _WIN32
 		sprintf_s(ipBuff, 128, "%s", name.c_str());
 		sprintf_s(portBuff, 32, "%d", port);
@@ -64,7 +64,7 @@ namespace Zerodelay
 		// try binding on the found host addresses
 		for (addrinfo* inf = addrInfo; inf != nullptr; inf = inf->ai_next)
 		{
-			memcpy( &m_SockAddr, inf->ai_addr, (int)inf->ai_addrlen );
+			memcpy( &m_SockAddr, inf->ai_addr, (i32_t)inf->ai_addrlen );
 			freeaddrinfo(addrInfo);
 			return true;
 		}
@@ -73,12 +73,12 @@ namespace Zerodelay
 		return false;
 	}
 
-	unsigned short EndPoint::getPortHostOrder() const
+	u16_t EndPoint::getPortHostOrder() const
 	{
 		return ntohs( getPortNetworkOrder() );
 	}
 
-	unsigned short EndPoint::getPortNetworkOrder() const
+	u16_t EndPoint::getPortNetworkOrder() const
 	{
 #if _WIN32
 		return m_SockAddr.Ipv4.sin_port;
@@ -87,16 +87,16 @@ namespace Zerodelay
 #endif
 	}
 
-	int EndPoint::compareLess(const EndPoint& a, const EndPoint& b)
+	i32_t EndPoint::compareLess(const EndPoint& a, const EndPoint& b)
 	{
 		if ( a.getLowLevelAddrSize() < b.getLowLevelAddrSize() ) return -1;
 		if ( a.getLowLevelAddrSize() > b.getLowLevelAddrSize() ) return 1;
 		return ::memcmp( a.getLowLevelAddr(), b.getLowLevelAddr(), a.getLowLevelAddrSize() ) ;
 	}
 
-	int EndPoint::write(char* buff, int len) const
+	i32_t EndPoint::write(i8_t* buff, i32_t len) const
 	{
-		int addrSize = getLowLevelAddrSize();
+		i32_t addrSize = getLowLevelAddrSize();
 		if ( len >= addrSize )
 		{
 			memcpy_s( buff, addrSize, getLowLevelAddr(), addrSize );
@@ -105,9 +105,9 @@ namespace Zerodelay
 		return -1;
 	}
 
-	int EndPoint::read(const char* buff, int len)
+	i32_t EndPoint::read(const i8_t* buff, i32_t len)
 	{
-		int addrSize = getLowLevelAddrSize();
+		i32_t addrSize = getLowLevelAddrSize();
 		if ( len >= addrSize )
 		{
 			memcpy_s( &m_SockAddr, addrSize, buff, addrSize );
