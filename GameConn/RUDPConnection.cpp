@@ -241,7 +241,19 @@ namespace Zerodelay
 	{
 		std::unique_lock<std::mutex> lock(m_SendMutex);
 		// reliable
-		for ( i32_t i=0; i<sm_NumChannels; ++i )
+		dispatchReliableQueue(socket);
+
+		// unreliable
+		dispatchUnreliableQueue(socket);
+
+		// reliable newest
+		dispatchReliableNewestQueue(socket);
+
+	}
+
+	void RUDPConnection::dispatchReliableQueue(ISocket* socket)
+	{
+		for (i32_t i = 0; i < sm_NumChannels; ++i)
 		{
 			for (auto& it : m_SendQueue_reliable[i])
 			{
@@ -250,39 +262,57 @@ namespace Zerodelay
 				socket->send(m_EndPoint, pack.data, pack.len);
 			}
 		}
-		// unreliable
+	}
+
+	void RUDPConnection::dispatchUnreliableQueue(ISocket* socket)
+	{
 		for (auto& it : m_SendQueue_unreliable)
 		{
 			auto& pack = it;
 			socket->send(m_EndPoint, pack.data, pack.len);
-			delete [] pack.data;
+			delete[] pack.data;
 		}
 		m_SendQueue_unreliable.clear(); // clear unreliable queue immediately
-		// reliable newest
+	}
+
+	void RUDPConnection::dispatchReliableNewestQueue(ISocket* socket)
+	{
 		// format per entry: groupId(4bytes) | groupBits( (items.size()+7)/8 bytes ) | n x groupData (sum( item_data_size, n ) bytes )
-		for ( auto& kvp : m_SendQueue_reliable_newest )
+		const i32_t maxBufferSize = RecvPoint::sm_MaxRecvBuffSize - 64; // account for hdr
+		i8_t dataBuffer[maxBufferSize];
+		dataBuffer[0] = (i8_t)EPacketType::Reliable_Newest;
+		i32_t kNumGroupsWritten = 0;
+		i32_t bytesWritten = off_RelNew_GroupId;
+		for (auto& kvp : m_SendQueue_reliable_newest)
 		{
-			const i32_t maxBufferSize = RecvPoint::sm_MaxRecvBuffSize-64; // account for hdr
-			i8_t dataBuffer[maxBufferSize];
-			*(u32_t*)dataBuffer = kvp.first; // groupId
-			i32_t dataOffset = 4 + 2; // max 16 data pieces (16 bits)
-			u16_t writeMask = 0;
-			i32_t kBit = 0;
-			for ( auto& it : kvp.second.groupItems )
+			auto& groupId = kvp.first; // is groupId
+			*(u32_t*)(dataBuffer + bytesWritten) = groupId;
+			bytesWritten += (off_RelNew_GroupBits - off_RelNew_GroupId); // size of a groupId (4 bytes, default)
+			i8_t* groupBitsPtr = dataBuffer + bytesWritten; // remember this position as the groupMask cannot be written yet
+			u16_t groupBits = 0;	// keeps track of which variables in the group are written
+			i32_t kBit = 0;			// which bit to set (if variable is written)
+			for (auto& it : kvp.second.groupItems)
 			{
 				reliableNewestItem& item = it;
-				if ( isSequenceNewer( item.localRevision, item.remoteRevision ) )
+				if (isSequenceNewer(item.localRevision, item.remoteRevision)) // variable is changed compared to last acked revision
 				{
-					writeMask |= (1 << kBit);
-					assert( dataOffset + item.dataLen <= maxBufferSize ); // TODO emit error and disconnect , this is critical!
-					Platform::memCpy(dataBuffer + dataOffset, item.dataLen, item.data, item.dataLen);
-					dataOffset += item.dataLen;
+					groupBits |= (1 << kBit);
+					assert(bytesWritten + item.dataLen <= maxBufferSize); // TODO emit error and disconnect , this is critical!
+					Platform::memCpy(dataBuffer + bytesWritten, item.dataLen, item.data, item.dataLen);
+					bytesWritten += item.dataLen;
 				}
 				kBit++;
 			}
-			*(u16_t*)(dataBuffer + 4) = writeMask;
-			socket->send( m_EndPoint, dataBuffer, dataOffset );
+			// group bits are now know, write them
+			*(u16_t*)(groupBitsPtr) = groupBits;
+			kNumGroupsWritten++;
+			// quit loop if exceeding max send size
+			if ( bytesWritten >= RecvPoint::sm_MaxSendSize )
+				break;
 		}
+		// as entry count is know now, write it
+		*(i32_t*)(dataBuffer + off_RelNew_Num) = kNumGroupsWritten;
+		socket->send( m_EndPoint, dataBuffer, bytesWritten );
 	}
 
 	void RUDPConnection::dispatchAckQueue(ISocket* socket)
@@ -394,22 +424,43 @@ namespace Zerodelay
 
 	void RUDPConnection::receiveReliableNewest(const i8_t* buff, i32_t rawSize, u32_t& seq, u32_t& groupId)
 	{
-		i8_t channel;
+		if ( rawSize < (off_RelNew_GroupId - off_RelNew_Num)+1 ) 
+		{
+			// TODO emit warning, invalid reliableNewest data
+			return;
+		}
+
+		// TODO
 		bool relay;
+
+		i32_t kNumGroups = *(i32_t*)(buff + off_RelNew_Num);
+		i32_t kBytesRead = off_RelNew_GroupId;
+		while ( kNumGroups-- > 0 )
+		{
+			i32_t groupId = *(i32_t*)(buff + kBytesRead);
+			kBytesRead += (off_RelNew_GroupBits - off_RelNew_GroupId);
+			u16_t groupBits = *(u16_t*)(buff + kBytesRead);
+			kBytesRead += (off_RelNew_Data - off_RelNew_GroupBits);
+			// try find group by groupId
+			auto it = m_RecvSeq_reliable_newest.find( groupId );
+			if ( it != m_RecvSeq_reliable_newest.end() )
+			{
+				if ( !isSequenceNewer( seq, it->second ) )
+					return; // already received newer data on this dataId
+				it->second = seq; // otherwise update
+			}
+			else
+			{
+				m_RecvSeq_reliable_newest.insert( std::make_pair( groupId, seq ) );
+			}
+		}
+
+		i8_t channel;
+		
 		extractChannelRelayAndSeq( buff, rawSize, channel, relay, seq );
 		groupId = *(u32_t*)(buff + off_RelNew_GroupId);
 
-		auto it = m_RecvSeq_reliable_newest.find( groupId );
-		if ( it != m_RecvSeq_reliable_newest.end() )
-		{
-			if ( !isSequenceNewer( seq, it->second ) )
-				return; // already received newer data on this dataId
-			it->second = seq; // otherwise update
-		}
-		else
-		{
-			m_RecvSeq_reliable_newest.insert( std::make_pair( groupId, seq ) );
-		}
+
 		
 		// unwrap reliable newest packet
 		Packet pack;
@@ -519,4 +570,6 @@ namespace Zerodelay
 		incoming -= having;
 		return incoming <= (UINT_MAX>>1);
 	}
+
+
 }

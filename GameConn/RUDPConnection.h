@@ -83,9 +83,10 @@ namespace Zerodelay
 		static const i32_t off_Norm_Seq  = 2; // Normal, Seq numb
 		static const i32_t off_Norm_Id   = 6;	// Normal, Packet Id
 		static const i32_t off_Norm_Data = 7; // Normal, Payload
-		static const i32_t off_RelNew_GroupId   = 7;	// ReliableNew, Data Id
-		static const i32_t off_RelNew_GroupBits = 11;	// 2 Bytes (max 16 vars per group)
-		static const i32_t off_RelNew_Data  = 13;	// ReliableNew, Payload
+		static const i32_t off_RelNew_Num = 1;	// RelNew, num groups
+		static const i32_t off_RelNew_GroupId   = 5;	// ReliableNew, GroupId (4 bytes)
+		static const i32_t off_RelNew_GroupBits = 9;	// 2 Bytes (max 16 vars per group)
+		static const i32_t off_RelNew_Data  = 11;		// ReliableNew, Payload
 
 		static const i32_t sm_NumChannels  = 8;
 
@@ -123,6 +124,9 @@ namespace Zerodelay
 		void addAckToAckQueue( i8_t channel, u32_t seq );
 		void addAckToRelNewestAckQueue( u32_t seq, u32_t groupId );
 		void dispatchSendQueue(ISocket* socket);
+		void dispatchReliableNewestQueue(ISocket* socket);
+		void dispatchReliableQueue(ISocket* socket);
+		void dispatchUnreliableQueue(ISocket* socket);
 		void dispatchAckQueue(ISocket* socket);
 		void dispatchRelNewestAckQueue(ISocket* socket);
 		void receiveReliableOrdered(const i8_t * buff, i32_t rawSize);
