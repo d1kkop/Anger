@@ -133,7 +133,8 @@ namespace Zerodelay
 		copyConnectionsTo( m_TempConnections );
 		for ( auto* conn : m_TempConnections )
 		{
-			Connection* gc = dynamic_cast<Connection*>(conn);
+			// Connection* gc = dynamic_cast<Connection*>(conn);
+			Connection* gc = static_cast<Connection*>(conn); // change to dynamic when more Connections are there
 			if ( gc )
 			{
 				gc->beginPoll();

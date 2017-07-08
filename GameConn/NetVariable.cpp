@@ -98,7 +98,7 @@ namespace Zerodelay
 	void NetVariable::sendNewest(ZNode* node, i32_t groupBit)
 	{
 		assert(groupBit >= 0 && groupBit < 16 );
-		node->sendReliableNewest( (u8_t)EGameNodePacketType::VariableGroupUpdate, getGroupId(), groupBit, m_Data, m_Length, nullptr, false, true );
+		node->sendReliableNewest( (u8_t)EGameNodePacketType::VariableGroupUpdate, getGroupId(), groupBit, m_Data, m_Length, nullptr, false );
 	}
 
 	void NetVariable::bindOnPostUpdateCallback(const std::function<void(const i8_t*, const i8_t*)>& callback)

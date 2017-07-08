@@ -57,12 +57,12 @@ namespace Zerodelay
 		});
 	}
 
-	void RecvPoint::sendReliableNewest(u8_t id, u32_t groupId, i8_t groupBit, const i8_t* data, i32_t len, const EndPoint* specific, bool exclude, bool relay)
+	void RecvPoint::sendReliableNewest(u8_t id, u32_t groupId, i8_t groupBit, const i8_t* data, i32_t len, const EndPoint* specific, bool exclude)
 	{
 		std::lock_guard<std::mutex> lock(m_ConnectionListMutex);
 		forEachConnection( specific, exclude, [&] (IConnection* conn ) 
 		{
-			conn->addReliableNewest( id, data, len, groupId, groupBit, relay );
+			conn->addReliableNewest( id, data, len, groupId, groupBit );
 		});
 	}
 

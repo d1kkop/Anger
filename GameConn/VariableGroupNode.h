@@ -59,11 +59,11 @@ namespace Zerodelay
 		bool m_IsNetworkIdProvider; // Only 1 node is the owner of all id's, it provides id's on request.
 		std::deque<u32_t> m_UniqueIds;
 		std::deque<PendingVariableGroup> m_PendingGroups;
-		std::map<u32_t, class VariableGroup*> m_VariableGroups;
-		std::map<EndPoint, std::map<u32_t, class VariableGroup*>, EndPoint::STLCompare> m_RemoteVariableGroups;
+		std::map<u32_t, class VariableGroup*> m_VariableGroups; // variable groups on this machine
+		std::map<EndPoint, std::map<u32_t, class VariableGroup*>, EndPoint::STLCompare> m_RemoteVariableGroups; // variable groups per connection of remote machines
 		class IConnection* m_ConnOwner;
 		clock_t m_LastIdPackRequestTS;
-		u8_t m_UniqueIdCounter;
+		u32_t   m_UniqueIdCounter;
 		// --- ptrs to other managers
 		class ZNode* m_ZNode;
 		class ZNodePrivate* m_PrivZ;

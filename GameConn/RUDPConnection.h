@@ -4,6 +4,7 @@
 #include "EndPoint.h"
 #include "RecvPoint.h"
 
+#include <atomic>
 #include <vector>
 #include <deque>
 #include <thread>
@@ -23,7 +24,7 @@ namespace Zerodelay
 
 		// --- All functions thread safe ---
 		virtual void addToSendQueue(u8_t id, const i8_t* data, i32_t len, EPacketType packetType, u8_t channel=0, bool relay=true) = 0;
-		virtual void addReliableNewest( u8_t id, const i8_t* data, i32_t len, u32_t groupId, i8_t groupBit, bool relay=true ) = 0;
+		virtual void addReliableNewest( u8_t id, const i8_t* data, i32_t len, u32_t groupId, i8_t groupBit ) = 0;
 		virtual void beginPoll() = 0;
 		virtual bool poll(Packet& packet) = 0;
 		virtual void endPoll() = 0;
@@ -60,15 +61,13 @@ namespace Zerodelay
 	{
 		u32_t localRevision;
 		u32_t remoteRevision;
+		u16_t dataLen, dataCapacity;
 		i8_t* data;
-		i32_t dataLen, dataCapacity;
 	};
 
 	// Represents a group of data that guarentees that the last piece of data (update) is always transmitted.
 	struct reliableNewestDataGroup
 	{
-		u32_t groupSeq;
-		u16_t writeMask;
 		reliableNewestItem groupItems[16];
 	};
 
@@ -83,17 +82,17 @@ namespace Zerodelay
 		static const i32_t off_Norm_Seq  = 2; // Normal, Seq numb
 		static const i32_t off_Norm_Id   = 6;	// Normal, Packet Id
 		static const i32_t off_Norm_Data = 7; // Normal, Payload
-		static const i32_t off_RelNew_Num = 1;	// RelNew, num groups
-		static const i32_t off_RelNew_GroupId   = 5;	// ReliableNew, GroupId (4 bytes)
-		static const i32_t off_RelNew_GroupBits = 9;	// 2 Bytes (max 16 vars per group)
-		static const i32_t off_RelNew_Data  = 11;		// ReliableNew, Payload
+		static const i32_t off_RelNew_Seq = 1;	// RelNew, sequence
+		static const i32_t off_RelNew_Num = 5;	// RelNew, num groups
+		static const i32_t off_RelNew_GroupId   = 9;	// ReliableNew, GroupId (4 bytes)
+		static const i32_t off_RelNew_GroupBits = 13;	// 2 Bytes (max 16 vars per group)
+		static const i32_t off_RelNew_Data  = 15;		// ReliableNew, Payload
 
 		static const i32_t sm_NumChannels  = 8;
 
 		typedef std::deque<Packet> sendQueueType;
 		typedef std::deque<Packet> recvQueueType;
 		typedef std::deque<u32_t> ackQueueType;
-		typedef std::deque<std::pair<u32_t, unsigned>> ackRelNewestQueueType; // groupId, seq
 		typedef std::map<u32_t, Packet> recvReliableOrderedQueueType;
 		typedef std::map<u32_t, reliableNewestDataGroup> sendReliableNewestQueueType; 
 
@@ -104,7 +103,7 @@ namespace Zerodelay
 		// Thread safe
 		//------------------------------
 			virtual void addToSendQueue( u8_t id, const i8_t* data, i32_t len, EPacketType packetType, u8_t channel=0, bool relay=true ) override;
-			virtual void addReliableNewest( u8_t id, const i8_t* data, i32_t len, u32_t groupId, i8_t groupBit, bool relay=true ) override;
+			virtual void addReliableNewest( u8_t id, const i8_t* data, i32_t len, u32_t groupId, i8_t groupBit ) override;
 		
 			// Always first call beginPoll, then repeatedly poll until no more packets, then endPoll
 			virtual void beginPoll() override;
@@ -122,7 +121,6 @@ namespace Zerodelay
 
 	private:
 		void addAckToAckQueue( i8_t channel, u32_t seq );
-		void addAckToRelNewestAckQueue( u32_t seq, u32_t groupId );
 		void dispatchSendQueue(ISocket* socket);
 		void dispatchReliableNewestQueue(ISocket* socket);
 		void dispatchReliableQueue(ISocket* socket);
@@ -131,14 +129,13 @@ namespace Zerodelay
 		void dispatchRelNewestAckQueue(ISocket* socket);
 		void receiveReliableOrdered(const i8_t * buff, i32_t rawSize);
 		void receiveUnreliableSequenced(const i8_t * buff, i32_t rawSize);
-		void receiveReliableNewest(const i8_t* buff, i32_t rawSize, u32_t& seq, u32_t& groupId);
+		void receiveReliableNewest(const i8_t* buff, i32_t rawSize);
 		void receiveAck(const i8_t* buff, i32_t rawSize);
 		void receiveAckRelNewest(const i8_t* buff, i32_t rawSize);
 		void assembleNormalPacket( Packet& pack, EPacketType packetType, u8_t id, const i8_t* data, i32_t len, i32_t hdrSize, i8_t channel, bool relay );
 		void extractChannelRelayAndSeq(const i8_t* buff, i32_t rawSize, i8_t& channOut, bool& relayOut, u32_t& seqOut );
-		void setPacketChannelRelayAndType( Packet& pack, const i8_t*  buff, i32_t rawSize, i8_t channel, bool relay, EPacketType type ) const;
-		void setPacketPayloadNormal( Packet& pack, const i8_t* buff, i32_t rawSize ) const;
-		void setPacketPayloadRelNewest( Packet& pack, const i8_t* buff, i32_t rawSize ) const;
+		void createNormalPacket(Packet& pack, const i8_t* buff, i32_t dataSize, i8_t channel, bool relay, EPacketType type) const;
+		void createPacketReliableNewest( Packet& pack, const i8_t* buff, i32_t embeddedGroupsSize, i32_t numGroups ) const;
 		bool isSequenceNewer( u32_t incoming, u32_t having ) const;
 
 		// send queues
@@ -151,18 +148,21 @@ namespace Zerodelay
 		recvQueueType m_RecvQueue_reliable_newest;
 		// ack queue
 		ackQueueType m_AckQueue[sm_NumChannels];
-		ackRelNewestQueueType m_AckQueueRelNewest;
-		// other
+		// sequencers
+		u32_t m_SendSeq_reliable[sm_NumChannels];
+		u32_t m_SendSeq_unreliable[sm_NumChannels];
+		u32_t m_RecvSeq_unreliable[sm_NumChannels];
+		u32_t m_RecvSeq_reliable_recvThread[sm_NumChannels];		// keeps track of which packets have arrived but possibly not yet processed on game thread
+		u32_t m_RecvSeq_reliable_gameThread[sm_NumChannels];		// keep track of which packets have been processed on game thread
+		u32_t m_SendSeq_reliable_newest;
+		std::atomic<u32_t> m_RecvSeq_reliable_newest;				// atomic, because updated in recv thread, but used for sending ack sequence in send thread
+		u32_t m_RecvSeq_reliable_newest_ack;
+		// threading
 		mutable std::mutex m_SendMutex;
 		mutable std::mutex m_RecvMutex;
 		mutable std::mutex m_AckMutex;
 		mutable std::mutex m_AckRelNewestMutex;
-		u32_t m_SendSeq_reliable[sm_NumChannels];
-		u32_t m_SendSeq_unreliable[sm_NumChannels];
-		u32_t m_RecvSeq_unreliable[sm_NumChannels];
-		u32_t m_RecvSeq_reliable_recvThread[sm_NumChannels];
-		u32_t m_RecvSeq_reliable_gameThread[sm_NumChannels];
-		std::map<u32_t, u32_t> m_RecvSeq_reliable_newest;
+		// statistics
 		u8_t m_PacketLossPercentage;
 	};
 }

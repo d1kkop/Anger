@@ -205,9 +205,8 @@ namespace Zerodelay
 			[groupBit]	Identifies the piece of data in the group we want to update. A maximum of 16 pieces can be set, so bit [0 to 15].
 			[specific]	- If nullptr, message is sent to all connections in node.
 			- If not nullptr and exclude is false, then message is only sent to the specific address.
-			- If not nullptr and exclude is true, then message is sent to all except the specific.
-			[relay]		Whether to relay the message to other connected clients when it arrives. */
-		void sendReliableNewest( u8_t packId, u32_t groupId, i8_t groupBit, const i8_t* data, i32_t len, const ZEndpoint* specific=nullptr, bool exclude=false, bool relay=true );
+			- If not nullptr and exclude is true, then message is sent to all except the specific. */
+		void sendReliableNewest( u8_t packId, u32_t groupId, i8_t groupBit, const i8_t* data, i32_t len, const ZEndpoint* specific=nullptr, bool exclude=false );
 
 
 		/*	Messages are unreliable (they may not arrive) but older or duplicate packets are ignored. This applies per channel.

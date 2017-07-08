@@ -19,7 +19,7 @@ namespace Zerodelay
 		i8_t channel;
 		bool relay;
 		// reliable newest
-		u32_t groupId;
+		u32_t numGroups;
 		u16_t groupBits;
 		EPacketType type;
 	};
@@ -41,7 +41,7 @@ namespace Zerodelay
 	public:
 		void send( u8_t id, const i8_t* data, i32_t len, const EndPoint* specific=nullptr, bool exclude=false, 
 				   EPacketType type=EPacketType::Reliable_Ordered, u8_t channel=0, bool relay=true );
-		void sendReliableNewest( u8_t id, u32_t groupId, i8_t groupBit, const i8_t* data, i32_t len, const EndPoint* specific=nullptr, bool exclude=false, bool relay=true );
+		void sendReliableNewest( u8_t id, u32_t groupId, i8_t groupBit, const i8_t* data, i32_t len, const EndPoint* specific=nullptr, bool exclude=false );
 
 		void  setUserDataPtr( void* ptr) { m_UserPtr = ptr; }
 		void* getUserDataPtr() const { return m_UserPtr; }

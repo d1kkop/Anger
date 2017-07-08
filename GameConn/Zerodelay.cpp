@@ -165,11 +165,11 @@ namespace Zerodelay
 			Platform::log( "socket was not created, possibly a platform issue" );
 	}
 
-	void ZNode::sendReliableNewest(u8_t packId, u32_t groupId, i8_t groupBit, const i8_t* data, i32_t len, const ZEndpoint* specific, bool exclude, bool relay)
+	void ZNode::sendReliableNewest(u8_t packId, u32_t groupId, i8_t groupBit, const i8_t* data, i32_t len, const ZEndpoint* specific, bool exclude)
 	{
 		ISocket* sock = p->getSocket();
 		if ( sock )
-			p->sendReliableNewest( packId, groupId, groupBit, data, len, asEpt(specific), exclude, relay );
+			p->sendReliableNewest( packId, groupId, groupBit, data, len, asEpt(specific), exclude );
 		else
 			Platform::log( "socket was not created, possibly a platform issue" );
 	}

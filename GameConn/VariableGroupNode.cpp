@@ -96,11 +96,11 @@ namespace Zerodelay
 		m_PendingGroups.emplace_back( pvg );
 	}
 
-	void VariableGroupNode::beginGroupFromRemote(u32_t nid, const ZEndpoint& ztp, EPacketType type)
+	void VariableGroupNode::beginGroupFromRemote(u32_t networkId, const ZEndpoint& ztp, EPacketType type)
 	{
 		assert( VariableGroup::Last == nullptr && "should be NULL" );
 		VariableGroup::Last = new VariableGroup(-1, type);
-		VariableGroup::Last->setNetworkId( nid );
+		VariableGroup::Last->setNetworkId( networkId );
 		VariableGroup::Last->setControl( EVarControl::Remote );
 		// ----------------------------
 		EndPoint etp = toEtp ( ztp );
@@ -108,12 +108,12 @@ namespace Zerodelay
 		if ( remoteGroupIt == m_RemoteVariableGroups.end() )
 		{
 			std::map<u32_t, VariableGroup*> newMap;
-			newMap.insert( std::make_pair( nid, VariableGroup::Last ) );
+			newMap.insert( std::make_pair( networkId, VariableGroup::Last ) );
 			m_RemoteVariableGroups.insert( std::make_pair( etp, newMap ) );
 		}
 		else
 		{
-			remoteGroupIt->second.insert( std::make_pair( nid, VariableGroup::Last ) );
+			remoteGroupIt->second.insert( std::make_pair( networkId, VariableGroup::Last ) );
 		}
 	}
 
@@ -200,7 +200,7 @@ namespace Zerodelay
 	void VariableGroupNode::recvVariableGroupUpdate(const Packet& pack, const EndPoint& etp)
 	{
 		// try find group and update its contents with the latest data
-		VariableGroup* vg = findRemoteGroup(pack.groupId, nullptr);
+		VariableGroup* vg = findRemoteGroup(pack.numGroups, nullptr);
 		if ( vg && !vg->isBroken() )
 		{
 			vg->read(pack.data, pack.len, pack.groupBits);
@@ -208,7 +208,7 @@ namespace Zerodelay
 		else if ( vg && vg->isBroken() )
 		{
 			// cleanup this group as it will never be used again
-			findRemoteGroup(pack.groupId, nullptr, true);
+			findRemoteGroup(pack.numGroups, nullptr, true);
 			vg->unrefGroup();
 			delete vg;
 		}
