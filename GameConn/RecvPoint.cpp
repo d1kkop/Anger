@@ -165,7 +165,7 @@ namespace Zerodelay
 					else
 					{
 						conn = it->second;
-						if ( conn->isPendingDelete() )
+						if ( conn && conn->isPendingDelete() )
 						{
 							Platform::log("ignoring data for %s, is pending delete..", conn->getEndPoint().asString().c_str());
 							conn = nullptr;

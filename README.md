@@ -13,6 +13,8 @@ Zerodelay is a network gaming library that is aimed to be lightweight, cross pla
 	TODO: 
 		* A group that gets an update while it is not yet created, will ack, however, the
 			data may never be updated since it was not created yet. solve this.
+		* Cluster Reliable_Ordered data (more efficient sending)
+		* Cluster Unreliable data (more efficient sending)
 
 
 	Zerodelay includes tests on Performance, memory leaks and reliability.

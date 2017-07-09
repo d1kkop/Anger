@@ -407,7 +407,8 @@ namespace UnitTests
 		});
 
 		int k = 0; 
-		while ( k++ < 10 )
+		int p = 1000;
+		while ( k++ < p )
 		{
 			rpc_unitRpcTest0( g1 );
 			rpc_unitRpcTest1( g1, __high );
@@ -420,7 +421,7 @@ namespace UnitTests
 			rpc_unitRpcTest8( g1, __high, __fltMax, __dblMax, __llong, __bb, __dblMin, __sk, __fltMin );
 			rpc_unitRpcTest9( g1, __high, __fltMax, __dblMax, __llong, __bb, __dblMin, __sk, __fltMin, __dblMax );
 
-			std::this_thread::sleep_for(100ms);
+		//	std::this_thread::sleep_for(100ms);
 		}
 
 		std::this_thread::sleep_for(300ms);

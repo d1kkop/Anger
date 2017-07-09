@@ -133,7 +133,7 @@ namespace Zerodelay
 		void receiveReliableNewest(const i8_t* buff, i32_t rawSize);
 		void receiveAck(const i8_t* buff, i32_t rawSize);
 		void receiveAckRelNewest(const i8_t* buff, i32_t rawSize);
-		void assembleNormalPacket( Packet& pack, EHeaderPacketType packetType, u8_t id, const i8_t* data, i32_t len, i32_t hdrSize, i8_t channel, bool relay );
+		void assembleNormalPacket( Packet& pack, EHeaderPacketType packetType, u8_t dataId, const i8_t* data, i32_t len, i32_t hdrSize, i8_t channel, bool relay );
 		void extractChannelRelayAndSeq(const i8_t* buff, i32_t rawSize, i8_t& channOut, bool& relayOut, u32_t& seqOut );
 		void createNormalPacket(Packet& pack, const i8_t* buff, i32_t dataSize, i8_t channel, bool relay, EHeaderPacketType type) const;
 		void createPacketReliableNewest( Packet& pack, const i8_t* buff, i32_t embeddedGroupsSize, i32_t numGroups ) const;

@@ -478,13 +478,13 @@ namespace Zerodelay
 		}
 	}
 
-	void RUDPConnection::assembleNormalPacket(Packet& pack, EHeaderPacketType packetType, u8_t id, const i8_t* data, i32_t len, i32_t hdrSize, i8_t channel, bool relay)
+	void RUDPConnection::assembleNormalPacket(Packet& pack, EHeaderPacketType packetType, u8_t dataId, const i8_t* data, i32_t len, i32_t hdrSize, i8_t channel, bool relay)
 	{
 		pack.data = new i8_t[len+hdrSize];
 		pack.data[off_Type] = (i8_t)packetType;
 		pack.data[off_Norm_Chan] = channel;
 		pack.data[off_Norm_Chan] |= ((i8_t)relay) << 3; // skip over the bits for channel, 0 to 7
-		pack.data[off_Norm_Id] = id;
+		pack.data[off_Norm_Id] = dataId;
 		Platform::memCpy( pack.data + off_Norm_Data, len, data, len ); 
 		pack.len = len + off_Norm_Data;
 	}
