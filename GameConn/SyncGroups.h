@@ -4,7 +4,7 @@
 #include "RpcMacros.h"
 
 
-#define SYNC_GROUP_0( name, _zn) \
+#define DECL_VAR_GROUP_0( name, _zn) \
 	void name( ZNode* _zn );\
 	ALIGN(8) struct sgp_struct_##name { i8_t sgp_name[RPC_NAME_MAX_LENGTH]; u32_t nId; };\
 	extern "C" {\
@@ -29,7 +29,7 @@
 	void name( ZNode* _zn )
 
 
-#define SYNC_GROUP_1( name, _zn, a, at) \
+#define DECL_VAR_GROUP_1( name, _zn, a, at) \
 	void name( ZNode* _zn, a at );\
 	ALIGN(8) struct sgp_struct_##name { i8_t sgp_name[RPC_NAME_MAX_LENGTH]; u32_t nId; a _a; };\
 	extern "C" {\
@@ -55,7 +55,7 @@
 	void name( ZNode* _zn, a at )
 
 
-#define SYNC_GROUP_2( name, _zn, a, at, b, bt ) \
+#define DECL_VAR_GROUP_2( name, _zn, a, at, b, bt ) \
 	void name( ZNode* _zn, a at, b bt );\
 	ALIGN(8) struct sgp_struct_##name { i8_t sgp_name[RPC_NAME_MAX_LENGTH]; u32_t nId; a _a; b _b; };\
 	extern "C" {\
@@ -81,7 +81,7 @@
 	void name( ZNode* _zn, a at, b bt )
 
 
-#define SYNC_GROUP_3( name, _zn, a, at, b, bt, c, ct ) \
+#define DECL_VAR_GROUP_3( name, _zn, a, at, b, bt, c, ct ) \
 	void name( ZNode* _zn, a at, b bt, c ct );\
 	ALIGN(8) struct sgp_struct_##name { i8_t sgp_name[RPC_NAME_MAX_LENGTH]; u32_t nId; a _a; b _b; c _c; };\
 	extern "C" {\
@@ -107,7 +107,7 @@
 	void name( ZNode* _zn, a at, b bt, c ct )
 
 
-#define SYNC_GROUP_4( name, _zn, a, at, b, bt, c, ct, d, dt ) \
+#define DECL_VAR_GROUP_4( name, _zn, a, at, b, bt, c, ct, d, dt ) \
 	void name( ZNode* _zn, a at, b bt, c ct, d dt );\
 	ALIGN(8) struct sgp_struct_##name { i8_t sgp_name[RPC_NAME_MAX_LENGTH]; u32_t nId; a _a; b _b; c _c; d _d; };\
 	extern "C" {\
@@ -133,7 +133,7 @@
 	void name( ZNode* _zn, a at, b bt, c ct, d dt )
 
 
-#define SYNC_GROUP_5( name, _zn, a, at, b, bt, c, ct, d, dt, e, et ) \
+#define DECL_VAR_GROUP_5( name, _zn, a, at, b, bt, c, ct, d, dt, e, et ) \
 	void name( ZNode* _zn, a at, b bt, c ct, d dt, e et );\
 	ALIGN(8) struct sgp_struct_##name { i8_t sgp_name[RPC_NAME_MAX_LENGTH]; u32_t nId; a _a; b _b; c _c; d _d; e _e; };\
 	extern "C" {\
@@ -159,7 +159,7 @@
 	void name( ZNode* _zn, a at, b bt, c ct, d dt, e et )
 
 
-#define SYNC_GROUP_6( name, _zn, a, at, b, bt, c, ct, d, dt, e, et, f, ft ) \
+#define DECL_VAR_GROUP_6( name, _zn, a, at, b, bt, c, ct, d, dt, e, et, f, ft ) \
 	void name( ZNode* _zn, a at, b bt, c ct, d dt, e et, f ft );\
 	ALIGN(8) struct sgp_struct_##name { i8_t sgp_name[RPC_NAME_MAX_LENGTH]; u32_t nId; a _a; b _b; c _c; d _d; e _e; f _f; };\
 	extern "C" {\
@@ -185,7 +185,7 @@
 	void name( ZNode* _zn, a at, b bt, c ct, d dt, e et, f ft )
 
 
-#define SYNC_GROUP_7( name, _zn, a, at, b, bt, c, ct, d, dt, e, et, f, ft, h, ht ) \
+#define DECL_VAR_GROUP_7( name, _zn, a, at, b, bt, c, ct, d, dt, e, et, f, ft, h, ht ) \
 	void name( ZNode* _zn, a at, b bt, c ct, d dt, e et, f ft, h ht );\
 	ALIGN(8) struct sgp_struct_##name { i8_t sgp_name[RPC_NAME_MAX_LENGTH]; u32_t nId; a _a; b _b; c _c; d _d; e _e; f _f; h _h; };\
 	extern "C" {\
@@ -211,7 +211,7 @@
 	void name( ZNode* _zn, a at, b bt, c ct, d dt, e et, f ft, h ht )
 
 
-#define SYNC_GROUP_8( name, _zn, a, at, b, bt, c, ct, d, dt, e, et, f, ft, h, ht, i, it ) \
+#define DECL_VAR_GROUP_8( name, _zn, a, at, b, bt, c, ct, d, dt, e, et, f, ft, h, ht, i, it ) \
 	void name( ZNode* _zn, a at, b bt, c ct, d dt, e et, f ft, h ht, i it );\
 	ALIGN(8) struct sgp_struct_##name { i8_t sgp_name[RPC_NAME_MAX_LENGTH]; u32_t nId; a _a; b _b; c _c; d _d; e _e; f _f; h _h; i _i; };\
 	extern "C" {\
@@ -237,7 +237,7 @@
 	void name( ZNode* _zn, a at, b bt, c ct, d dt, e et, f ft, h ht, i it )
 
 
-#define SYNC_GROUP_9( name, _zn, a, at, b, bt, c, ct, d, dt, e, et, f, ft, h, ht, i, it, j, jt ) \
+#define DECL_VAR_GROUP_9( name, _zn, a, at, b, bt, c, ct, d, dt, e, et, f, ft, h, ht, i, it, j, jt ) \
 	void name( ZNode* _zn, a at, b bt, c ct, d dt, e et, f ft, h ht, i it, j jt );\
 	ALIGN(8) struct sgp_struct_##name { i8_t sgp_name[RPC_NAME_MAX_LENGTH]; u32_t nId; a _a; b _b; c _c; d _d; e _e; f _f; h _h; i _i; j _j; };\
 	extern "C" {\

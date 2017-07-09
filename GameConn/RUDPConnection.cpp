@@ -238,8 +238,6 @@ namespace Zerodelay
 				auto& pack = it;
 				// reliable pack.data is deleted when it gets acked
 				socket->send(m_EndPoint, pack.data, pack.len);
-				if ( pack.len == 4 )
-					int k = 0; // QQQ
 			}
 		}
 	}

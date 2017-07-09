@@ -453,14 +453,14 @@ namespace UnitTests
 		}
 	}
 
-	SYNC_GROUP_0( myGroup0, zn )
+	DECL_VAR_GROUP_0( myGroup0, zn )
 	{
 		SyncGroupTest* sgt = (SyncGroupTest*) zn->getUserDataPtr();
 		Unit* u = new Unit();
 		groupCreateFeedback( 0, u, sgt );
 	}
 
-	SYNC_GROUP_1( myGroup1, zn, char, c )
+	DECL_VAR_GROUP_1( myGroup1, zn, char, c )
 	{
 		SyncGroupTest* sgt = (SyncGroupTest*) zn->getUserDataPtr();
 
@@ -470,7 +470,7 @@ namespace UnitTests
 		groupCreateFeedback( 1, u, sgt );
 	}
 
-	SYNC_GROUP_2( myGroup2, zn, char, c, short, s )
+	DECL_VAR_GROUP_2( myGroup2, zn, char, c, short, s )
 	{
 		SyncGroupTest* sgt = (SyncGroupTest*) zn->getUserDataPtr();
 		
@@ -481,7 +481,7 @@ namespace UnitTests
 		groupCreateFeedback(2, u, sgt );
 	}
 
-	SYNC_GROUP_3( myGroup3, zn, char, c, short, s, int, i )
+	DECL_VAR_GROUP_3( myGroup3, zn, char, c, short, s, int, i )
 	{
 		SyncGroupTest* sgt = (SyncGroupTest*) zn->getUserDataPtr();
 
@@ -493,7 +493,7 @@ namespace UnitTests
 		groupCreateFeedback( 3, u, sgt );
 	}
 
-	SYNC_GROUP_4( myGroup4, zn, char, c, short, s, int, i, float, f )
+	DECL_VAR_GROUP_4( myGroup4, zn, char, c, short, s, int, i, float, f )
 	{
 		SyncGroupTest* sgt = (SyncGroupTest*) zn->getUserDataPtr();
 
@@ -506,7 +506,7 @@ namespace UnitTests
 		groupCreateFeedback( 4, u, sgt );
 	}
 
-	SYNC_GROUP_5( myGroup5, zn, char, c, short, s, int, i, float, f, double, d )
+	DECL_VAR_GROUP_5( myGroup5, zn, char, c, short, s, int, i, float, f, double, d )
 	{
 		SyncGroupTest* sgt = (SyncGroupTest*) zn->getUserDataPtr();
 
@@ -520,7 +520,7 @@ namespace UnitTests
 		groupCreateFeedback( 5, u, sgt );
 	}
 
-	SYNC_GROUP_6( myGroup6, zn, char, c, short, s, int, i, float, f, double, d, Vec3, vec )
+	DECL_VAR_GROUP_6( myGroup6, zn, char, c, short, s, int, i, float, f, double, d, Vec3, vec )
 	{
 		SyncGroupTest* sgt = (SyncGroupTest*) zn->getUserDataPtr();
 
@@ -535,7 +535,7 @@ namespace UnitTests
 		groupCreateFeedback( 6, u, sgt );
 	}
 
-	SYNC_GROUP_7( myGroup7, zn, char, c, short, s, int, i, float, f, double, d, Vec3, vec, Quat, quat )
+	DECL_VAR_GROUP_7( myGroup7, zn, char, c, short, s, int, i, float, f, double, d, Vec3, vec, Quat, quat )
 	{
 		SyncGroupTest* sgt = (SyncGroupTest*) zn->getUserDataPtr();
 
@@ -551,7 +551,7 @@ namespace UnitTests
 		groupCreateFeedback( 7, u, sgt );
 	}
 
-	SYNC_GROUP_8( myGroup8, zn, char, c, short, s, int, i, float, f, double, d, Vec3, vec, Quat, quat, Mat3x3, m3x3 )
+	DECL_VAR_GROUP_8( myGroup8, zn, char, c, short, s, int, i, float, f, double, d, Vec3, vec, Quat, quat, Mat3x3, m3x3 )
 	{
 		SyncGroupTest* sgt = (SyncGroupTest*) zn->getUserDataPtr();
 
@@ -568,7 +568,7 @@ namespace UnitTests
 		groupCreateFeedback( 8, u, sgt );
 	}
 
-	SYNC_GROUP_9( myGroup9, zn, char, c, short, s, int, i, float, f, double, d, Vec3, vec, Quat, quat, Mat3x3, m3x3, Name2, name )
+	DECL_VAR_GROUP_9( myGroup9, zn, char, c, short, s, int, i, float, f, double, d, Vec3, vec, Quat, quat, Mat3x3, m3x3, Name2, name )
 	{
 		SyncGroupTest* sgt = (SyncGroupTest*) zn->getUserDataPtr();
 
@@ -663,51 +663,57 @@ namespace UnitTests
 			std::this_thread::sleep_for(20ms);
 
 			kTicks++;
-			int l = ::rand() % kClients;
-			int c = ::rand() % kClients;
-			ZNode* zz = clients[c];
-			for (int i = 0; i < l ; i++)
+
+			// create random num groups
+			int numGroups = ::rand() % 10;
+
+			// create num gruops on random client
+			ZNode* curClient = clients[ ::rand() % kClients];
+			for (int i = 0; i < numGroups ; i++)
 			{
+				// create group with random num params
 				int kr = ::rand() % 10;
 				switch (kr)
 				{
 				case 0:
-				create_myGroup1( zz, 'E' );
+				create_myGroup1( curClient, 'E' );
 				break;
 				case 1:
-				create_myGroup2( zz, 'E', 6533 );
+				create_myGroup2( curClient, 'E', 6533 );
 				break;
 				case 2:
-				create_myGroup3( zz, 'E', 6533, ~0 );
+				create_myGroup3( curClient, 'E', 6533, ~0 );
 				break;
 				case 9:
-				create_myGroup4( zz, 'E', 6533, ~0, 2*10e20f );
+				create_myGroup4( curClient, 'E', 6533, ~0, 2*10e20f );
 				break;
 				case 3:
-				create_myGroup5( zz, 'E', 6533, ~0, 2*10e20f, 7172773.881238 );
+				create_myGroup5( curClient, 'E', 6533, ~0, 2*10e20f, 7172773.881238 );
 				break;
 				case 4:
-				create_myGroup6( zz, 'E', 6533, ~0, 2*10e20f, 7172773.881238, v );
+				create_myGroup6( curClient, 'E', 6533, ~0, 2*10e20f, 7172773.881238, v );
 				break;
 				case 5:
-				create_myGroup7( zz, 'E', 6533, ~0, 2*10e20f, 7172773.881238, v, q );
+				create_myGroup7( curClient, 'E', 6533, ~0, 2*10e20f, 7172773.881238, v, q );
 				break;
 				case 6:
-				create_myGroup8( zz, 'E', 6533, ~0, 2*10e20f, 7172773.881238, v, q, mm );
+				create_myGroup8( curClient, 'E', 6533, ~0, 2*10e20f, 7172773.881238, v, q, mm );
 				break;
 				case 7:
-				create_myGroup9( zz, 'E', 6533, ~0, 2*10e20f, 7172773.881238, v, q, mm, name );
+				create_myGroup9( curClient, 'E', 6533, ~0, 2*10e20f, 7172773.881238, v, q, mm, name );
 				break;
 				case 8:
-				create_myGroup0( zz );
+				create_myGroup0( curClient );
 				break;
 				}	
 			}
 
 			// delete some unit groups
-			l = ::rand()%5;
+			numGroups = ::rand()%5;
 			for (int i = 0; i < 5 ; i++)
 			{
+				if ( m_unitsSelf.size() == 0 )
+					break;
 				int ridx = rand() % m_unitsSelf.size();
 				auto* unit = m_unitsSelf.at(ridx);
 				if ( unit )
@@ -740,11 +746,11 @@ namespace UnitTests
 		std::vector<BaseTest*> tests;
 
 		// add tests
-		tests.emplace_back( new ConnectionLayerTest );
-		tests.emplace_back( new MassConnectTest );
-		tests.emplace_back( new ReliableOrderTest );
-		tests.emplace_back( new RpcTest );
-//		tests.emplace_back( new SyncGroupTest );
+		//tests.emplace_back( new ConnectionLayerTest );
+		//tests.emplace_back( new MassConnectTest );
+		//tests.emplace_back( new ReliableOrderTest );
+		//tests.emplace_back( new RpcTest );
+		tests.emplace_back( new SyncGroupTest );
 			
 		// run them
 		for ( auto* t : tests )

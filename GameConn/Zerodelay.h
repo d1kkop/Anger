@@ -99,7 +99,7 @@ namespace Zerodelay
 	/** ---------------------------------------------------------------------------------------------------------------------------------
 		Endpoint is analogical to an address. It is either an Ipv4 or Ipv6 address.
 		Do not keep a pointer to the endpoint but copy the structure instead.
-		It works fine with std::map and std::unordered_map. */
+		It works out of the box with std::map and std::unordered_map. */
 	struct ZDLL_DECLSPEC ZEndpoint
 	{
 		ZEndpoint();
@@ -116,6 +116,7 @@ namespace Zerodelay
 
 		/*	Returns the last underlaying socket error. Returns 0 on no error. */
 		i32_t getLastError() const;
+
 
 	private:
 		i8_t pod[256];
