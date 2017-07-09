@@ -19,7 +19,7 @@ namespace Zerodelay
 		Disconnected
 	};
 
-	enum class EGameNodePacketType:u8_t;
+	enum class EDataPacketType:u8_t;
 	enum class EDisconnectReason:u8_t;
 
 	class Connection: public RUDPConnection
@@ -54,7 +54,7 @@ namespace Zerodelay
 		EConnectionState getState() const { return m_State; }
 
 	private:
-		void sendSystemMessage( EGameNodePacketType type, const i8_t* payload=nullptr, i32_t payloadLen=0 );
+		void sendSystemMessage( EDataPacketType type, const i8_t* payload=nullptr, i32_t payloadLen=0 );
 
 		i32_t m_ConnectTimeoutSeconMs;
 		i32_t m_KeepAliveIntervalMs;

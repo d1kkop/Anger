@@ -7,7 +7,7 @@
 
 
 #define RPC_CPY_N_SEND2(name) \
-	gn->sendReliableOrdered((u8_t)EGameNodePacketType::Rpc, (const i8_t*)&t, sizeof(name), specific, exclude, channel, relay);\
+	gn->sendReliableOrdered((u8_t)EDataPacketType::Rpc, (const i8_t*)&t, sizeof(name), specific, exclude, channel, relay);\
 
 #define RPC_ASSERT_N_CPY2(name) \
 	assert( len == (sizeof(name)) && "invalid struct size" ); \

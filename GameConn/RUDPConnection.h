@@ -23,7 +23,7 @@ namespace Zerodelay
 		virtual ~IConnection() = default;
 
 		// --- All functions thread safe ---
-		virtual void addToSendQueue(u8_t id, const i8_t* data, i32_t len, EPacketType packetType, u8_t channel=0, bool relay=true) = 0;
+		virtual void addToSendQueue(u8_t id, const i8_t* data, i32_t len, EHeaderPacketType packetType, u8_t channel=0, bool relay=true) = 0;
 		virtual void addReliableNewest( u8_t id, const i8_t* data, i32_t len, u32_t groupId, i8_t groupBit ) = 0;
 		virtual void beginPoll() = 0;
 		virtual bool poll(Packet& packet) = 0;
@@ -102,7 +102,7 @@ namespace Zerodelay
 
 		// Thread safe
 		//------------------------------
-			virtual void addToSendQueue( u8_t id, const i8_t* data, i32_t len, EPacketType packetType, u8_t channel=0, bool relay=true ) override;
+			virtual void addToSendQueue( u8_t id, const i8_t* data, i32_t len, EHeaderPacketType packetType, u8_t channel=0, bool relay=true ) override;
 			virtual void addReliableNewest( u8_t id, const i8_t* data, i32_t len, u32_t groupId, i8_t groupBit ) override;
 		
 			// Always first call beginPoll, then repeatedly poll until no more packets, then endPoll
@@ -132,9 +132,9 @@ namespace Zerodelay
 		void receiveReliableNewest(const i8_t* buff, i32_t rawSize);
 		void receiveAck(const i8_t* buff, i32_t rawSize);
 		void receiveAckRelNewest(const i8_t* buff, i32_t rawSize);
-		void assembleNormalPacket( Packet& pack, EPacketType packetType, u8_t id, const i8_t* data, i32_t len, i32_t hdrSize, i8_t channel, bool relay );
+		void assembleNormalPacket( Packet& pack, EHeaderPacketType packetType, u8_t id, const i8_t* data, i32_t len, i32_t hdrSize, i8_t channel, bool relay );
 		void extractChannelRelayAndSeq(const i8_t* buff, i32_t rawSize, i8_t& channOut, bool& relayOut, u32_t& seqOut );
-		void createNormalPacket(Packet& pack, const i8_t* buff, i32_t dataSize, i8_t channel, bool relay, EPacketType type) const;
+		void createNormalPacket(Packet& pack, const i8_t* buff, i32_t dataSize, i8_t channel, bool relay, EHeaderPacketType type) const;
 		void createPacketReliableNewest( Packet& pack, const i8_t* buff, i32_t embeddedGroupsSize, i32_t numGroups ) const;
 		bool isSequenceNewer( u32_t incoming, u32_t having ) const;
 

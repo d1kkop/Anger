@@ -11,10 +11,10 @@ namespace Zerodelay
 	class VariableGroup
 	{
 	public:
-		VariableGroup(i8_t channel, EPacketType type);
+		VariableGroup();
 		virtual ~VariableGroup();
 
-		bool read( const i8_t* data, i32_t buffLen, u16_t groupBits );
+		bool read( const i8_t*& data, i32_t& buffLen, u16_t groupBits );
 		void addVariable( NetVariable* nv ) { m_Variables.emplace_back( nv ); }
 		EVarControl getVarControl() const	{ return m_Control; }
 		u32_t getNetworkId() const   { return m_NetworkId; }
@@ -38,20 +38,15 @@ namespace Zerodelay
 		bool isDestroySent() const	{ return m_DestroySent; }
 		void markDestroySent()		{ m_DestroySent = true; }
 
-		EPacketType getType() const	{ return m_Type; }
-
 		void sendGroup(ZNode* node);
-
-		void unrefGroup();
+		void unrefGroup(); // decouples variables from as group is about to be deleted
 
 	private:
-		i8_t m_Channel;
 		bool m_Broken;
 		bool m_DestroySent;
+		bool m_Dirty;
 	 	u32_t m_NetworkId;
 		EVarControl m_Control;
-		EPacketType m_Type;
-		bool m_Dirty;
 		std::vector<NetVariable*> m_Variables;
 
 	public:

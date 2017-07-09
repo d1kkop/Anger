@@ -50,23 +50,23 @@ namespace Zerodelay
 	bool VariableGroupNode::recvPacket(const Packet& pack, const IConnection* conn)
 	{
 		assert( conn && "invalid ptr" );
-		EGameNodePacketType packType = (EGameNodePacketType)pack.data[0];
+		EDataPacketType packType = (EDataPacketType)pack.data[0];
 		auto etp = conn->getEndPoint();
 		switch ( packType )
 		{
-		case EGameNodePacketType::IdPackRequest:
+		case EDataPacketType::IdPackRequest:
 			recvIdRequest( etp );	
 			break;
-		case EGameNodePacketType::IdPackProvide:
+		case EDataPacketType::IdPackProvide:
 			recvIdProvide( pack, etp );
 			break;
-		case EGameNodePacketType::VariableGroupCreate:
+		case EDataPacketType::VariableGroupCreate:
 			recvVariableGroupCreate( pack, etp );
 			break;
-		case EGameNodePacketType::VariableGroupDestroy:
+		case EDataPacketType::VariableGroupDestroy:
 			recvVariableGroupDestroy( pack, etp );
 			break;
-		case EGameNodePacketType::VariableGroupUpdate:
+		case EDataPacketType::VariableGroupUpdate:
 			recvVariableGroupUpdate( pack, etp );
 			break;
 		default:
@@ -75,10 +75,10 @@ namespace Zerodelay
 		return true;
 	}
 
-	void VariableGroupNode::beginGroup( const i8_t* paramData, i32_t paramDataLen, i8_t channel, EPacketType type)
+	void VariableGroupNode::beginGroup( const i8_t* paramData, i32_t paramDataLen, i8_t channel)
 	{
 		assert( VariableGroup::Last == nullptr && "should be NULL" );
-		VariableGroup::Last = new VariableGroup(channel, type);
+		VariableGroup::Last = new VariableGroup();
 
 		if ( paramDataLen >= PendingVariableGroup::MaxParamDataLength )
 		{
@@ -92,14 +92,14 @@ namespace Zerodelay
 		Platform::memCpy( pvg.ParamData, PendingVariableGroup::MaxParamDataLength, paramData, paramDataLen );
 		pvg.ParamDataLength = paramDataLen;
 		pvg.Vg = VariableGroup::Last;
-		
+		pvg.Channel = channel;
 		m_PendingGroups.emplace_back( pvg );
 	}
 
-	void VariableGroupNode::beginGroupFromRemote(u32_t networkId, const ZEndpoint& ztp, EPacketType type)
+	void VariableGroupNode::beginGroupFromRemote(u32_t networkId, const ZEndpoint& ztp)
 	{
 		assert( VariableGroup::Last == nullptr && "should be NULL" );
-		VariableGroup::Last = new VariableGroup(-1, type);
+		VariableGroup::Last = new VariableGroup();
 		VariableGroup::Last->setNetworkId( networkId );
 		VariableGroup::Last->setControl( EVarControl::Remote );
 		// ----------------------------
@@ -171,7 +171,7 @@ namespace Zerodelay
 		{
 			// function signature
 			ZEndpoint ztp = toZpt( etp );
-			void (*pfunc)(ZNodePrivate*, const i8_t*, i32_t, const ZEndpoint&, EPacketType);
+			void (*pfunc)(ZNodePrivate*, const i8_t*, i32_t, const ZEndpoint&, EHeaderPacketType);
 			pfunc = (decltype(pfunc)) pf;
 			pfunc( m_PrivZ, payload, len, ztp, pack.type );
 		}
@@ -199,36 +199,36 @@ namespace Zerodelay
 
 	void VariableGroupNode::recvVariableGroupUpdate(const Packet& pack, const EndPoint& etp)
 	{
-		// try find group and update its contents with the latest data
-		VariableGroup* vg = findRemoteGroup(pack.numGroups, nullptr);
-		if ( vg && !vg->isBroken() )
+		const auto* data = pack.data;
+		int32_t buffLen = pack.len;
+		for (u32_t i=0; i<pack.numGroups; ++i)
 		{
-			vg->read(pack.data, pack.len, pack.groupBits);
+			// returns ptr to next group or null if has reached end
+			if (!deserializeGroup(data, buffLen))
+			{
+				// TODO emit error, as deserialization failed
+				break;
+			}
 		}
-		else if ( vg && vg->isBroken() )
-		{
-			// cleanup this group as it will never be used again
-			findRemoteGroup(pack.numGroups, nullptr, true);
-			vg->unrefGroup();
-			delete vg;
-		}
+		// If all data is exactly read, then buffLen should be zero, if groups are skipped, then this is subtracted from BuffLen, so should still be zero.
+		assert( buffLen == 0 );
 	}
 
-	void VariableGroupNode::sendCreateVariableGroup(u32_t networkId, const i8_t* paramData, i32_t paramDataLen)
+	void VariableGroupNode::sendCreateVariableGroup(u32_t networkId, const i8_t* paramData, i32_t paramDataLen, i8_t channel)
 	{
 		// now that networkId is known, push it in front as first parameter of paramData
 		*(u32_t*)(paramData + RPC_NAME_MAX_LENGTH) = networkId;
-		m_ZNode->sendReliableOrdered( (u8_t)EGameNodePacketType::VariableGroupCreate, paramData, paramDataLen );
+		m_ZNode->sendReliableOrdered( (u8_t)EDataPacketType::VariableGroupCreate, paramData, paramDataLen, nullptr, false, channel, true );
 	}
 
 	void VariableGroupNode::sendDestroyVariableGroup(u32_t networkId)
 	{
-		m_ZNode->sendReliableOrdered( (u8_t)EGameNodePacketType::VariableGroupDestroy, (const i8_t*)&networkId, sizeof(networkId) );
+		m_ZNode->sendReliableOrdered( (u8_t)EDataPacketType::VariableGroupDestroy, (const i8_t*)&networkId, sizeof(networkId) );
 	}
 
 	void VariableGroupNode::sendIdPackRequest()
 	{
-		m_ZNode->sendReliableOrdered((u8_t)EGameNodePacketType::IdPackRequest, nullptr, 0, nullptr, false, 0, false);
+		m_ZNode->sendReliableOrdered((u8_t)EDataPacketType::IdPackRequest, nullptr, 0, nullptr, false, 0, false);
 	}
 
 	void VariableGroupNode::sendIdPackProvide(const EndPoint& etp, i32_t numIds)
@@ -241,7 +241,7 @@ namespace Zerodelay
 		{
 			idPack[i] = m_UniqueIdCounter++;			
 		}
-		m_ZNode->sendReliableOrdered((u8_t)EGameNodePacketType::IdPackProvide,
+		m_ZNode->sendReliableOrdered((u8_t)EDataPacketType::IdPackProvide,
 									(const i8_t*)idPack, sizeof(u32_t)*numIds,
 									&toZpt(etp), false, 0, false);
 	}
@@ -287,7 +287,7 @@ namespace Zerodelay
 			m_UniqueIds.pop_front();
 			pvg.Vg->setNetworkId(id); // now that the id is set to something not 0, it will be automatically sync itself
 			m_VariableGroups.insert( std::make_pair( id, pvg.Vg ) );
-			sendCreateVariableGroup( id, pvg.ParamData, pvg.ParamDataLength );
+			sendCreateVariableGroup( id, pvg.ParamData, pvg.ParamDataLength, pvg.Channel );
 		}
 	}
 
@@ -317,6 +317,36 @@ namespace Zerodelay
 				vgIt = m_VariableGroups.erase(vgIt);
 			}
 		}
+	}
+
+	bool VariableGroupNode::deserializeGroup(const i8_t*& data, i32_t& buffLen)
+	{
+		u32_t groupId = *(u32_t*)data;
+		data += 4;
+		u16_t groupBits = *(u16_t*)data;
+		data += 2;
+		u16_t skipBytes = *(u16_t*)data; // in case group is not yet created or deleted
+		data += 2;
+		VariableGroup* vg = findRemoteGroup( groupId, nullptr );
+		if ( vg && !vg->isBroken() ) // group is broken if destructor's of variables inside group is called
+		{
+			if ( !vg->read(data, buffLen, groupBits) )
+			{
+				return false; // deserialie failure
+			}
+		}
+		else
+		{
+			if ( vg && vg->isBroken() )
+			{
+				findRemoteGroup( groupId, nullptr, true );
+				vg->unrefGroup();
+				delete vg;
+			}
+			data += skipBytes;
+			buffLen -= skipBytes;
+		}
+		return true;
 	}
 
 	VariableGroup* VariableGroupNode::findRemoteGroup(u32_t networkId, const EndPoint* etp, bool removeOnFind)
@@ -358,5 +388,4 @@ namespace Zerodelay
 		}
 		return nullptr;
 	}
-
 }

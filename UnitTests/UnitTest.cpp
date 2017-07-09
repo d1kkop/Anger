@@ -671,7 +671,7 @@ namespace UnitTests
 				switch (kr)
 				{
 				case 0:
-				create_myGroup1( zz, EPacketType::Reliable_Ordered, 'E' );
+				create_myGroup1( zz, 'E' );
 				break;
 				case 1:
 				create_myGroup2( zz, 'E', 6533 );

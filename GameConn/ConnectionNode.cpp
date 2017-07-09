@@ -210,7 +210,7 @@ namespace Zerodelay
 			return;
 		}
 		// to all except
-		send( (u8_t)EGameNodePacketType::RemoteConnected, buff, offs, &etp, true );
+		send( (u8_t)EDataPacketType::RemoteConnected, buff, offs, &etp, true );
 	}
 
 	void ConnectionNode::sendRemoteDisconnected(const Connection* g, EDisconnectReason reason)
@@ -230,48 +230,48 @@ namespace Zerodelay
 			return;
 		}
 		// to all except
-		send( (u8_t)EGameNodePacketType::RemoteDisconnected, buff, offs+1, &etp, true );
+		send( (u8_t)EDataPacketType::RemoteDisconnected, buff, offs+1, &etp, true );
 	}
 
 	bool ConnectionNode::recvPacket(struct Packet& pack, class Connection* g)
 	{
-		EGameNodePacketType packType = (EGameNodePacketType)pack.data[0];
+		EDataPacketType packType = (EDataPacketType)pack.data[0];
 		const i8_t* payload  = pack.data+1; // first byte is PacketType
 		i32_t payloadLen = pack.len-1;  // len includes the packetType byte
 		switch (packType)
 		{
-		case EGameNodePacketType::ConnectRequest:
+		case EDataPacketType::ConnectRequest:
 			recvConnectPacket(payload, payloadLen, g);
 			break;
-		case EGameNodePacketType::ConnectAccept:
+		case EDataPacketType::ConnectAccept:
 			recvConnectAccept(g);
 			break;
-		case EGameNodePacketType::Disconnect:
+		case EDataPacketType::Disconnect:
 			recvDisconnectPacket(payload, payloadLen, g);
 			break;
-		case EGameNodePacketType::RemoteConnected:
+		case EDataPacketType::RemoteConnected:
 			recvRemoteConnected(g, payload, payloadLen);
 			break;
-		case EGameNodePacketType::RemoteDisconnected:
+		case EDataPacketType::RemoteDisconnected:
 			recvRemoteDisconnected(g, payload, payloadLen);
 			break;
-		case EGameNodePacketType::KeepAliveRequest:
+		case EDataPacketType::KeepAliveRequest:
 			g->onReceiveKeepAliveRequest();
 			break;
-		case EGameNodePacketType::KeepAliveAnswer:
+		case EDataPacketType::KeepAliveAnswer:
 			g->onReceiveKeepAliveAnswer();
 			break;
-		case EGameNodePacketType::IncorrectPassword:
+		case EDataPacketType::IncorrectPassword:
 			recvInvalidPassword(g, payload, payloadLen);
 			break;
-		case EGameNodePacketType::MaxConnectionsReached:
+		case EDataPacketType::MaxConnectionsReached:
 			recvMaxConnectionsReached(g, payload, payloadLen);
 			break;
-		case EGameNodePacketType::Rpc:
+		case EDataPacketType::Rpc:
 			recvRpcPacket(payload, payloadLen, g);
 			break;
 		default:
-			if ( (i8_t)packType >= USER_ID_OFFSET )
+			if ( (u8_t)packType >= USER_ID_OFFSET )
 			{
 				recvUserPacket(g, pack );
 			}

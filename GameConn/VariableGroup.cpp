@@ -9,13 +9,11 @@
 
 namespace Zerodelay
 {
-	VariableGroup::VariableGroup(i8_t channel, EPacketType type):
-		m_Channel(channel),
+	VariableGroup::VariableGroup():
 		m_NetworkId(0),
 		m_Broken(false),
 		m_DestroySent(false),
-		m_Control(EVarControl::Full),
-		m_Type(type)
+		m_Control(EVarControl::Full)
 	{
 	}
 
@@ -23,7 +21,7 @@ namespace Zerodelay
 	{
 	}
 
-	bool VariableGroup::read(const i8_t* data, i32_t buffLen, u16_t groupBits )
+	bool VariableGroup::read(const i8_t*& data, i32_t& buffLen, u16_t groupBits )
 	{
 		assert ( (i32_t)m_Variables.size() <= 16 );
 		for (i32_t i = 0; i < (i32_t)m_Variables.size() ; i++)
@@ -67,7 +65,7 @@ namespace Zerodelay
 		{
 			if ( v )
 			{
-				v->unrefGroup();
+				v->unrefGroup(); // sets group ptr to null as group is about to be deleted
 			}
 		}
 	}

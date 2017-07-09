@@ -25,8 +25,8 @@ namespace Zerodelay
 	using i32_t = int;
 	using u32_t = unsigned int;
 
-
-	enum class EGameNodePacketType: u8_t
+	// Not be confused with EHeaderPacketType
+	enum class EDataPacketType: u8_t
 	{
 		ConnectRequest,
 		ConnectAccept,
@@ -46,7 +46,7 @@ namespace Zerodelay
 		UserOffset
 	};
 
-	#define  USER_ID_OFFSET (u8_t)(EGameNodePacketType::UserOffset)
+	#define  USER_ID_OFFSET (u8_t)(EDataPacketType::UserOffset)
 
 	enum class EConnectCallResult
 	{
@@ -85,7 +85,8 @@ namespace Zerodelay
 		Lost
 	};
 
-	enum class EPacketType : u8_t
+	// Not be confused with EDataPacketType
+	enum class EHeaderPacketType : u8_t
 	{
 		Reliable_Ordered,
 		Unreliable_Sequenced,
@@ -261,10 +262,13 @@ namespace Zerodelay
 
 
 		/*	Begin constructing a new variable group.
-			All GenericNetVar declared between this call end EndVariable group are 
-			put in a group with a unique ID.
-			The variables synchronize when they change. */
-		void beginVariableGroup( const i8_t* constructData=nullptr, i32_t constructDataLen=0, i8_t channel=1, EPacketType syncType=EPacketType::Unreliable_Sequenced );
+			All GenericNetVar declared between this call end EndVariable group are put in a group with a unique ID.
+			The creation and destruction of the group is send in Reliable_Ordered way, where 'channel'
+			specifies in which channel this should occur.
+			However, updating the variables inside the group happens in a Reliable_Newest_Only fashion,
+			this means that only the last data in variable will be guarenteed to be received. There is no
+			notion of channels in updating the variables inside the group. */
+		void beginVariableGroup( const i8_t* constructData=nullptr, i32_t constructDataLen=0, i8_t channel=1 );
 		void endVariableGroup();
 
 
@@ -283,7 +287,7 @@ namespace Zerodelay
 		friend class ZNode;
 
 	public:
-		void priv_beginVarialbeGroupRemote(u32_t nid, const ZEndpoint& ztp, EPacketType type);
+		void priv_beginVarialbeGroupRemote(u32_t nid, const ZEndpoint& ztp);
 		void priv_endVariableGroup();
 		ZNode* priv_getUserNode() const;
 

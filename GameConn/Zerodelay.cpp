@@ -160,7 +160,7 @@ namespace Zerodelay
 	{
 		ISocket* sock = p->getSocket();
 		if ( sock )
-			p->send( id, data, len, asEpt(specific), exclude, EPacketType::Reliable_Ordered, channel );
+			p->send( id, data, len, asEpt(specific), exclude, EHeaderPacketType::Reliable_Ordered, channel );
 		else
 			Platform::log( "socket was not created, possibly a platform issue" );
 	}
@@ -178,7 +178,7 @@ namespace Zerodelay
 	{
 		ISocket* sock = p->getSocket();
 		if ( sock )
-			p->send( packId, data, len, asEpt(specific), exclude, EPacketType::Unreliable_Sequenced, channel );
+			p->send( packId, data, len, asEpt(specific), exclude, EHeaderPacketType::Unreliable_Sequenced, channel );
 		else
 			Platform::log( "socket was not created, possibly a platform issue" );
 	}
@@ -236,9 +236,9 @@ namespace Zerodelay
 		return p->getUserDataIdx();
 	}
 
-	void ZNode::beginVariableGroup(const i8_t* paramData, i32_t paramDataLen, i8_t channel, EPacketType type)
+	void ZNode::beginVariableGroup(const i8_t* paramData, i32_t paramDataLen, i8_t channel)
 	{
-		vgn->beginGroup( paramData, paramDataLen, channel, type );
+		vgn->beginGroup( paramData, paramDataLen, channel );
 	}
 
 	void ZNode::endVariableGroup()
@@ -251,9 +251,9 @@ namespace Zerodelay
 	// -------- ZNodePrivate ----------------------------------------------------------------------------------------------
 
 
-	void ZNodePrivate::priv_beginVarialbeGroupRemote(u32_t nid, const ZEndpoint& ztp, EPacketType type)
+	void ZNodePrivate::priv_beginVarialbeGroupRemote(u32_t nid, const ZEndpoint& ztp)
 	{
-		vgn->beginGroupFromRemote(nid, ztp, type);
+		vgn->beginGroupFromRemote(nid, ztp);
 	}
 
 	void ZNodePrivate::priv_endVariableGroup()

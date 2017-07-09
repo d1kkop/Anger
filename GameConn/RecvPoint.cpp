@@ -48,7 +48,7 @@ namespace Zerodelay
 		delete m_ListenSocket;
 	}
 
-	void RecvPoint::send(u8_t id, const i8_t* data, i32_t len, const EndPoint* specific, bool exclude, EPacketType type, u8_t channel, bool relay)
+	void RecvPoint::send(u8_t id, const i8_t* data, i32_t len, const EndPoint* specific, bool exclude, EHeaderPacketType type, u8_t channel, bool relay)
 	{
 		std::lock_guard<std::mutex> lock(m_ConnectionListMutex);
 		forEachConnection( specific, exclude, [&] (IConnection* conn) 

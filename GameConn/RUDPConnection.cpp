@@ -34,17 +34,17 @@ namespace Zerodelay
 		for ( auto& kvp : m_SendQueue_reliable_newest ) for (auto i = 0; i < 16 ; i++) delete [] kvp.second.groupItems[i].data;
 	}
 
-	void RUDPConnection::addToSendQueue(u8_t id, const i8_t* data, i32_t len, EPacketType packetType, u8_t channel, bool relay)
+	void RUDPConnection::addToSendQueue(u8_t id, const i8_t* data, i32_t len, EHeaderPacketType packetType, u8_t channel, bool relay)
 	{
 		// user not allowed to send acks
-		if ( packetType == EPacketType::Ack || packetType == EPacketType::Reliable_Newest )
+		if ( packetType == EHeaderPacketType::Ack || packetType == EHeaderPacketType::Reliable_Newest )
 		{
 			assert( false && "Invalid packet type" );
 			return;
 		}
 		Packet pack;
 		assembleNormalPacket( pack, packetType, id, data, len, off_Norm_Data, channel, relay );
-		if ( packetType == EPacketType::Reliable_Ordered )
+		if ( packetType == EHeaderPacketType::Reliable_Ordered )
 		{
 			std::lock_guard<std::mutex> lock(m_SendMutex);
 			*(u32_t*)&pack.data[off_Norm_Seq] = m_SendSeq_reliable[channel]++;
@@ -184,28 +184,28 @@ namespace Zerodelay
 		if ( m_PacketLossPercentage > 0 && (u8_t)(rand() % 100) < m_PacketLossPercentage )
 			return; // discard
 
-		EPacketType type = (EPacketType)buff[off_Type];
+		EHeaderPacketType type = (EHeaderPacketType)buff[off_Type];
 		switch ( type )
 		{
-		case EPacketType::Ack:
+		case EHeaderPacketType::Ack:
 			receiveAck(buff, rawSize);
 			break;
 
-		case EPacketType::Ack_Reliable_Newest:
+		case EHeaderPacketType::Ack_Reliable_Newest:
 			receiveAckRelNewest(buff, rawSize);
 			break;
 
-		case EPacketType::Reliable_Ordered:
+		case EHeaderPacketType::Reliable_Ordered:
 			// ack it (even if we already processed this packet)
 			addAckToAckQueue( buff[off_Norm_Chan] & 7, *(u32_t*)&buff[off_Norm_Seq] );
 			receiveReliableOrdered(buff, rawSize);	
 			break;
 
-		case EPacketType::Unreliable_Sequenced:
+		case EHeaderPacketType::Unreliable_Sequenced:
 			receiveUnreliableSequenced(buff, rawSize);
 			break;
 
-		case EPacketType::Reliable_Newest:
+		case EHeaderPacketType::Reliable_Newest:
 			receiveReliableNewest( buff, rawSize );
 			break;
 		}
@@ -257,17 +257,19 @@ namespace Zerodelay
 	{
 		// format per entry: groupId(4bytes) | groupBits( (items.size()+7)/8 bytes ) | n x groupData (sum( item_data_size, n ) bytes )
 		i8_t dataBuffer[RecvPoint::sm_MaxRecvBuffSize]; // decl buffer
-		dataBuffer[off_Type] = (i8_t)EPacketType::Reliable_Newest; // start with type
+		dataBuffer[off_Type] = (i8_t)EHeaderPacketType::Reliable_Newest; // start with type
 		*(u32_t*)(dataBuffer + off_RelNew_Seq) = m_SendSeq_reliable_newest; // followed by sequence number
 		i32_t kNumGroupsWritten = 0;  // keeps track of num groups as is not know yet
-		i32_t bytesWritten = off_RelNew_GroupId; // skip 4 bytes, as num groups is not yet known
+		i32_t kBytesWritten = off_RelNew_GroupId; // skip 4 bytes, as num groups is not yet known
 		for (auto& kvp : m_SendQueue_reliable_newest)
 		{
-			i32_t kBytesWrittenBeforeGroup = bytesWritten; // remember this in case the group has no changed items
-			u32_t groupId = kvp.first; // is groupId
-			*(u32_t*)(dataBuffer + bytesWritten) = groupId;
-			bytesWritten += 4; // group id byte size
-			i8_t* groupBitsPtr = dataBuffer + bytesWritten; // remember this position as the groupBits cannot be written yet
+			i32_t kBytesWrittenBeforeGroup = kBytesWritten; // remember this in case the group has no changed items
+			*(u32_t*)(dataBuffer + kBytesWritten) = kvp.first; // is groupId (4 bytes)
+			kBytesWritten += 4; // group id byte size
+			i8_t* groupBitsPtr = dataBuffer + kBytesWritten; // remember this position as the groupBits cannot be written yet
+			kBytesWritten += 2;
+			i8_t* groupSkipPtr = dataBuffer + kBytesWritten; // keep store amount of bytes to skip in case on the recipient the group does not exist
+			kBytesWritten += 2;
 			u16_t groupBits = 0;	// keeps track of which variables in the group are written
 			i32_t kBit = 0;			// which bit to set (if variable is written)
 			bool itemsWereWritten = false; // see if at least a single item is written
@@ -277,9 +279,9 @@ namespace Zerodelay
 				if (isSequenceNewer(item.localRevision, item.remoteRevision)) // variable is changed compared to last acked revision
 				{
 					groupBits |= (1 << kBit);
-					assert(bytesWritten + item.dataLen <= RecvPoint::sm_MaxRecvBuffSize); // TODO emit error and disconnect , this is critical!
-					Platform::memCpy(dataBuffer + bytesWritten, item.dataLen, item.data, item.dataLen);
-					bytesWritten += item.dataLen;
+					assert(kBytesWritten + item.dataLen <= RecvPoint::sm_MaxRecvBuffSize); // TODO emit error and disconnect , this is critical!
+					Platform::memCpy(dataBuffer + kBytesWritten, item.dataLen, item.data, item.dataLen);
+					kBytesWritten += item.dataLen;
 					itemsWereWritten = true;
 				}
 				kBit++;
@@ -287,21 +289,23 @@ namespace Zerodelay
 			// if no items in group written, move write ptr back and continue
 			if ( !itemsWereWritten )
 			{
-				bytesWritten = kBytesWrittenBeforeGroup;
+				kBytesWritten = kBytesWrittenBeforeGroup;
 				continue;
 			}
 			// group bits are now known, write them
 			*(u16_t*)(groupBitsPtr) = groupBits;
 			kNumGroupsWritten++;
+			// write skip bytes in case recipient does not know the group yet
+			*(u16_t*)(groupSkipPtr) = (kBytesWritten - kBytesWrittenBeforeGroup) - 8; /* hdr size */
 			// quit loop if exceeding max send size
-			if ( bytesWritten >= RecvPoint::sm_MaxSendSize )
+			if ( kBytesWritten >= RecvPoint::sm_MaxSendSize )
 				break;
 		}
 		// as group count is know now, write it
 		if ( kNumGroupsWritten > 0 )
 		{
 			*(i32_t*)(dataBuffer + off_RelNew_Num) = kNumGroupsWritten;
-			socket->send( m_EndPoint, dataBuffer, bytesWritten );
+			socket->send( m_EndPoint, dataBuffer, kBytesWritten );
 			m_SendSeq_reliable_newest++;
 		}
 	}
@@ -324,7 +328,7 @@ namespace Zerodelay
 			m_AckQueue[i].clear();
 			if (kSizeWritten > 0) // only transmit acks if there was still something in the queue
 			{
-				buff[off_Type] = (i8_t)EPacketType::Ack;
+				buff[off_Type] = (i8_t)EHeaderPacketType::Ack;
 				buff[off_Ack_Chan] = (i8_t)i; // channel
 				*(u32_t*)&buff[off_Ack_Num] = kSizeWritten / 4; // num of acks
 				socket->send(m_EndPoint, buff, kSizeWritten + off_Ack_Payload); // <-- this is correct, ack_seq is payload offset (if no dataId attached)
@@ -378,9 +382,8 @@ namespace Zerodelay
 		auto& queue = m_RecvQueue_reliable_order[channel];
 		if ( queue.count( seq ) == 0 )
 		{
-			Packet pack;
-			// Offset off_Norm_Id is correct as ID is enclosed in payload/data
-			createNormalPacket( pack, buff + off_Norm_Id, rawSize-off_Norm_Id, channel, relay, EPacketType::Reliable_Ordered );
+			Packet pack; // Offset off_Norm_Id is correct data packet type (EDataPacketType) (not EHeaderPacketType!) is included in the data
+			createNormalPacket( pack, buff + off_Norm_Id, rawSize-off_Norm_Id, channel, relay, EHeaderPacketType::Reliable_Ordered );
 			queue.insert( std::make_pair(seq, pack) );
 		}
 		// update recv seq to most recent possible
@@ -405,7 +408,7 @@ namespace Zerodelay
 		m_RecvSeq_unreliable[channel] = seq+1;
 
 		Packet pack;  // Id offset of Norm_ID is correct as id is enclosed in payload/data
-		createNormalPacket( pack, buff + off_Norm_Id, rawSize-off_Norm_Id, channel, relay, EPacketType::Unreliable_Sequenced );
+		createNormalPacket( pack, buff + off_Norm_Id, rawSize-off_Norm_Id, channel, relay, EHeaderPacketType::Unreliable_Sequenced );
 
 		std::lock_guard<std::mutex> lock(m_RecvMutex);
 		m_RecvQueue_unreliable_sequenced[channel].emplace_back( pack );
@@ -518,14 +521,14 @@ namespace Zerodelay
 		//}
 	}
 
-	void RUDPConnection::assembleNormalPacket(Packet& pack, EPacketType packetType, u8_t id, const i8_t* data, i32_t len, i32_t hdrSize, i8_t channel, bool relay)
+	void RUDPConnection::assembleNormalPacket(Packet& pack, EHeaderPacketType packetType, u8_t id, const i8_t* data, i32_t len, i32_t hdrSize, i8_t channel, bool relay)
 	{
 		pack.data = new i8_t[len+hdrSize];
 		pack.data[off_Type] = (i8_t)packetType;
 		pack.data[off_Norm_Chan] = channel;
 		pack.data[off_Norm_Chan] |= ((i8_t)relay) << 3; // skip over the bits for channel, 0 to 7
 		pack.data[off_Norm_Id] = id;
-		memcpy_s( pack.data + off_Norm_Data, len, data, len ); 
+		Platform::memCpy( pack.data + off_Norm_Data, len, data, len ); 
 		pack.len = len + off_Norm_Data;
 	}
 
@@ -536,7 +539,7 @@ namespace Zerodelay
 		seq		= *(u32_t*)(buff + off_Norm_Seq);
 	}
 
-	void RUDPConnection::createNormalPacket(Packet& pack, const i8_t* buff, i32_t dataSize, i8_t channel, bool relay, EPacketType type) const
+	void RUDPConnection::createNormalPacket(Packet& pack, const i8_t* buff, i32_t dataSize, i8_t channel, bool relay, EHeaderPacketType type) const
 	{
 		pack.len  = dataSize;
 		pack.data = new i8_t[pack.len];
@@ -545,7 +548,7 @@ namespace Zerodelay
 		pack.numGroups   = 0;
 		pack.relay = relay;
 		pack.type  = type;
-		memcpy_s(pack.data, pack.len, buff, pack.len); 
+		Platform::memCpy(pack.data, pack.len, buff, pack.len); 
 	}
 
 	void RUDPConnection::createPacketReliableNewest(Packet& pack, const i8_t* buff, i32_t embeddedGroupsSize, i32_t numGroups) const
@@ -555,8 +558,8 @@ namespace Zerodelay
 		pack.channel = 0;
 		pack.numGroups = numGroups;
 		pack.relay = false;
-		pack.type  = EPacketType::Ack_Reliable_Newest;
-		memcpy_s(pack.data, pack.len, buff, pack.len); 
+		pack.type  = EHeaderPacketType::Ack_Reliable_Newest;
+		Platform::memCpy(pack.data, pack.len, buff, pack.len); 
 	}
 
 	bool RUDPConnection::isSequenceNewer(u32_t incoming, u32_t having) const

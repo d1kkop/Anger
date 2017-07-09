@@ -40,7 +40,7 @@ namespace Zerodelay
 		Ensure_State( Connected )
 		m_State = EConnectionState::Disconnecting;
 		m_DisconnectTS = ::clock();
-		sendSystemMessage( EGameNodePacketType::Disconnect );
+		sendSystemMessage( EDataPacketType::Disconnect );
 		return true;
 	}
 
@@ -70,7 +70,7 @@ namespace Zerodelay
 		Ensure_State( Idle );
 		m_State = EConnectionState::Connecting;
 		m_StartConnectingTS = ::clock();
-		sendSystemMessage( EGameNodePacketType::ConnectRequest, pw.c_str(), (i32_t)pw.size()+1 );
+		sendSystemMessage( EDataPacketType::ConnectRequest, pw.c_str(), (i32_t)pw.size()+1 );
 		return true;
 	}
 
@@ -78,7 +78,7 @@ namespace Zerodelay
 	{
 		Ensure_State( Idle )
 		m_State = EConnectionState::Connected;
-		sendSystemMessage( EGameNodePacketType::ConnectAccept );
+		sendSystemMessage( EDataPacketType::ConnectAccept );
 		return true;
 	}
 
@@ -86,28 +86,28 @@ namespace Zerodelay
 	{
 		Ensure_State( Connected );
 		m_KeepAliveTS = ::clock();
-		sendSystemMessage( EGameNodePacketType::KeepAliveRequest );
+		sendSystemMessage( EDataPacketType::KeepAliveRequest );
 		return true;
 	}
 
 	bool Connection::sendKeepAliveAnswer()
 	{
 		Ensure_State( Connected );
-		sendSystemMessage( EGameNodePacketType::KeepAliveAnswer );
+		sendSystemMessage( EDataPacketType::KeepAliveAnswer );
 		return true;
 	}
 
 	bool Connection::sendIncorrectPassword()
 	{
 		Ensure_State( Idle );
-		sendSystemMessage( EGameNodePacketType::IncorrectPassword );
+		sendSystemMessage( EDataPacketType::IncorrectPassword );
 		return true;
 	}
 
 	bool Connection::sendMaxConnectionsReached()
 	{
 		Ensure_State( Idle );
-		sendSystemMessage( EGameNodePacketType::MaxConnectionsReached );
+		sendSystemMessage( EDataPacketType::MaxConnectionsReached );
 		return true;
 	}
 
@@ -150,7 +150,7 @@ namespace Zerodelay
 	bool Connection::onReceiveKeepAliveRequest()
 	{
 		Ensure_State( Connected );
-		sendSystemMessage( EGameNodePacketType::KeepAliveAnswer );
+		sendSystemMessage( EDataPacketType::KeepAliveAnswer );
 		return true;
 	}
 
@@ -218,9 +218,9 @@ namespace Zerodelay
 		return i32_t(elapsedSeconds * 1000.f);
 	}
 
-	void Connection::sendSystemMessage( EGameNodePacketType packType, const i8_t* payload, i32_t payloadLen )
+	void Connection::sendSystemMessage( EDataPacketType packType, const i8_t* payload, i32_t payloadLen )
 	{
 		//	static_assert( sizeof(EGameNodePacketType)==1 );
-		addToSendQueue( (u8_t)packType, payload, payloadLen, EPacketType::Reliable_Ordered );
+		addToSendQueue( (u8_t)packType, payload, payloadLen, EHeaderPacketType::Reliable_Ordered );
 	}
 }
