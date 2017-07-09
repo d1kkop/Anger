@@ -14,8 +14,8 @@ namespace Zerodelay
 	{
 		m_EndPoint = endPoint;
 		m_SendSeq_reliable_newest = 0;
-		m_RecvSeq_reliable_newest = 0;
-		m_RecvSeq_reliable_newest_ack = -1; // first expected recved ack is 0
+		m_RecvSeq_reliable_newest = -1; // the first expected seq is 0, so the previous (first, is -1)
+		m_RecvSeq_reliable_newest_ack = -1; // first expected new recved ack is 0, it will send: 'm_RecvSeq_reliable_newest', which is also -1 in the beginning, unless at least a single transmission is done
 		for (i32_t i=0; i<sm_NumChannels; ++i)
 		{
 			m_SendSeq_reliable[i] = 0;
@@ -238,6 +238,8 @@ namespace Zerodelay
 				auto& pack = it;
 				// reliable pack.data is deleted when it gets acked
 				socket->send(m_EndPoint, pack.data, pack.len);
+				if ( pack.len == 4 )
+					int k = 0; // QQQ
 			}
 		}
 	}
@@ -338,32 +340,10 @@ namespace Zerodelay
 
 	void RUDPConnection::dispatchRelNewestAckQueue(ISocket* socket)
 	{
-		u32_t lastKnownRecivedSeq = m_RecvSeq_reliable_newest;
-		socket->send(m_EndPoint, (const i8_t*)&lastKnownRecivedSeq, 4);
-		//std::lock_guard<std::mutex> lock(m_AckRelNewestMutex);
-		//i8_t buff[RecvPoint::sm_MaxRecvBuffSize];
-		//i32_t  kSizeWritten = 0;
-		//i32_t  maxWriteSize = RecvPoint::sm_MaxRecvBuffSize - 64; // account for hdr
-		//i32_t  ackEntrySize = sizeof(u32_t)*2;
-		//for (auto& it : m_AckQueueRelNewest)
-		//{
-		//	u32_t groupId = it.first;
-		//	u32_t sequenc = it.second;
-		//	*(u32_t*)&buff[kSizeWritten + off_Ack_Payload] = sequenc;
-		//	*(u32_t*)&buff[kSizeWritten + off_Ack_Payload + sizeof(u32_t)] = groupId;
-		//	kSizeWritten += ackEntrySize;
-		//	if (kSizeWritten >= maxWriteSize)
-		//		break; // TODO emit warning
-		//}
-		//m_AckQueueRelNewest.clear();
-		//// only transmit acks if there was still something in the queue
-		//if (kSizeWritten > 0) 
-		//{
-		//	buff[off_Type] = (i8_t)EPacketType::Ack_Reliable_Newest;
-		//	buff[off_Ack_Chan] = (i8_t)0; // channel not used for reliable newest
-		//	*(u32_t*)&buff[off_Ack_Num] = kSizeWritten / ackEntrySize; // num of acks
-		//	socket->send(m_EndPoint, buff, kSizeWritten + off_Ack_Payload);
-		//}
+		i8_t buff[8];
+		buff[off_Type] = (i8_t)EHeaderPacketType::Ack_Reliable_Newest;
+		*(u32_t*)&buff[off_Ack_RelNew_Seq] = m_RecvSeq_reliable_newest;
+		socket->send(m_EndPoint, buff, 5);
 	}
 
 	void RUDPConnection::receiveReliableOrdered(const i8_t * buff, i32_t rawSize)
@@ -463,9 +443,12 @@ namespace Zerodelay
 
 	void RUDPConnection::receiveAckRelNewest(const i8_t* buff, i32_t rawSize)
 	{
-		u32_t ackSeq = *(i32_t*) buff;
+		u32_t ackSeq = *(i32_t*) (buff + off_Ack_RelNew_Seq);
 		if ( !isSequenceNewer( ackSeq, m_RecvSeq_reliable_newest_ack ) )
 			return; // if sequence is already acked, ignore
+
+		// update to newer ack
+		m_RecvSeq_reliable_newest_ack = ackSeq;
 
 		std::lock_guard<std::mutex> lock(m_SendMutex);
 		auto& queue = m_SendQueue_reliable_newest;
@@ -493,32 +476,6 @@ namespace Zerodelay
 				it++;
 			}
 		}
-
-		//i8_t channel = buff[off_Ack_Chan];
-		//i32_t num = *(i32_t*)(buff + off_Ack_Num); // num of acks
-		//std::lock_guard<std::mutex> lock(m_SendMutex);
-		//auto& queue = m_SendQueue_reliable_newest;
-		//for (i32_t i = 0; i < num; ++i) // for each ack, try to find it
-		//{
-		//	u32_t groupSeq = *(u32_t*)(buff + (i*8) + off_Ack_Payload);
-		//	u32_t groupId  = *(u32_t*)(buff + (i*8+4) + off_Ack_Payload);
-		//	// obtain the data on the groupId
-		//	auto it = m_SendQueue_reliable_newest.find( groupId );
-		//	if ( it != m_SendQueue_reliable_newest.end() )
-		//	{
-		//		for ( auto& item : it->second.groupItems )
-		//		{
-		//			if ( isSequenceNewer( groupSeq, item.remoteRevision ) )
-		//			{
-		//				item.remoteRevision = groupSeq;
-		//			}
-		//		}
-		//	}
-		//	else
-		//	{
-		//		// TODO emit warning, received ack for unknown groupId
-		//	}
-		//}
 	}
 
 	void RUDPConnection::assembleNormalPacket(Packet& pack, EHeaderPacketType packetType, u8_t id, const i8_t* data, i32_t len, i32_t hdrSize, i8_t channel, bool relay)

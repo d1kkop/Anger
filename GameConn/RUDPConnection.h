@@ -87,6 +87,7 @@ namespace Zerodelay
 		static const i32_t off_RelNew_GroupId   = 9;	// ReliableNew, GroupId (4 bytes)
 		static const i32_t off_RelNew_GroupBits = 13;	// 2 Bytes (max 16 vars per group)
 		static const i32_t off_RelNew_Data  = 15;		// ReliableNew, Payload
+		static const i32_t off_Ack_RelNew_Seq = 1;		// Ack_ReliableNew_Seq numb
 
 		static const i32_t sm_NumChannels  = 8;
 

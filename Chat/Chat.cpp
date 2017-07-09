@@ -18,26 +18,6 @@ using namespace Zerodelay;
 ZNode* g_Node;
 
 
-struct Tank
-{
-	Tank( int _x, int _y, int _z )
-	{
-
-	}
-
-	void update(float dt)
-	{
-	//	if ( x.getVarConrol() == EVarControl::Full )
-		{
-			// have full control
-		}
-	}
-
-};
-
-
-Tank* g_Tank = nullptr;
-
 
 const int g_MaxNames = 10;
 struct ChatLobby
