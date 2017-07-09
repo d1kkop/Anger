@@ -31,7 +31,7 @@ namespace Zerodelay
 		for ( i32_t i=0; i<sm_NumChannels; ++i ) for (auto& it : m_SendQueue_reliable[i] ) delete [] it.data;
 		for ( i32_t i=0; i<sm_NumChannels; ++i ) for (auto& it : m_RecvQueue_reliable_order[i] ) delete [] it.second.data;
 		for ( i32_t i=0; i<sm_NumChannels; ++i ) for (auto& it : m_RecvQueue_unreliable_sequenced[i] ) delete [] it.data;
-		for ( auto& kvp : m_SendQueue_reliable_newest ) for (i32_t i = 0; i < 16 ; i++) delete [] kvp.second.groupItems[i].data;
+		for ( auto& kvp : m_SendQueue_reliable_newest ) for (auto i = 0; i < 16 ; i++) delete [] kvp.second.groupItems[i].data;
 	}
 
 	void RUDPConnection::addToSendQueue(u8_t id, const i8_t* data, i32_t len, EPacketType packetType, u8_t channel, bool relay)
@@ -60,6 +60,7 @@ namespace Zerodelay
 
 	void RUDPConnection::addReliableNewest(u8_t id, const i8_t* data, i32_t len, u32_t groupId, i8_t groupBit)
 	{
+		assert( groupBit >= 0 && groupBit < 16 );
 		std::lock_guard<std::mutex> lock(m_SendMutex);
 		auto it = m_SendQueue_reliable_newest.find( groupId );
 		if ( it == m_SendQueue_reliable_newest.end() )
@@ -72,17 +73,23 @@ namespace Zerodelay
 			item.dataCapacity = len;
 			item.data = new i8_t[len];
 			Platform::memCpy(item.data, len, data, len);
-			// group
+			// for the other items, set the correct local/remote revision, so that the group can be popped when an item acked (even for not used items)
 			reliableNewestDataGroup rd;
-			assert( groupBit >= 0 && groupBit < 16 );
-			rd.groupItems[groupBit] = item;
-			// put in map
-			m_SendQueue_reliable_newest.insert( std::make_pair( groupId, rd ) );
+			for ( auto i=0; i<16; i++ )
+			{
+				// initialize items in group
+				rd.groupItems[i].data = nullptr;
+				rd.groupItems[i].dataLen = rd.groupItems[i].dataCapacity = 0;
+				rd.groupItems[i].localRevision  = m_SendSeq_reliable_newest;
+				rd.groupItems[i].remoteRevision = m_SendSeq_reliable_newest-1;
+			}
+			// copy new item
+			Platform::memCpy(&rd.groupItems[groupBit], sizeof(item), &item, sizeof(item));			
+			m_SendQueue_reliable_newest.insert( std::make_pair( groupId, rd ) ); // put in map
 		}
 		else
 		{
 			reliableNewestDataGroup& rd = it->second;
-			assert( groupBit >= 0 && groupBit < 16 );
 			reliableNewestItem& item = rd.groupItems[groupBit];
 			item.localRevision = m_SendSeq_reliable_newest; // update to what it will be sent with
 			if ( item.dataCapacity < len )
@@ -249,8 +256,7 @@ namespace Zerodelay
 	void RUDPConnection::dispatchReliableNewestQueue(ISocket* socket)
 	{
 		// format per entry: groupId(4bytes) | groupBits( (items.size()+7)/8 bytes ) | n x groupData (sum( item_data_size, n ) bytes )
-		const i32_t maxBufferSize = RecvPoint::sm_MaxRecvBuffSize - 64; // account for hdr
-		i8_t dataBuffer[maxBufferSize]; // decl buffer
+		i8_t dataBuffer[RecvPoint::sm_MaxRecvBuffSize]; // decl buffer
 		dataBuffer[off_Type] = (i8_t)EPacketType::Reliable_Newest; // start with type
 		*(u32_t*)(dataBuffer + off_RelNew_Seq) = m_SendSeq_reliable_newest; // followed by sequence number
 		i32_t kNumGroupsWritten = 0;  // keeps track of num groups as is not know yet
@@ -271,7 +277,7 @@ namespace Zerodelay
 				if (isSequenceNewer(item.localRevision, item.remoteRevision)) // variable is changed compared to last acked revision
 				{
 					groupBits |= (1 << kBit);
-					assert(bytesWritten + item.dataLen <= maxBufferSize); // TODO emit error and disconnect , this is critical!
+					assert(bytesWritten + item.dataLen <= RecvPoint::sm_MaxRecvBuffSize); // TODO emit error and disconnect , this is critical!
 					Platform::memCpy(dataBuffer + bytesWritten, item.dataLen, item.data, item.dataLen);
 					bytesWritten += item.dataLen;
 					itemsWereWritten = true;
@@ -307,18 +313,15 @@ namespace Zerodelay
 		{
 			i8_t buff[RecvPoint::sm_MaxRecvBuffSize];
 			i32_t  kSizeWritten = 0;
-			i32_t  maxWriteSize = RecvPoint::sm_MaxRecvBuffSize - 64; // account for hdr
-
 			for (auto& it : m_AckQueue[i])
 			{
 				u32_t seq = it;
 				*(u32_t*)&buff[kSizeWritten + off_Ack_Payload] = seq;
 				kSizeWritten += 4;
-				if (kSizeWritten >= maxWriteSize)
+				if (kSizeWritten >= RecvPoint::sm_MaxSendSize)
 					break;
 			}
 			m_AckQueue[i].clear();
-
 			if (kSizeWritten > 0) // only transmit acks if there was still something in the queue
 			{
 				buff[off_Type] = (i8_t)EPacketType::Ack;
@@ -401,8 +404,7 @@ namespace Zerodelay
 		// Therefore, unsequenced but arrived packets, will be discarded!
 		m_RecvSeq_unreliable[channel] = seq+1;
 
-		Packet pack;
-		// Id offset of Norm_ID is correct as id is enclosed in payload/data
+		Packet pack;  // Id offset of Norm_ID is correct as id is enclosed in payload/data
 		createNormalPacket( pack, buff + off_Norm_Id, rawSize-off_Norm_Id, channel, relay, EPacketType::Unreliable_Sequenced );
 
 		std::lock_guard<std::mutex> lock(m_RecvMutex);
@@ -464,14 +466,28 @@ namespace Zerodelay
 
 		std::lock_guard<std::mutex> lock(m_SendMutex);
 		auto& queue = m_SendQueue_reliable_newest;
-		for ( auto& kvp : queue )
+		// For all groups in queue, update all items per group to received ack.
+		// If not a single localRevision is newer than the Remote, remote the group from the list.
+		for ( auto it = queue.begin(); it != queue.end(); )
 		{
-			for (i32_t k=0; k<16; k+=4)
+			auto& group = it->second;
+			bool removeGroup = true;
+			for (auto k=0; k<16; ++k)
 			{
-				kvp.second.groupItems[k+0].remoteRevision = ackSeq;
-				kvp.second.groupItems[k+1].remoteRevision = ackSeq;
-				kvp.second.groupItems[k+2].remoteRevision = ackSeq;
-				kvp.second.groupItems[k+3].remoteRevision = ackSeq;
+				auto& item = group.groupItems[k];
+				item.remoteRevision = ackSeq;
+				if ( removeGroup && isSequenceNewer( item.localRevision, item.remoteRevision ) )
+					removeGroup = false; // cannot remove group
+			}
+			if ( removeGroup )
+			{
+				for(auto k=0; k<16; ++k) // cleanup data
+					delete [] group.groupItems[k].data;
+				it = queue.erase(it);
+			}
+			else
+			{
+				it++;
 			}
 		}
 

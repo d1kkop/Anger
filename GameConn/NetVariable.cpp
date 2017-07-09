@@ -13,7 +13,8 @@ namespace Zerodelay
 		m_Group(VariableGroup::Last),
 		m_Data(new i8_t[nBytes]),
 		m_PrevData(nullptr),
-		m_Length(nBytes)
+		m_Length(nBytes),
+		m_Changed(false)
 	{
 		assert( m_Group != nullptr && "VariableGroup::Last" );
 		if ( m_Group == nullptr )
@@ -93,11 +94,17 @@ namespace Zerodelay
 		{
 			m_Group->setDirty( true );
 		}
+		m_Changed = true;
+	}
+
+	void NetVariable::markUnchanged()
+	{
+		m_Changed = false;
 	}
 
 	void NetVariable::sendNewest(ZNode* node, i32_t groupBit)
 	{
-		assert(groupBit >= 0 && groupBit < 16 );
+		assert( groupBit >= 0 && groupBit < 16 );
 		node->sendReliableNewest( (u8_t)EGameNodePacketType::VariableGroupUpdate, getGroupId(), groupBit, m_Data, m_Length, nullptr, false );
 	}
 

@@ -21,8 +21,10 @@ namespace Zerodelay
 		i32_t length() const { return m_Length; }
 		void unrefGroup() { m_Group = nullptr; }
 
-		// If any of the variables in a group is changed, then the group becomes dirty and will write data
+		// Mark changed when variable changes data.
 		void markChanged();
+		void markUnchanged(); // mark unchanged when variable is written to network stream
+		bool isChanged() const { return m_Changed; }
 		void sendNewest(ZNode* node, i32_t groupBit);
 		void bindOnPostUpdateCallback( const std::function<void (const i8_t*, const i8_t*)>& callback );
 
@@ -31,6 +33,7 @@ namespace Zerodelay
 		i8_t* m_Data;
 		i8_t* m_PrevData;
 		i32_t m_Length;
+		bool  m_Changed;
 		std::function<void (const i8_t*, const i8_t*)> m_PostUpdateCallback;
 	};
 }

@@ -52,7 +52,11 @@ namespace Zerodelay
 		for (i32_t i = 0; i < (i32_t)m_Variables.size(); i++)
 		{
 			auto* v = m_Variables[i];
-			v->sendNewest( node, i );
+			if ( v->isChanged() )
+			{
+				v->sendNewest( node, i );
+			}
+			v->markUnchanged();
 		}
 		setDirty(false);
 	}

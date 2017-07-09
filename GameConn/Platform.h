@@ -45,7 +45,7 @@ namespace Zerodelay
 		// Do thread safe logging
 		static void log(const i8_t* format, ...);
 
-		static bool memCpy( i8_t* dst, i32_t dstSize, const i8_t* src, i32_t srcSize );
+		static bool memCpy( void* dst, i32_t dstSize, const void* src, i32_t srcSize );
 		static bool formatPrint( i8_t* dst, i32_t dstSize, const i8_t* frmt, ... );
 
 	private:

@@ -123,7 +123,7 @@ namespace Zerodelay
 #endif
 	}
 
-	bool Platform::memCpy(i8_t* dst, i32_t dstSize, const i8_t* src, i32_t srcSize)
+	bool Platform::memCpy(void* dst, i32_t dstSize, const void* src, i32_t srcSize)
 	{
 		if ( srcSize > dstSize )
 			return false;
