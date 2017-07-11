@@ -50,20 +50,36 @@ namespace Zerodelay
 
 	void RecvPoint::send(u8_t id, const i8_t* data, i32_t len, const EndPoint* specific, bool exclude, EHeaderPacketType type, u8_t channel, bool relay)
 	{
-		std::lock_guard<std::mutex> lock(m_ConnectionListMutex);
-		forEachConnection( specific, exclude, [&] (IConnection* conn) 
+		size_t kNumConnections = 0;
 		{
-			conn->addToSendQueue( id, data, len, type, channel, relay );
-		});
+			std::lock_guard<std::mutex> lock(m_ConnectionListMutex);
+			kNumConnections = m_Connections.size();
+			forEachConnection( specific, exclude, [&] (IConnection* conn) 
+			{
+				conn->addToSendQueue( id, data, len, type, channel, relay );
+			});
+		}
+		if ( 0 == kNumConnections )
+		{
+			Platform::log("Trying to send reliable/unreliable data to 0 connections, perhaps not connected or already disconnected");
+		}
 	}
 
 	void RecvPoint::sendReliableNewest(u8_t id, u32_t groupId, i8_t groupBit, const i8_t* data, i32_t len, const EndPoint* specific, bool exclude)
 	{
-		std::lock_guard<std::mutex> lock(m_ConnectionListMutex);
-		forEachConnection( specific, exclude, [&] (IConnection* conn ) 
+		size_t kNumConnections = 0;
 		{
-			conn->addReliableNewest( id, data, len, groupId, groupBit );
-		});
+			std::lock_guard<std::mutex> lock(m_ConnectionListMutex);
+			kNumConnections = m_Connections.size();
+			forEachConnection( specific, exclude, [&] (IConnection* conn ) 
+			{
+				conn->addReliableNewest( id, data, len, groupId, groupBit );
+			});
+		}
+		if ( 0 == kNumConnections )
+		{
+			Platform::log("Trying to send reliable newest data to 0 connections, perhaps not connected or already disconnected");
+		}
 	}
 
 	void RecvPoint::simulatePacketLoss(i32_t percentage)
@@ -145,7 +161,11 @@ namespace Zerodelay
 				{
 					for ( auto& kvp : m_Connections )
 					{
-						if ( kvp.second->isPendingDelete() && kvp.second->getTimeSincePendingDelete() > 5000 ) // if longer than 5 sec in delete state, actually delete it
+						// Do not immediately delete a disconnecting client, because data may still be destined to this address.
+						// If the client could reconnect immediately, we would also process the data of the previous session.
+						// So keep the client for some seconds in a lingering state.
+						if ( kvp.second->isPendingDelete() && /* If disconnect invoked here, immediately remove after done lingering. Else, keep in list for x seconds to avoid immediate reconnect. */
+							(kvp.second->isDisconnectInvokedHere() || kvp.second->getTimeSincePendingDelete() > 8000) ) // Keep for 8 sec in connect list to avoid immediate reconnect
 						{
 							delete kvp.second;
 							m_Connections.erase(kvp.first);
@@ -165,9 +185,19 @@ namespace Zerodelay
 					else
 					{
 						conn = it->second;
-						if ( conn && conn->isPendingDelete() )
+						if ( !conn ) // Should always have a valid connection
 						{
-							Platform::log("ignoring data for %s, is pending delete..", conn->getEndPoint().asString().c_str());
+							m_Connections.erase( it );
+						}
+						else if ( conn->isPendingDelete() )
+						{
+							// Only report messages after the connection has stopped lingering, otherwise we may end up with many messages there were just send after disconnect
+							// or if disconnect is re-transmitted very often due to high retransmission rate in reliable ordered protocol.
+							if ( conn->getTimeSincePendingDelete() >= IConnection::sm_MaxLingerTimeMs*2 )
+							{ 
+								buff[rawSize] = '\0';
+								Platform::log("ignoring data for conn %s as is pending delete.... %s", conn->getEndPoint().asString().c_str(), buff);
+							}
 							conn = nullptr;
 						}
 					}

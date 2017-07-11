@@ -19,7 +19,7 @@ namespace Zerodelay
 	VariableGroupNode::VariableGroupNode():
 		m_ZNode(nullptr),
 		m_ConnOwner(nullptr),
-		m_UniqueIdCounter(1),
+		m_UniqueIdCounter(1), // Zero is initially not used, it means no valid ID for now.
 		m_IsNetworkIdProvider(false)
 	{
 		m_LastIdPackRequestTS = -1;
@@ -105,13 +105,13 @@ namespace Zerodelay
 		// ----------------------------
 		EndPoint etp = toEtp ( ztp );
 		auto remoteGroupIt = m_RemoteVariableGroups.find( etp );
-		if ( remoteGroupIt == m_RemoteVariableGroups.end() )
+		if ( remoteGroupIt == m_RemoteVariableGroups.end() ) // see if remote endpoint is know
 		{
 			std::map<u32_t, VariableGroup*> newMap;
 			newMap.insert( std::make_pair( networkId, VariableGroup::Last ) );
 			m_RemoteVariableGroups.insert( std::make_pair( etp, newMap ) );
 		}
-		else
+		else // if already known endpoint, insert new variable group on network id for endpoint
 		{
 			remoteGroupIt->second.insert( std::make_pair( networkId, VariableGroup::Last ) );
 		}

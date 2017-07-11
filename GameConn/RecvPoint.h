@@ -32,7 +32,7 @@ namespace Zerodelay
 		static const i32_t sm_MaxSendSize = 1600;
 
 	protected:
-		RecvPoint(bool captureSocketErrors=true, i32_t sendThreadSleepTimeMs=2);
+		RecvPoint(bool captureSocketErrors=true, i32_t sendThreadSleepTimeMs=6);
 		virtual ~RecvPoint();
 
 		// Called on recv thread

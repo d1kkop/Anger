@@ -13,6 +13,7 @@ namespace Zerodelay
 		m_NetworkId(0),
 		m_Broken(false),
 		m_DestroySent(false),
+		m_Dirty(false),
 		m_Control(EVarControl::Full)
 	{
 	}

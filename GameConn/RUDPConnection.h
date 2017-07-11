@@ -20,6 +20,8 @@ namespace Zerodelay
 	class IConnection
 	{
 	public:
+		static const i32_t sm_MaxLingerTimeMs = 1000;
+
 		virtual ~IConnection() = default;
 
 		// --- All functions thread safe ---
@@ -31,17 +33,18 @@ namespace Zerodelay
 		virtual void flushSendQueue( class ISocket* socket ) = 0;
 		virtual void recvData( const i8_t* buff, i32_t len ) = 0;
 		virtual void simulatePacketLoss(u8_t percentage) = 0;
+		virtual bool isDisconnectInvokedHere() const = 0;
 
 		const EndPoint& getEndPoint() const { return m_EndPoint; }
 
 		// -- Only to be accessed by network recv-thread --
 		bool  isPendingDelete() const { return m_IsPendingDelete; }
-		void  setIsPendingDelete() 
+		void  setIsPendingDelete()
 		{ 
 			if ( m_IsPendingDelete )
 				return;
 			m_IsPendingDelete = true; 
-			m_MarkDeleteTS = ::clock(); 
+			m_MarkDeleteTS = ::clock();
 		}
 		i32_t getTimeSincePendingDelete() const
 		{
@@ -50,7 +53,7 @@ namespace Zerodelay
 		}
 
 	protected:
-		bool m_IsPendingDelete;
+		volatile bool m_IsPendingDelete;
 		EndPoint m_EndPoint;
 		clock_t m_MarkDeleteTS;
 	};

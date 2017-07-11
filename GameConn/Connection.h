@@ -31,7 +31,6 @@ namespace Zerodelay
 		bool acceptDisconnect();
 		bool setInvalidPassword();
 		bool setMaxConnectionsReached();
-
 		// -- sends
 		bool sendConnectRequest(const std::string& pw);
 		bool sendConnectAccept();
@@ -51,6 +50,7 @@ namespace Zerodelay
 		bool updateDisconnecting();	// same
 		// -- getters
 		i32_t getTimeSince(i32_t timestamp) const;  // in milliseconds
+		bool  isDisconnectInvokedHere() const { return m_DisconnectInvokedHere; }
 		EConnectionState getState() const { return m_State; }
 
 	private:
@@ -63,6 +63,7 @@ namespace Zerodelay
 		clock_t m_KeepAliveTS;
 		clock_t m_DisconnectTS;
 		bool m_IsWaitingForKeepAlive;
+		bool m_DisconnectInvokedHere;
 		EConnectionState m_State;
 	};
 }

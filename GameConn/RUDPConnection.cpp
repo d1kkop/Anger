@@ -14,7 +14,7 @@ namespace Zerodelay
 	{
 		m_EndPoint = endPoint;
 		m_SendSeq_reliable_newest = 0;
-		m_RecvSeq_reliable_newest = -1; // the first expected seq is 0, so the previous (first, is -1)
+		m_RecvSeq_reliable_newest = -1; // the first expected seq is 0, so the previous is -1, as it starts sending this immediately, make sure it is recognized as older initially (-1).
 		m_RecvSeq_reliable_newest_ack = -1; // first expected new recved ack is 0, it will send: 'm_RecvSeq_reliable_newest', which is also -1 in the beginning, unless at least a single transmission is done
 		for (i32_t i=0; i<sm_NumChannels; ++i)
 		{
@@ -80,7 +80,7 @@ namespace Zerodelay
 				// initialize items in group
 				rd.groupItems[i].data = nullptr;
 				rd.groupItems[i].dataLen = rd.groupItems[i].dataCapacity = 0;
-				rd.groupItems[i].localRevision  = m_SendSeq_reliable_newest;
+				rd.groupItems[i].localRevision  = m_SendSeq_reliable_newest-1; // make sure both are on curr-1, so that they will not be seen as changed the first time
 				rd.groupItems[i].remoteRevision = m_SendSeq_reliable_newest-1;
 			}
 			// copy new item
@@ -338,6 +338,8 @@ namespace Zerodelay
 
 	void RUDPConnection::dispatchRelNewestAckQueue(ISocket* socket)
 	{
+		if ( isPendingDelete() )
+			return; // stop acking this after is disconnecting/deleting
 		i8_t buff[8];
 		buff[off_Type] = (i8_t)EHeaderPacketType::Ack_Reliable_Newest;
 		*(u32_t*)&buff[off_Ack_RelNew_Seq] = m_RecvSeq_reliable_newest;
@@ -500,7 +502,7 @@ namespace Zerodelay
 		pack.data = new i8_t[pack.len];
 		pack.channel = channel;
 		pack.groupBits = 0;
-		pack.numGroups   = 0;
+		pack.numGroups = 0;
 		pack.relay = relay;
 		pack.type  = type;
 		Platform::memCpy(pack.data, pack.len, buff, pack.len); 

@@ -375,7 +375,7 @@ namespace Zerodelay
 			{
 				(fcb)(etp);
 			});
-			Platform::log( "remote %s connected", g->getEndPoint().asString().c_str() );
+			Platform::log( "remote %s connected", etp.asString().c_str() );
 		}
 		else
 		{
@@ -394,7 +394,7 @@ namespace Zerodelay
 				assert ( etp != g->getEndPoint() && "received remote disc for ourselves..");
 				(fcb)(false, etp, reason);
 			});
-			Platform::log( "remote %s disconnected", g->getEndPoint().asString().c_str() );
+			Platform::log( "remote %s disconnected", etp.asString().c_str() );
 		}
 		else
 		{

@@ -593,13 +593,6 @@ namespace UnitTests
 		groupCreateFeedback( 9, u, sgt );
 	}
 
-
-	void myTestFunc( Vec3 v )
-	{
-		int j = 0;
-		printf(" x %.3f y %.3f z %.3f \n", v.x, v.y, v.z );
-	}
-
 	void SyncGroupTest::initialize()
 	{
 	}
@@ -611,12 +604,13 @@ namespace UnitTests
 
 		int kClients = 1;
 		std::vector<ZNode*> clients;
-		for (int i = 0; i < 10 ; i++)
+		for (int i = 0; i < kClients ; i++)
 		{
 			clients.emplace_back( new ZNode() );
 			clients[i]->setUserDataPtr( this );
+			clients[i]->connect("localhost", 27000);
 		}
-		
+
 
 		Vec3 v;
 		v.x = 991.991f;
@@ -644,12 +638,12 @@ namespace UnitTests
 		Name2 name;
 		char* c = name.m;
 		sprintf_s( c, 32, "a random name" );
-		myTestFunc( v );
 
 		// -------------------------------------------------------------------------------------------------------------------------------
 
 		g1->listenOn( 27000 );
 		g1->setIsNetworkIdProvider( true );
+
 
 		int kTicks = 0;
 		while ( true )
@@ -664,64 +658,70 @@ namespace UnitTests
 
 			kTicks++;
 
-			// create random num groups
-			int numGroups = ::rand() % 10;
+		//	if ( kTicks == 50 ) // 1000 ms
+			//	create_myGroup1( clients[0], 'e' );
 
-			// create num gruops on random client
-			ZNode* curClient = clients[ ::rand() % kClients];
-			for (int i = 0; i < numGroups ; i++)
-			{
-				// create group with random num params
-				int kr = ::rand() % 10;
-				switch (kr)
-				{
-				case 0:
-				create_myGroup1( curClient, 'E' );
-				break;
-				case 1:
-				create_myGroup2( curClient, 'E', 6533 );
-				break;
-				case 2:
-				create_myGroup3( curClient, 'E', 6533, ~0 );
-				break;
-				case 9:
-				create_myGroup4( curClient, 'E', 6533, ~0, 2*10e20f );
-				break;
-				case 3:
-				create_myGroup5( curClient, 'E', 6533, ~0, 2*10e20f, 7172773.881238 );
-				break;
-				case 4:
-				create_myGroup6( curClient, 'E', 6533, ~0, 2*10e20f, 7172773.881238, v );
-				break;
-				case 5:
-				create_myGroup7( curClient, 'E', 6533, ~0, 2*10e20f, 7172773.881238, v, q );
-				break;
-				case 6:
-				create_myGroup8( curClient, 'E', 6533, ~0, 2*10e20f, 7172773.881238, v, q, mm );
-				break;
-				case 7:
-				create_myGroup9( curClient, 'E', 6533, ~0, 2*10e20f, 7172773.881238, v, q, mm, name );
-				break;
-				case 8:
-				create_myGroup0( curClient );
-				break;
-				}	
-			}
+			//// create random num groups
+			//int numGroups = ::rand() % 10;
 
-			// delete some unit groups
-			numGroups = ::rand()%5;
-			for (int i = 0; i < 5 ; i++)
-			{
-				if ( m_unitsSelf.size() == 0 )
-					break;
-				int ridx = rand() % m_unitsSelf.size();
-				auto* unit = m_unitsSelf.at(ridx);
-				if ( unit )
-					delete unit;
-				m_unitsSelf.at(ridx) = nullptr;
-			}
+			//// create num gruops on random client
+			//ZNode* curClient = clients[ ::rand() % kClients];
+			//for (int i = 0; i < numGroups ; i++)
+			//{
+			//	// create group with random num params
+			//	int kr = ::rand() % 10;
+			//	switch (kr)
+			//	{
+			//	case 0:
+			//	create_myGroup1( curClient, 'E' );
+			//	break;
+			//	case 1:
+			//	create_myGroup2( curClient, 'E', 6533 );
+			//	break;
+			//	case 2:
+			//	create_myGroup3( curClient, 'E', 6533, ~0 );
+			//	break;
+			//	case 9:
+			//	create_myGroup4( curClient, 'E', 6533, ~0, 2*10e20f );
+			//	break;
+			//	case 3:
+			//	create_myGroup5( curClient, 'E', 6533, ~0, 2*10e20f, 7172773.881238 );
+			//	break;
+			//	case 4:
+			//	create_myGroup6( curClient, 'E', 6533, ~0, 2*10e20f, 7172773.881238, v );
+			//	break;
+			//	case 5:
+			//	create_myGroup7( curClient, 'E', 6533, ~0, 2*10e20f, 7172773.881238, v, q );
+			//	break;
+			//	case 6:
+			//	create_myGroup8( curClient, 'E', 6533, ~0, 2*10e20f, 7172773.881238, v, q, mm );
+			//	break;
+			//	case 7:
+			//	create_myGroup9( curClient, 'E', 6533, ~0, 2*10e20f, 7172773.881238, v, q, mm, name );
+			//	break;
+			//	case 8:
+			//	create_myGroup0( curClient );
+			//	break;
+			//	}	
+			//}
 
-			if ( kTicks > 200 )
+			//// delete some unit groups
+			//numGroups = ::rand()%5;
+			//for (int i = 0; i < 5 ; i++)
+			//{
+			//	if ( m_unitsSelf.size() == 0 )
+			//		break;
+			//	int ridx = rand() % m_unitsSelf.size();
+			//	auto* unit = m_unitsSelf.at(ridx);
+			//	if ( unit )
+			//		delete unit;
+			//	m_unitsSelf.at(ridx) = nullptr;
+			//}
+
+			if ( kTicks == 300 )
+				clients[0]->disconnectAll();
+
+			if ( kTicks > 1500 )
 				break;
 		}
 
@@ -747,7 +747,7 @@ namespace UnitTests
 
 		// add tests
 		//tests.emplace_back( new ConnectionLayerTest );
-		//tests.emplace_back( new MassConnectTest );
+	//	tests.emplace_back( new MassConnectTest );
 		//tests.emplace_back( new ReliableOrderTest );
 		//tests.emplace_back( new RpcTest );
 		tests.emplace_back( new SyncGroupTest );

@@ -111,9 +111,9 @@ namespace Zerodelay
 
 		bool m_SocketIsOpened;
 		bool m_SocketIsBound;
-		i32_t	 m_KeepAliveIntervalSeconds;
+		i32_t m_KeepAliveIntervalSeconds;
 		bool m_RelayClientEvents;
-		i32_t  m_MaxIncomingConnections;
+		i32_t m_MaxIncomingConnections;
 		std::string m_Password;
 		std::vector<ConnectResultCallback>	m_ConnectResultCallbacks;
 		std::vector<DisconnectCallback>		m_DisconnectCallbacks;
