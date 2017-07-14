@@ -40,11 +40,54 @@ namespace Zerodelay
 		}
 	}
 
+	void VariableGroupNode::postInitialize()
+	{
+		assert( m_ZNode );
+
+		// on new connect, put variable group map (with empty set of groups) in list so that we know the set of known EndPoints
+		m_ZNode->bindOnNewConnection( [this] (auto& ztp)
+		{
+			EndPoint etp = toEtp( ztp );
+			if ( m_RemoteVariableGroups.count(etp) != 1 )
+			{
+				std::map<u32_t, VariableGroup*> newMap;
+				m_RemoteVariableGroups.insert( std::make_pair( etp, newMap ) );
+			}
+			else
+			{
+				Platform::log("WARNING: received on new connection multiple times from %s\n", etp.asString().c_str());
+			}
+		});
+
+		// on disconnect, remove set of variable groups and do not allow new ones to be created if no longer in set of endpoints
+		m_ZNode->bindOnDisconnect( [this] (auto thisConnection, auto& ztp, auto reason)
+		{
+			if ( thisConnection )
+				return;
+			EndPoint etp = toEtp( ztp );
+			auto it = m_RemoteVariableGroups.find( etp );
+			if ( it != m_RemoteVariableGroups.end() )
+			{
+				for ( auto& kvp : it->second )
+				{
+					auto* vg = kvp.second;
+					vg->unrefGroup();
+					delete vg;
+				}
+				m_RemoteVariableGroups.erase( it );
+			}
+			else
+			{
+				Platform::log("WARNING: received disconnect multiple times from: %s\n", etp.asString().c_str());
+			}
+		});
+	}
+
 	void VariableGroupNode::update()
 	{
 		intervalSendIdRequest();
 		resolvePendingGroups();	// causes groups to be created
-		sendVariableGroups();	// syncs variables in the groups
+	//	sendVariableGroups();	// syncs variables in the groups
 	}
 
 	bool VariableGroupNode::recvPacket(const Packet& pack, const IConnection* conn)
@@ -105,15 +148,13 @@ namespace Zerodelay
 		// ----------------------------
 		EndPoint etp = toEtp ( ztp );
 		auto remoteGroupIt = m_RemoteVariableGroups.find( etp );
-		if ( remoteGroupIt == m_RemoteVariableGroups.end() ) // see if remote endpoint is know
-		{
-			std::map<u32_t, VariableGroup*> newMap;
-			newMap.insert( std::make_pair( networkId, VariableGroup::Last ) );
-			m_RemoteVariableGroups.insert( std::make_pair( etp, newMap ) );
-		}
-		else // if already known endpoint, insert new variable group on network id for endpoint
+		if ( remoteGroupIt != m_RemoteVariableGroups.end() ) // see if remote endpoint is know
 		{
 			remoteGroupIt->second.insert( std::make_pair( networkId, VariableGroup::Last ) );
+		}
+		else // discards any creation before connection was established or after was disconnected/lost
+		{
+			Platform::log("INFO: Discarding remote group creation from %s, as it was not connected or already disconnected\n", ztp.asString().c_str());
 		}
 	}
 
@@ -155,8 +196,16 @@ namespace Zerodelay
 
 	void VariableGroupNode::recvVariableGroupCreate(const Packet& pack, const EndPoint& etp)
 	{
-		i8_t* payload = pack.data + 1;
-		i32_t len = pack.len-1;
+		i8_t* payload = pack.data + 1; // first byte is hdr type
+		i32_t len = pack.len-1; // minus hdr type byte
+		ZEndpoint ztp = toZpt( etp );
+
+		// relay creation of unit groups always for now
+		if ( m_ZNode->getRoutingMethod() == ERoutingMethod::ClientServer )
+		{
+			m_ZNode->sendReliableOrdered( (u8_t)pack.type, payload, len, &ztp, true, pack.channel, false );
+		}
+
 		i8_t name[RPC_NAME_MAX_LENGTH];
 		if ( !ISocket::readFixed( name, RPC_NAME_MAX_LENGTH, payload, (RPC_NAME_MAX_LENGTH<len?RPC_NAME_MAX_LENGTH:len)) )
 		{
@@ -170,7 +219,6 @@ namespace Zerodelay
 		if ( pf )
 		{
 			// function signature
-			ZEndpoint ztp = toZpt( etp );
 			void (*pfunc)(ZNodePrivate*, const i8_t*, i32_t, const ZEndpoint&, EHeaderPacketType);
 			pfunc = (decltype(pfunc)) pf;
 			pfunc( m_PrivZ, payload, len, ztp, pack.type );
@@ -293,7 +341,7 @@ namespace Zerodelay
 
 	void VariableGroupNode::sendVariableGroups()
 	{
-		for ( auto vgIt = m_VariableGroups.cbegin(); vgIt!= m_VariableGroups.end();  )
+		for ( auto vgIt = m_VariableGroups.begin(); vgIt!= m_VariableGroups.end();  )
 		//for ( auto& kvp : m_VariableGroups )
 		{
 			VariableGroup* vg = vgIt->second;

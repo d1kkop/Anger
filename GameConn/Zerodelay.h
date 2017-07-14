@@ -14,6 +14,7 @@
 
 #include <functional>
 #include <string>
+#include <vector>
 
 
 namespace Zerodelay
@@ -96,6 +97,13 @@ namespace Zerodelay
 	};
 
 
+	enum class ERoutingMethod 
+	{
+		ClientServer,
+		Peer2Peer
+	};
+
+
 	/** ---------------------------------------------------------------------------------------------------------------------------------
 		Endpoint is analogical to an address. It is either an Ipv4 or Ipv6 address.
 		Do not keep a pointer to the endpoint but copy the structure instead.
@@ -146,7 +154,7 @@ namespace Zerodelay
 			[port]				The port.
 			[pw]				Password string.
 			[maxConnections]	Maximum number of connections. 
-			[relayEvents]		If true, events such as ´disconnect´ will be relayed to other connections. */
+			[relayEvents]		If true, events such as ´disconnect´ will be relayed to other connections. If not client-server architecture, the parameter is ignored. */
 		EListenCallResult listenOn( i32_t port, const std::string& pw="", i32_t maxConnections=32, bool relayEvents=true );
 
 
@@ -176,10 +184,13 @@ namespace Zerodelay
 		void setMaxIncomingConnections( i32_t maxNumConnections );
 
 
-		/*	If true, client events such as disconnect are relayed to other clients.
-			This is particularly useful if the node should function as a 'true server'.
-			The server should have relayClientEvents set to true. */
-		void relayClientEvents( bool relay );
+		/*	Fills the vector with all fully connected connections, that is all connections which are not in an any other state than
+			connected. Eg, connecting or disconnecting connections are discarded. */
+		void getConnectionListCopy(std::vector<ZEndpoint>& listOut);
+
+
+		/*	Returns initially specified routing method. */
+		ERoutingMethod getRoutingMethod() const;
 
 
 		/*	Simulate packet loss to test Quality of Service in game. 
@@ -230,22 +241,24 @@ namespace Zerodelay
 
 		/*	----- Callbacks ----------------------------------------------------------------------------------------------- */
 
-		/*	For handling connect request results. */
+		/*	For handling connect request results. This callback is invoked as a result of calling 'connect'. */
 		void bindOnConnectResult( std::function<void (const ZEndpoint&, EConnectResult)> cb );
 
 
 		/*	For handling new incoming connections. 
-			In a client-server achitecture, new clients are also relayed to existing clients from the server. */
+			In a client-server achitecture, this event is relayed to all other clients by the server. */
 		void bindOnNewConnection( std::function<void (const ZEndpoint&)> cb );
 
 
 		/*	For when connection is closed or gets dropped.
-			In a client-server architecture, disconnects are releyed so that all clients from the server. */
+			In a client-server architecture, disconnect events are relayed by the server. 
+			[isThisConnection]	Is true, if a client-server architecture and server closed connection or if
+								is p2p connection and one of the peers closed connection.
+								All other cases false, eg. if a remote client disconnected in a client-server architecture. */
 		void bindOnDisconnect( std::function<void (bool isThisConnection, const ZEndpoint&, EDisconnectReason)> cb );
 
 
-		/*	For all other data that is specific to the application. 
-			The 'length' parameter is the size of the 'data' parameter. */
+		/*	For all other data that is specific to the application. */
 		void bindOnCustomData( std::function<void (const ZEndpoint&, u8_t id, const i8_t* data, i32_t length, u8_t channel)> cb );
 
 

@@ -63,7 +63,7 @@ namespace Zerodelay
 		clock_t m_KeepAliveTS;
 		clock_t m_DisconnectTS;
 		bool m_IsWaitingForKeepAlive;
-		bool m_DisconnectInvokedHere;
+		std::atomic_bool m_DisconnectInvokedHere; // set from main, queried from others
 		EConnectionState m_State;
 	};
 }

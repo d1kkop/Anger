@@ -55,7 +55,6 @@ namespace Zerodelay
 	protected:
 		void startThreads();
 		void copyConnectionsTo( std::vector<class IConnection*>& dstList );
-		void markIsPendingDelete( const std::vector<class IConnection*>& srcList );
 
 	private:
 		template <typename Callback>

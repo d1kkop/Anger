@@ -443,12 +443,12 @@ namespace UnitTests
 	{
 		if ( u->c.getVarConrol() == EVarControl::Remote )
 		{
-		//	printf("group %d created remotely\n", groupIdx);
+			printf("group %d created remotely\n", groupIdx);
 			sgt->m_unitsRemote.emplace_back( u );
 		}
 		else
 		{
-		//	printf("group %d created locally\n", groupIdx);
+			printf("group %d created locally\n", groupIdx);
 			sgt->m_unitsSelf.emplace_back( u );
 		}
 	}
@@ -611,6 +611,8 @@ namespace UnitTests
 			clients[i]->connect("localhost", 27000);
 		}
 
+		create_myGroup2(clients[0], 'a', 22 );
+
 
 		Vec3 v;
 		v.x = 991.991f;
@@ -658,8 +660,8 @@ namespace UnitTests
 
 			kTicks++;
 
-		//	if ( kTicks == 50 ) // 1000 ms
-			//	create_myGroup1( clients[0], 'e' );
+			if ( kTicks == 50 ) // 1000 ms
+				create_myGroup1( clients[0], 'e' );
 
 			//// create random num groups
 			//int numGroups = ::rand() % 10;

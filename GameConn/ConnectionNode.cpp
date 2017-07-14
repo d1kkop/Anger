@@ -12,8 +12,8 @@ namespace Zerodelay
 		m_SocketIsOpened(false),
 		m_SocketIsBound(false),
 		m_KeepAliveIntervalSeconds(keepAliveIntervalSeconds),
-		m_RelayClientEvents(false),
-		m_MaxIncomingConnections(32)
+		m_MaxIncomingConnections(32),
+		m_RoutingMethod(ERoutingMethod::ClientServer)
 	{
 	}
 
@@ -139,7 +139,8 @@ namespace Zerodelay
 			{
 				gc->beginPoll();
 				Packet pack;
-				while ( gc->poll(pack) )
+				// connection can have become pending delete after it has processed it, in that case do no longer update states or call callbacks
+				while ( !gc->isPendingDelete() && gc->poll(pack) ) 
 				{
 					// returns false if packet is not handled.
 					if ( !recvPacket( pack, gc ) )
@@ -149,18 +150,18 @@ namespace Zerodelay
 					delete [] pack.data;
 				}
 				gc->endPoll();
-				updateConnecting( gc );
-				updateKeepAlive( gc );
-				updateDisconnecting( gc );
+				updateConnecting( gc );				// implicitely checks if connection is nog a pendingDelete, no callbacks called then
+				updateKeepAlive( gc );				// same
+				updateDisconnecting( gc );			// same
 			}
 		}
-		markIsPendingDelete( m_DeadConnections );
+	#ifdef _DEBUG
+		for ( auto& dc : m_DeadConnections )
+		{
+			assert( dc->isPendingDelete() );
+		}
+	#endif
 		m_DeadConnections.clear();
-	}
-
-	void ConnectionNode::relayClientEvents(bool is)
-	{
-		m_RelayClientEvents = is;
 	}
 
 	void ConnectionNode::setPassword(const std::string& pw)
@@ -173,6 +174,17 @@ namespace Zerodelay
 		m_MaxIncomingConnections = maxNumConnections;
 	}
 
+	void ConnectionNode::getConnectionListCopy(std::vector<ZEndpoint>& endpoints)
+	{
+		std::lock_guard<std::mutex> lock(m_ConnectionListMutex);
+		// TODO implement
+	}
+
+	ERoutingMethod ConnectionNode::getRoutingMethod() const
+	{
+		return m_RoutingMethod;
+	}
+
 	class IConnection* ConnectionNode::createNewConnection(const EndPoint& endPoint) const
 	{
 		return new Connection( endPoint, m_KeepAliveIntervalSeconds );
@@ -180,7 +192,9 @@ namespace Zerodelay
 
 	void ConnectionNode::removeConnection(const class Connection* g, const i8_t* fmt, ...)
 	{
-		m_DeadConnections.emplace_back( const_cast<Connection*>(g) );
+		auto* gg = const_cast<Connection*>(g);
+		gg->setIsPendingDelete();
+		m_DeadConnections.emplace_back(gg);
 		if ( fmt )
 		{
 			i8_t buff[2048];
@@ -199,8 +213,8 @@ namespace Zerodelay
 
 	void ConnectionNode::sendRemoteConnected(const Connection* g)
 	{
-		if ( !m_RelayClientEvents )
-			return; // only if is true server, relay message
+		if ( m_RoutingMethod != ERoutingMethod::ClientServer )
+			return; 
 		auto& etp = g->getEndPoint();
 		i8_t buff[128];
 		i32_t offs = etp.write( buff, 128 );
@@ -215,8 +229,8 @@ namespace Zerodelay
 
 	void ConnectionNode::sendRemoteDisconnected(const Connection* g, EDisconnectReason reason)
 	{
-		if ( !m_RelayClientEvents )
-			return; // only if is true server, relay message
+		if ( m_RoutingMethod != ERoutingMethod::ClientServer )
+			return; // relay message if wanted
 		auto& etp = g->getEndPoint();
 		i8_t buff[128];
 		i32_t offs = etp.write( buff, 128 );
@@ -349,11 +363,7 @@ namespace Zerodelay
 	{
 		if ( g->acceptDisconnect() )
 		{
-			if ( m_RelayClientEvents )
-			{	// if true server, relay message to all
-				sendRemoteDisconnected( g, EDisconnectReason::Closed );
-				Platform::log( "%s received disc packet", g->getEndPoint().asString().c_str() );
-			}
+			sendRemoteDisconnected( g, EDisconnectReason::Closed );
 			forEachCallback(m_DisconnectCallbacks, [&](auto& fcb)
 			{
 				(fcb)(true, g->getEndPoint(), EDisconnectReason::Closed);
@@ -464,7 +474,7 @@ namespace Zerodelay
 
 	void ConnectionNode::recvUserPacket(class Connection* g, const Packet& pack)
 	{
-		if ( pack.relay ) // send through to others
+		if ( pack.relay && m_RoutingMethod == ERoutingMethod::ClientServer ) // send through to others
 		{
 			// except self
 			send( pack.data[0], pack.data+1, pack.len-1, &g->getEndPoint(), true, pack.type, pack.channel, false /* relay only once */ );
@@ -481,10 +491,13 @@ namespace Zerodelay
 		{
 			if ( g->getState() == EConnectionState::InitiateTimedOut )
 			{
-				forEachCallback( m_ConnectResultCallbacks, [g] (auto& fcb)
+				if ( !g->isPendingDelete() ) // other updates such as updateKeepAlive or updateDisconnecting may set it to pendingDelete, no longer invoke callbacks then
 				{
-					(fcb)( g->getEndPoint(), EConnectResult::Timedout );
-				});
+					forEachCallback( m_ConnectResultCallbacks, [g] (auto& fcb)
+					{
+						(fcb)( g->getEndPoint(), EConnectResult::Timedout );
+					});
+				}
 				removeConnection( g, "removing conn, connecting timed out %s", __FUNCTION__ );
 			}
 		}
@@ -497,10 +510,13 @@ namespace Zerodelay
 			if ( g->getState() == EConnectionState::ConnectionTimedOut )
 			{
 				sendRemoteDisconnected( g, EDisconnectReason::Lost );
-				forEachCallback( m_DisconnectCallbacks, [g] (auto& fcb)
+				if ( !g->isPendingDelete() ) // other updates such as updateConnecting or updateDisconnecting may set it to pendingDelete, no longer invoke callbacks then
 				{
-					(fcb)( true, g->getEndPoint(), EDisconnectReason::Lost );
-				});
+					forEachCallback( m_DisconnectCallbacks, [g] (auto& fcb)
+					{
+						(fcb)( true, g->getEndPoint(), EDisconnectReason::Lost );
+					});
+				}
 				removeConnection( g, "removing conn, connection was lost %s", __FUNCTION__ );
 			}
 		}
@@ -512,10 +528,13 @@ namespace Zerodelay
 		{
 			if ( g->getState() == EConnectionState::Disconnected ) // if linger state is passed, state is set to disconnected
 			{
-				forEachCallback( m_DisconnectCallbacks, [g] (auto& fcb)
+				if ( !g->isPendingDelete() ) // other updates such as updateConnecting or updateKeepAlive may set it to pendingDelete, no longer invoke callbacks then
 				{
-					(fcb)( true, g->getEndPoint(), EDisconnectReason::Closed );
-				});
+					forEachCallback( m_DisconnectCallbacks, [g] (auto& fcb)
+					{
+						(fcb)( true, g->getEndPoint(), EDisconnectReason::Closed );
+					});
+				}
 				removeConnection( g, "removing conn %s, disonnected gracefully", g->getEndPoint().asString().c_str() );
 			}
 		}

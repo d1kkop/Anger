@@ -53,7 +53,7 @@ namespace Zerodelay
 		}
 
 	protected:
-		volatile bool m_IsPendingDelete;
+		std::atomic_bool m_IsPendingDelete; // Set from main thread, queried by recv thread
 		EndPoint m_EndPoint;
 		clock_t m_MarkDeleteTS;
 	};

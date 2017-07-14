@@ -18,7 +18,7 @@ using namespace Zerodelay;
 ZNode* g_Node;
 
 
-
+int g_NumClients =0;
 const int g_MaxNames = 10;
 struct ChatLobby
 {
@@ -97,10 +97,11 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 		g_Node->update();
 		std::this_thread::sleep_for( std::chrono::milliseconds(100) );
 
-		if ( isServ )
+		if ( isServ && g_NumClients > 0 )
 		{
 			g_Node->sendReliableOrdered( g_LobbyId, (const char*)&g_lobby, sizeof(g_lobby) );
 		}
+
 		RefreshLobby();
     }
 
@@ -128,6 +129,8 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 void InitNetwork(bool isServ)
 {
 	g_Node = new ZNode( 3 );
+	if (isServ)
+		g_Node->setIsNetworkIdProvider(true);
 	g_Node->bindOnConnectResult([] (auto etp, EConnectResult res)
 	{
 		switch ( res )
@@ -182,6 +185,7 @@ void InitNetwork(bool isServ)
 		}
 		if ( isServ )
 		{
+			g_NumClients--;
 			for (int i = 0; i < g_MaxNames; i++)
 			{
 				if ( strcmp( g_lobby.name[i], etp.asString().c_str() ) == 0)
@@ -197,6 +201,7 @@ void InitNetwork(bool isServ)
 	{
 		if ( isServ )
 		{
+			g_NumClients++;
 			for (int i = 0; i < g_MaxNames; i++)
 			{
 				if ( g_lobby.name[i][0] == '\0' )

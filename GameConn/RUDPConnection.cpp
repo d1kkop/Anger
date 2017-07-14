@@ -338,8 +338,9 @@ namespace Zerodelay
 
 	void RUDPConnection::dispatchRelNewestAckQueue(ISocket* socket)
 	{
-		if ( isPendingDelete() )
-			return; // stop acking this after is disconnecting/deleting
+		// stop acking if either, remote disconnected, or we disconnected ourselves
+		if ( isPendingDelete() || isDisconnectInvokedHere() )
+			return;
 		i8_t buff[8];
 		buff[off_Type] = (i8_t)EHeaderPacketType::Ack_Reliable_Newest;
 		*(u32_t*)&buff[off_Ack_RelNew_Seq] = m_RecvSeq_reliable_newest;

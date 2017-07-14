@@ -87,6 +87,7 @@ namespace Zerodelay
 		vgn->m_PrivZ = zp;
 		zp->m_ZNode = this;
 		zp->vgn = this->vgn;
+		vgn->postInitialize();
 	}
 
 	ZNode::~ZNode()
@@ -109,7 +110,6 @@ namespace Zerodelay
 	EListenCallResult ZNode::listenOn(i32_t port, const std::string& pw, i32_t maxConnections, bool relayEvents)
 	{
 		p->setMaxIncomingConnections( maxConnections );
-		p->relayClientEvents( relayEvents );
 		return p->listenOn( port, pw );
 	}
 
@@ -146,9 +146,14 @@ namespace Zerodelay
 		p->setMaxIncomingConnections( maxNumConnections );
 	}
 
-	void ZNode::relayClientEvents(bool relay)
+	void ZNode::getConnectionListCopy(std::vector<ZEndpoint>& listOut)
 	{
-		p->relayClientEvents( relay );
+		p->getConnectionListCopy(listOut);
+	}
+
+	Zerodelay::ERoutingMethod ZNode::getRoutingMethod() const
+	{
+		return p->getRoutingMethod();
 	}
 
 	void ZNode::simulatePacketLoss(i32_t percentage)

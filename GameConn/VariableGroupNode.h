@@ -29,6 +29,7 @@ namespace Zerodelay
 	public:
 		VariableGroupNode();
 		virtual ~VariableGroupNode();
+		void postInitialize(); // called when all ptrs to others managers are set
 
 		void update();
 		bool recvPacket(const struct Packet& pack, const class IConnection* conn);
@@ -54,9 +55,10 @@ namespace Zerodelay
 		void intervalSendIdRequest();
 		void resolvePendingGroups();
 		void sendVariableGroups();
-
+		/* support */
 		bool deserializeGroup(const i8_t*& data, int32_t& buffLen);
 		VariableGroup* findRemoteGroup( u32_t networkId, const EndPoint* etp = nullptr, bool removeOnFind = false );
+
 		bool m_IsNetworkIdProvider; // Only 1 node is the owner of all id's, it provides id's on request.
 		std::deque<u32_t> m_UniqueIds;
 		std::deque<PendingVariableGroup> m_PendingGroups;

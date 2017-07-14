@@ -107,19 +107,11 @@ namespace Zerodelay
 		std::lock_guard<std::mutex> lock(m_ConnectionListMutex);
 		for ( auto& kvp : m_Connections )
 		{
-			if ( !kvp.second->isPendingDelete() )
+			// If is pending delete because remotely called, or if disconnect called locally. Do no longer update network events.
+			if ( !kvp.second->isPendingDelete() && !kvp.second->isDisconnectInvokedHere() )
 			{
 				dstList.emplace_back( kvp.second );
 			}
-		}
-	}
-
-	void RecvPoint::markIsPendingDelete(const std::vector<class IConnection*>& srcList)
-	{
-		std::lock_guard<std::mutex> lock(m_ConnectionListMutex);
-		for (auto& it : srcList)
-		{
-			it->setIsPendingDelete();
 		}
 	}
 
@@ -191,12 +183,12 @@ namespace Zerodelay
 						}
 						else if ( conn->isPendingDelete() )
 						{
-							// Only report messages after the connection has stopped lingering, otherwise we may end up with many messages there were just send after disconnect
+							// Only report messages after the connection has stopped lingering, otherwise we may end up with many messages that were just send after disconnect
 							// or if disconnect is re-transmitted very often due to high retransmission rate in reliable ordered protocol.
 							if ( conn->getTimeSincePendingDelete() >= IConnection::sm_MaxLingerTimeMs*2 )
 							{ 
 								buff[rawSize] = '\0';
-								Platform::log("ignoring data for conn %s as is pending delete.... %s", conn->getEndPoint().asString().c_str(), buff);
+								Platform::log("ignoring data for conn %s as is pending delete.... type: %d  data: %s", conn->getEndPoint().asString().c_str(), (i32_t)buff[0], buff);
 							}
 							conn = nullptr;
 						}
