@@ -10,6 +10,10 @@
 
 namespace Zerodelay
 {
+	/** ---------------------------------------------------------------------------------------------------------------------------------
+		A VariableGroup becomes a pending group when there are no more network ID's available.
+		In such case, first new ID's have to be obtained, until then, the creation of the 
+		group is suspended remote, but immediately created locally. */
 	struct PendingVariableGroup
 	{
 		static const i32_t MaxParamDataLength = 2048;
@@ -20,6 +24,17 @@ namespace Zerodelay
 	};
 
 
+	/** ---------------------------------------------------------------------------------------------------------------------------------
+		The VariableGroupNode maintains variable groups by id. Every group has a unique ID network wide.
+		The VariableGroupNode deliberately knows nothing about connections. 
+		Variable groups that are created from a remote machine are put in a remote map where
+		the endpoint of the remote machine maps to a list of created variable groups for that machine,
+		but it is just for convinience of deleting all groups from a specific endpoint. 
+		No list of connections is bookkept. 
+		There should always only be one ID provider in the network, however because the VariableGroupNode
+		does not know who the provider is, the message is just sent to all connections every so often
+		until it gets a reply with a list of free available networkID's. Before it runs out of ID's, it will
+		restart sending network ID requests to everyone. */
 	class VariableGroupNode
 	{
 		friend class ZNode;

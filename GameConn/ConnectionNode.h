@@ -30,6 +30,7 @@ namespace Zerodelay
 		EListenCallResult listenOn( i32_t port, const std::string& pw="" );
 		EDisconnectCallResult disconnect( const EndPoint& endPoint );
 		void disconnectAll();
+		i32_t getNumOpenConnections();
 		// flow
 		void update( std::function<void (const Packet&, IConnection*)> unhandledPacketCb );
 		// setters

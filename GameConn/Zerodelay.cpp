@@ -123,6 +123,11 @@ namespace Zerodelay
 		return p->disconnectAll();
 	}
 
+	i32_t ZNode::getNumOpenConnections() const
+	{
+		return p->getNumOpenConnections();
+	}
+
 	void ZNode::update()
 	{
 		p->update( [=] (auto p, auto g) 

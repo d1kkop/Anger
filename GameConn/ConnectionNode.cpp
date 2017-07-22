@@ -7,6 +7,9 @@
 
 namespace Zerodelay
 {
+	extern ZEndpoint toZpt( const EndPoint& r );
+
+
 	ConnectionNode::ConnectionNode(i32_t sendThreadSleepTimeMs, i32_t keepAliveIntervalSeconds, bool captureSocketErrors):
 		RecvPoint(captureSocketErrors, sendThreadSleepTimeMs),
 		m_SocketIsOpened(false),
@@ -115,11 +118,14 @@ namespace Zerodelay
 
 	void ConnectionNode::disconnectAll()
 	{
+		// Copy to tempConnections2, as disconnectAll may be called from a callback function
+		// in which case TempConnections is already in use.
 		m_TempConnections2.clear();
 		copyConnectionsTo( m_TempConnections2 );
 		for ( auto* conn : m_TempConnections2 )
 		{
-			Connection* gc = dynamic_cast<Connection*>(conn);
+			// Connection* gc = dynamic_cast<Connection*>(conn);
+			Connection* gc = static_cast<Connection*>(conn); // TODO change to dynamic when more connection types are there
 			if ( gc )
 			{
 				gc->disconnect();
@@ -127,30 +133,49 @@ namespace Zerodelay
 		}
 	}
 
-	void ConnectionNode::update( std::function<void (const Packet&, IConnection*)> unhandledCb )
+	i32_t ConnectionNode::getNumOpenConnections()
 	{
+		i32_t num = 0;
 		m_TempConnections.clear();
 		copyConnectionsTo( m_TempConnections );
 		for ( auto* conn : m_TempConnections )
 		{
 			// Connection* gc = dynamic_cast<Connection*>(conn);
-			Connection* gc = static_cast<Connection*>(conn); // change to dynamic when more Connections are there
+			Connection* gc = static_cast<Connection*>(conn); // TODO change to dynamic when more connection types are there
+			if ( gc && gc->getState() == EConnectionState::Connected )
+			{
+				++num;
+			}
+		}
+		return num;
+	}
+
+	void ConnectionNode::update(std::function<void(const Packet&, IConnection*)> unhandledCb)
+	{
+		// Called from game thread
+		m_TempConnections.clear();
+		copyConnectionsTo( m_TempConnections );
+		for ( auto* conn : m_TempConnections )
+		{
+			// Connection* gc = dynamic_cast<Connection*>(conn);
+			Connection* gc = static_cast<Connection*>(conn); // TODO change to dynamic when more Connection types are there
 			if ( gc )
 			{
 				gc->beginPoll();
 				Packet pack;
-				// connection can have become pending delete after it has processed it, in that case do no longer update states or call callbacks
+				// connection can have become pending delete after it has processed the packet, in that case do no longer update states or call callbacks
 				while ( !gc->isPendingDelete() && gc->poll(pack) ) 
 				{
 					// returns false if packet is not handled.
 					if ( !recvPacket( pack, gc ) )
 					{
+						// pass unhandled packets through to othe Node systems
 						unhandledCb( pack, gc );
 					}
 					delete [] pack.data;
 				}
 				gc->endPoll();
-				updateConnecting( gc );				// implicitely checks if connection is nog a pendingDelete, no callbacks called then
+				updateConnecting( gc );				// implicitely checks if connection is not a pendingDelete, no callbacks called then
 				updateKeepAlive( gc );				// same
 				updateDisconnecting( gc );			// same
 			}
@@ -176,8 +201,13 @@ namespace Zerodelay
 
 	void ConnectionNode::getConnectionListCopy(std::vector<ZEndpoint>& endpoints)
 	{
-		std::lock_guard<std::mutex> lock(m_ConnectionListMutex);
-		// TODO implement
+		// Called from game thread
+		m_TempConnections.clear();
+		copyConnectionsTo( m_TempConnections );
+		for ( auto& tc : m_TempConnections )
+		{
+			endpoints.emplace_back( toZpt( tc->getEndPoint() ) );
+		}
 	}
 
 	ERoutingMethod ConnectionNode::getRoutingMethod() const

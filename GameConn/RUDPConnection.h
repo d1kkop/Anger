@@ -76,6 +76,7 @@ namespace Zerodelay
 
 	class RUDPConnection: public IConnection
 	{
+	public:
 		// Packet layout offsets
 		static const i32_t off_Type = 0;	// Reliable, Unreliable or Ack
 		static const i32_t off_Ack_Chan = 1; // In case of ack, the channel

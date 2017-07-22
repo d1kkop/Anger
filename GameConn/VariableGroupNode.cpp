@@ -300,8 +300,8 @@ namespace Zerodelay
 		if ( m_IsNetworkIdProvider )
 			return;
 
-		// Request new id's when necessary
-		if ( (i32_t)m_UniqueIds.size() < sm_AvailableIds )
+		// Request new id's when necessary and only if at least a single connection is connected.
+		if ( (m_ZNode->getNumOpenConnections() > 0) && ((i32_t)m_UniqueIds.size() < sm_AvailableIds) )
 		{
 			clock_t tNow = ::clock();
 			float dt = (float)(tNow - m_LastIdPackRequestTS) / (float)CLOCKS_PER_SEC;

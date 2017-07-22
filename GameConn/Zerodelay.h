@@ -138,7 +138,7 @@ namespace Zerodelay
 	class ZDLL_DECLSPEC ZNode
 	{
 	public:
-		ZNode(i32_t sendThreadSleepTimeMs=2, i32_t keepAliveIntervalSeconds=8, bool captureSocketErrors=true);
+		ZNode(i32_t sendThreadSleepTimeMs=20, i32_t keepAliveIntervalSeconds=8, bool captureSocketErrors=true);
 		virtual ~ZNode();
 
 
@@ -168,8 +168,15 @@ namespace Zerodelay
 		void disconnectAll();
 
 
-		/*	To be called every update loop. 
-			Calls all bound callback functions. */
+		/*	Returns the number of connections that are not in a connecting or disconnecting state,
+			that is, connections that are fully operatable. 
+			If only a single connection is used to connect to a server, this function
+			can be queried to see if the connection attempt was succesful.
+			However, the recommended way is to bind a callback to: 'bindOnConnectResult', see below. */
+		i32_t getNumOpenConnections() const;
+
+
+		/*	This will invoke the bound callback functions when new data is available. */
 		void update();
 
 
@@ -185,7 +192,7 @@ namespace Zerodelay
 
 
 		/*	Fills the vector with all fully connected connections, that is all connections which are not in an any other state than
-			connected. Eg, connecting or disconnecting connections are discarded. */
+			connected. That is, connecting or disconnecting connections are discarded. */
 		void getConnectionListCopy(std::vector<ZEndpoint>& listOut);
 
 

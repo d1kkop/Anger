@@ -188,7 +188,10 @@ namespace Zerodelay
 							if ( conn->getTimeSincePendingDelete() >= IConnection::sm_MaxLingerTimeMs*2 )
 							{ 
 								buff[rawSize] = '\0';
-								Platform::log("ignoring data for conn %s as is pending delete.... type: %d  data: %s", conn->getEndPoint().asString().c_str(), (i32_t)buff[0], buff);
+								i8_t norm_id = 0;
+								if ( rawSize > RUDPConnection::off_Norm_Id )
+									norm_id = buff[RUDPConnection::off_Norm_Id];
+								Platform::log("ignoring data for conn %s as is pending delete.... hdrId: %d data: %s, data id %d", conn->getEndPoint().asString().c_str(), (i32_t)buff[0], buff, norm_id);
 							}
 							conn = nullptr;
 						}
