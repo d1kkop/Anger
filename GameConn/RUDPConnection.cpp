@@ -9,6 +9,7 @@
 namespace Zerodelay
 {
 	RUDPConnection::RUDPConnection(const EndPoint& endPoint):
+		m_BlockNewSends(false),
 		/* packet loss */
 		m_PacketLossPercentage(0)
 	{
@@ -36,6 +37,8 @@ namespace Zerodelay
 
 	void RUDPConnection::addToSendQueue(u8_t id, const i8_t* data, i32_t len, EHeaderPacketType packetType, u8_t channel, bool relay)
 	{
+		if ( m_BlockNewSends ) // discard new packetes
+			return; 
 		// user not allowed to send acks
 		if ( packetType == EHeaderPacketType::Ack || packetType == EHeaderPacketType::Reliable_Newest )
 		{
@@ -60,6 +63,8 @@ namespace Zerodelay
 
 	void RUDPConnection::addReliableNewest(u8_t id, const i8_t* data, i32_t len, u32_t groupId, i8_t groupBit)
 	{
+		if ( m_BlockNewSends ) // discard new packetes
+			return; 
 		assert( groupBit >= 0 && groupBit < 16 );
 		std::lock_guard<std::mutex> lock(m_SendMutex);
 		auto it = m_SendQueue_reliable_newest.find( groupId );
@@ -102,6 +107,11 @@ namespace Zerodelay
 			Platform::memCpy( item.data, len, data, len );
 			item.dataLen = len;
 		}
+	}
+
+	void RUDPConnection::blockAllUpcomingSends(bool block)
+	{
+		m_BlockNewSends = block;
 	}
 
 	void RUDPConnection::beginPoll()
@@ -339,7 +349,7 @@ namespace Zerodelay
 	void RUDPConnection::dispatchRelNewestAckQueue(ISocket* socket)
 	{
 		// stop acking if either, remote disconnected, or we disconnected ourselves
-		if ( isPendingDelete() || isDisconnectInvokedHere() || !isConnected() )
+		if ( isPendingDelete() || !isConnected() )
 			return;
 		i8_t buff[8];
 		buff[off_Type] = (i8_t)EHeaderPacketType::Ack_Reliable_Newest;

@@ -47,8 +47,7 @@ namespace Zerodelay
 		void bindOnCustomData(CustomDataCallback cb)			{ bindCallback(m_CustomDataCallbacks, cb); }
 
 	private:
-		// called by recv thread
-		virtual class IConnection* createNewConnection( const EndPoint& endPoint ) const override;
+		virtual class IConnection* createNewConnection( const EndPoint& endPoint ) const override; // called by recv thread
 		void removeConnection( const class Connection* g, const i8_t* frmtReason, ... );
 		// sends (relay)
 		void sendRemoteConnected( const class Connection* g );
@@ -90,7 +89,6 @@ namespace Zerodelay
 		std::vector<CustomDataCallback>		m_CustomDataCallbacks;
 		std::vector<IConnection*> m_TempConnections;  // Copy of current connection list when doing callback functions
 		std::vector<IConnection*> m_TempConnections2; // For when calling disconnectAll from within a callback function
-		std::vector<IConnection*> m_DeadConnections;
 	};
 
 

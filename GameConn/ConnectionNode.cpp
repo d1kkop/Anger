@@ -105,7 +105,7 @@ namespace Zerodelay
 			auto& it = m_Connections.find( endPoint );
 			if ( it != m_Connections.end() )
 			{
-				conn = dynamic_cast<Connection*>(it->second);
+				conn = static_cast<Connection*>(it->second); // TODO change to dynamic_cast if can be multiple types
 				if ( conn->isPendingDelete() ) // dont allow a pending for delete connection to work on
 				{
 					conn = nullptr;
@@ -185,13 +185,6 @@ namespace Zerodelay
 				updateDisconnecting( gc );			// same
 			}
 		}
-	#ifdef _DEBUG
-		for ( auto& dc : m_DeadConnections )
-		{
-			assert( dc->isPendingDelete() );
-		}
-	#endif
-		m_DeadConnections.clear();
 	}
 
 	void ConnectionNode::setPassword(const std::string& pw)
@@ -227,9 +220,10 @@ namespace Zerodelay
 
 	void ConnectionNode::removeConnection(const class Connection* g, const i8_t* fmt, ...)
 	{
+		assert( g );
 		auto* gg = const_cast<Connection*>(g);
+		gg->blockAllUpcomingSends(true);
 		gg->setIsPendingDelete();
-		m_DeadConnections.emplace_back(gg);
 		if ( fmt )
 		{
 			i8_t buff[2048];

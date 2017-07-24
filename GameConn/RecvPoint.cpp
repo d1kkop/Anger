@@ -125,7 +125,7 @@ namespace Zerodelay
 		for ( auto& kvp : m_Connections )
 		{
 			// If is pending delete because remotely called, or if disconnect called locally. Do no longer update network events.
-			if ( !kvp.second->isPendingDelete() && !kvp.second->isDisconnectInvokedHere() )
+			if ( !kvp.second->isPendingDelete() )
 			{
 				dstList.emplace_back( kvp.second );
 			}
@@ -176,13 +176,20 @@ namespace Zerodelay
 						// If the client could reconnect immediately, we would also process the data of the previous session.
 						// So keep the client for some seconds in a lingering state.
 						if ( !conn->isPendingDelete() )
+						{
+							it++;
 							continue;
+						}
 						
 						// Keep lingering for some time..
 						if ( conn->getTimeSincePendingDelete() > conn->getLingerTimeMs() )
 						{
 							delete it->second;
 							it = m_Connections.erase(it);
+						}
+						else
+						{
+							it++;
 						}
 					}
 				}

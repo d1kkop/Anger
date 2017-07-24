@@ -33,7 +33,6 @@ namespace Zerodelay
 		virtual void flushSendQueue( class ISocket* socket ) = 0;
 		virtual void recvData( const i8_t* buff, i32_t len ) = 0;
 		virtual void simulatePacketLoss(u8_t percentage) = 0;
-		virtual bool isDisconnectInvokedHere() const = 0;
 		virtual bool isConnected() const = 0;
 		virtual i32_t getLingerTimeMs() const = 0;
 
@@ -43,6 +42,7 @@ namespace Zerodelay
 		bool  isPendingDelete() const { return m_IsPendingDelete; }
 		void  setIsPendingDelete()
 		{ 
+			std::lock_guard<std::mutex> lock(m_PendingDeleteMutex);
 			if ( m_IsPendingDelete )
 				return;
 			m_IsPendingDelete = true; 
@@ -55,6 +55,7 @@ namespace Zerodelay
 		}
 
 	protected:
+		std::mutex m_PendingDeleteMutex;
 		std::atomic_bool m_IsPendingDelete; // Set from main thread, queried by recv thread
 		EndPoint m_EndPoint;
 		clock_t m_MarkDeleteTS;
@@ -111,6 +112,7 @@ namespace Zerodelay
 		//------------------------------
 			virtual void addToSendQueue( u8_t id, const i8_t* data, i32_t len, EHeaderPacketType packetType, u8_t channel=0, bool relay=true ) override;
 			virtual void addReliableNewest( u8_t id, const i8_t* data, i32_t len, u32_t groupId, i8_t groupBit ) override;
+			void blockAllUpcomingSends(bool block);
 		
 			// Always first call beginPoll, then repeatedly poll until no more packets, then endPoll
 			virtual void beginPoll() override;
@@ -145,6 +147,8 @@ namespace Zerodelay
 		void createPacketReliableNewest( Packet& pack, const i8_t* buff, i32_t embeddedGroupsSize, i32_t numGroups ) const;
 		bool isSequenceNewer( u32_t incoming, u32_t having ) const;
 
+		// state
+		std::atomic_bool m_BlockNewSends;
 		// send queues
 		sendQueueType m_SendQueue_reliable[sm_NumChannels];
 		sendQueueType m_SendQueue_unreliable;

@@ -54,7 +54,6 @@ namespace Zerodelay
 		// -- IConnection interface
 		virtual i32_t getLingerTimeMs() const override { return m_LingerTimeMs; }
 		virtual bool isConnected() const override { return m_State == EConnectionState::Connected; }
-		virtual bool isDisconnectInvokedHere() const override { return m_IsDisconnectInvokedHere; }
 
 	private:
 		void sendSystemMessage( EDataPacketType type, const i8_t* payload=nullptr, i32_t payloadLen=0 );
@@ -71,7 +70,5 @@ namespace Zerodelay
 		// state
 		bool m_IsWaitingForKeepAlive;
 		EConnectionState m_State;
-		std::atomic_bool m_IsDisconnectInvokedHere; // set from main, queried from others
-		std::atomic_bool m_IsPendingDelete; // Set from main thread, queried by recv thread
 	};
 }

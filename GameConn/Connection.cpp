@@ -27,11 +27,12 @@ namespace Zerodelay
 		m_StartConnectingTS(-1),
 		m_KeepAliveTS(-1),
 		m_IsWaitingForKeepAlive(false),
-		m_IsDisconnectInvokedHere(false),
 		m_State(EConnectionState::Idle)
 	{
 		if ( m_LingerTimeMs > sm_MaxLingerTimeMs )
+		{
 			m_LingerTimeMs = sm_MaxLingerTimeMs;
+		}
 	}
 
 	Connection::~Connection()
@@ -43,7 +44,8 @@ namespace Zerodelay
 		Ensure_State( Connected )
 		m_State = EConnectionState::Disconnecting;
 		m_DisconnectTS = ::clock();
-		m_IsDisconnectInvokedHere = true;
+		setIsPendingDelete();
+		blockAllUpcomingSends(true);
 		sendSystemMessage( EDataPacketType::Disconnect );
 		return true;
 	}
