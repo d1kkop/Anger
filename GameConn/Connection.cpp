@@ -19,15 +19,16 @@ namespace Zerodelay
 	}
 
 
-	Connection::Connection(const EndPoint& endPoint, i32_t timeoutSeconds, i32_t keepAliveIntervalSeconds, i32_t lingerTimeMs):
+	Connection::Connection(bool wasConnector, const EndPoint& endPoint, i32_t timeoutSeconds, i32_t keepAliveIntervalSeconds, i32_t lingerTimeMs):
 		RUDPConnection(endPoint),
 		m_ConnectTimeoutSeconMs(timeoutSeconds*1000),
 		m_KeepAliveIntervalMs(keepAliveIntervalSeconds*1000),
 		m_LingerTimeMs(lingerTimeMs),
 		m_StartConnectingTS(-1),
 		m_KeepAliveTS(-1),
+		m_WasConnector(wasConnector),
 		m_IsWaitingForKeepAlive(false),
-		m_DisconnectInvokedHere(false),
+		m_IsDisconnectInvokedHere(false),
 		m_State(EConnectionState::Idle)
 	{
 		if ( m_LingerTimeMs > sm_MaxLingerTimeMs )
@@ -43,7 +44,7 @@ namespace Zerodelay
 		Ensure_State( Connected )
 		m_State = EConnectionState::Disconnecting;
 		m_DisconnectTS = ::clock();
-		m_DisconnectInvokedHere = true;
+		m_IsDisconnectInvokedHere = true;
 		sendSystemMessage( EDataPacketType::Disconnect );
 		return true;
 	}

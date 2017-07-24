@@ -10,13 +10,14 @@ namespace Zerodelay
 	extern ZEndpoint toZpt( const EndPoint& r );
 
 
-	ConnectionNode::ConnectionNode(i32_t sendThreadSleepTimeMs, i32_t keepAliveIntervalSeconds, bool captureSocketErrors):
+	ConnectionNode::ConnectionNode(ERoutingMethod routingMethod, i32_t sendThreadSleepTimeMs, i32_t keepAliveIntervalSeconds, bool captureSocketErrors):
 		RecvPoint(captureSocketErrors, sendThreadSleepTimeMs),
+		m_RoutingMethod(routingMethod),
+		m_IsServer(false),
 		m_SocketIsOpened(false),
 		m_SocketIsBound(false),
 		m_KeepAliveIntervalSeconds(keepAliveIntervalSeconds),
-		m_MaxIncomingConnections(32),
-		m_RoutingMethod(ERoutingMethod::ClientServer)
+		m_MaxIncomingConnections(32)
 	{
 	}
 
@@ -59,7 +60,7 @@ namespace Zerodelay
 			{
 				return EConnectCallResult::AlreadyExists;
 			}
-			g = new Connection( endPoint, timeoutSeconds, m_KeepAliveIntervalSeconds );
+			g = new Connection( true, endPoint, timeoutSeconds, m_KeepAliveIntervalSeconds );
 			m_Connections.insert( std::make_pair( endPoint, g ) );
 		}
 
@@ -70,6 +71,11 @@ namespace Zerodelay
 
 	EListenCallResult ConnectionNode::listenOn(i32_t port, const std::string& pw)
 	{
+		if ( m_RoutingMethod == ERoutingMethod::ClientServer && m_IsServer )
+		{
+			return EListenCallResult::AlreadyStartedServer;
+		}
+
 		if ( !m_ListenSocket )
 		{
 			return EListenCallResult::SocketError;
@@ -87,6 +93,7 @@ namespace Zerodelay
 
 		setPassword( pw );
 		startThreads();
+		m_IsServer = true;
 		return EListenCallResult::Succes;
 	}
 
@@ -140,11 +147,9 @@ namespace Zerodelay
 		copyConnectionsTo( m_TempConnections );
 		for ( auto* conn : m_TempConnections )
 		{
-			// Connection* gc = dynamic_cast<Connection*>(conn);
-			Connection* gc = static_cast<Connection*>(conn); // TODO change to dynamic when more connection types are there
-			if ( gc && gc->getState() == EConnectionState::Connected )
+			if ( conn->isConnected() )
 			{
-				++num;
+				num++;
 			}
 		}
 		return num;
@@ -217,7 +222,7 @@ namespace Zerodelay
 
 	class IConnection* ConnectionNode::createNewConnection(const EndPoint& endPoint) const
 	{
-		return new Connection( endPoint, m_KeepAliveIntervalSeconds );
+		return new Connection( false, endPoint, m_KeepAliveIntervalSeconds );
 	}
 
 	void ConnectionNode::removeConnection(const class Connection* g, const i8_t* fmt, ...)
@@ -236,14 +241,13 @@ namespace Zerodelay
 			vsprintf(buff, fmt, myargs);
 		#endif
 			va_end(myargs);
-
 			Platform::log("%s", buff);
 		}
 	}
 
 	void ConnectionNode::sendRemoteConnected(const Connection* g)
 	{
-		if ( m_RoutingMethod != ERoutingMethod::ClientServer )
+		if ( m_RoutingMethod != ERoutingMethod::ClientServer || !isServer() )
 			return; 
 		auto& etp = g->getEndPoint();
 		i8_t buff[128];
@@ -259,7 +263,7 @@ namespace Zerodelay
 
 	void ConnectionNode::sendRemoteDisconnected(const Connection* g, EDisconnectReason reason)
 	{
-		if ( m_RoutingMethod != ERoutingMethod::ClientServer )
+		if ( m_RoutingMethod != ERoutingMethod::ClientServer || !isServer() )
 			return; // relay message if wanted
 		auto& etp = g->getEndPoint();
 		i8_t buff[128];
@@ -341,7 +345,7 @@ namespace Zerodelay
 		if ( strcmp( m_Password.c_str(), pw ) != 0 )
 		{
 			g->sendIncorrectPassword();
-			removeConnection( g, "removing conn, invalid pw %s", __FUNCTION__ );
+			removeConnection( g, "removing conn, invalid pw %s", g->getEndPoint().asString().c_str() );
 		}
 		else
 		{
@@ -353,7 +357,7 @@ namespace Zerodelay
 			if ( numConnections >= m_MaxIncomingConnections+1 )
 			{
 				g->sendMaxConnectionsReached();
-				removeConnection( g, "removing conn, max number of connections reached %s", __FUNCTION__ );
+				removeConnection( g, "removing conn, max number of connections reached %s", g->getEndPoint().asString().c_str() );
 				return;
 			}
 			// All fine..
@@ -450,7 +454,7 @@ namespace Zerodelay
 			{
 				(fcb)(g->getEndPoint(), EConnectResult::InvalidPassword);
 			});
-			Platform::log( "invalid pw from %s", g->getEndPoint().asString().c_str() );
+			removeConnection( g, "removing conn %s, invalid pw", g->getEndPoint().asString().c_str() );
 		}
 		else
 		{
@@ -466,7 +470,7 @@ namespace Zerodelay
 			{
 				(fcb)(g->getEndPoint(), EConnectResult::MaxConnectionsReached);
 			});
-			Platform::log( "wont let %s connect, max connections reached", g->getEndPoint().asString().c_str() );
+			removeConnection( g, "removing conn %s, max connections reached", g->getEndPoint().asString().c_str() );
 		}
 		else
 		{
@@ -504,7 +508,7 @@ namespace Zerodelay
 
 	void ConnectionNode::recvUserPacket(class Connection* g, const Packet& pack)
 	{
-		if ( pack.relay && m_RoutingMethod == ERoutingMethod::ClientServer ) // send through to others
+		if ( pack.relay && m_RoutingMethod == ERoutingMethod::ClientServer && isServer() ) // send through to others
 		{
 			// except self
 			send( pack.data[0], pack.data+1, pack.len-1, &g->getEndPoint(), true, pack.type, pack.channel, false /* relay only once */ );
@@ -528,7 +532,7 @@ namespace Zerodelay
 						(fcb)( g->getEndPoint(), EConnectResult::Timedout );
 					});
 				}
-				removeConnection( g, "removing conn, connecting timed out %s", __FUNCTION__ );
+				removeConnection( g, "removing conn, connecting timed out %s", g->getEndPoint().asString().c_str() );
 			}
 		}
 	}
@@ -547,7 +551,7 @@ namespace Zerodelay
 						(fcb)( true, g->getEndPoint(), EDisconnectReason::Lost );
 					});
 				}
-				removeConnection( g, "removing conn, connection was lost %s", __FUNCTION__ );
+				removeConnection( g, "removing conn, connection was lost %s", g->getEndPoint().asString().c_str() );
 			}
 		}
 	}

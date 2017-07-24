@@ -25,7 +25,7 @@ namespace Zerodelay
 	class Connection: public RUDPConnection
 	{
 	public:
-		Connection( const struct EndPoint& endPoint, i32_t timeoutSeconds=8, i32_t keepAliveIntervalSeconds=8, i32_t lingerTimeMs = 300 );
+		Connection( bool wasConnector, const struct EndPoint& endPoint, i32_t timeoutSeconds=8, i32_t keepAliveIntervalSeconds=8, i32_t lingerTimeMs = 300 );
 		virtual ~Connection();
 		bool disconnect();
 		bool acceptDisconnect();
@@ -50,20 +50,30 @@ namespace Zerodelay
 		bool updateDisconnecting();	// same
 		// -- getters
 		i32_t getTimeSince(i32_t timestamp) const;  // in milliseconds
-		bool  isDisconnectInvokedHere() const { return m_DisconnectInvokedHere; }
 		EConnectionState getState() const { return m_State; }
+		// -- IConnection interface
+		virtual bool wasConnector() const { return m_WasConnector; }
+		virtual i32_t getLingerTimeMs() const override { return m_LingerTimeMs; }
+		virtual bool isConnected() const override { return m_State == EConnectionState::Connected; }
+		virtual bool isDisconnectInvokedHere() const override { return m_IsDisconnectInvokedHere; }
 
 	private:
 		void sendSystemMessage( EDataPacketType type, const i8_t* payload=nullptr, i32_t payloadLen=0 );
 
+		// timings
 		i32_t m_ConnectTimeoutSeconMs;
 		i32_t m_KeepAliveIntervalMs;
 		i32_t m_LingerTimeMs;
+		// timestamps
 		clock_t m_StartConnectingTS;
 		clock_t m_KeepAliveTS;
 		clock_t m_DisconnectTS;
+		clock_t m_MarkDeleteTS;
+		// state
+		bool m_WasConnector;
 		bool m_IsWaitingForKeepAlive;
-		std::atomic_bool m_DisconnectInvokedHere; // set from main, queried from others
 		EConnectionState m_State;
+		std::atomic_bool m_IsDisconnectInvokedHere; // set from main, queried from others
+		std::atomic_bool m_IsPendingDelete; // Set from main thread, queried by recv thread
 	};
 }

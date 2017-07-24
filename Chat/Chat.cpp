@@ -128,7 +128,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 
 void InitNetwork(bool isServ)
 {
-	g_Node = new ZNode( 300, -1 );
+	g_Node = new ZNode( ERoutingMethod::ClientServer, 300, -1 );
 	if (isServ)
 		g_Node->setIsNetworkIdProvider(true);
 	g_Node->bindOnConnectResult([] (auto etp, EConnectResult res)

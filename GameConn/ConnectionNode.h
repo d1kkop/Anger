@@ -20,7 +20,7 @@ namespace Zerodelay
 		typedef std::function<void (const EndPoint&, u8_t, const i8_t*, i32_t, u8_t)>	CustomDataCallback;
 
 	public:
-		ConnectionNode(i32_t sendThreadSleepTimeMs=10, i32_t keepAliveIntervalSeconds=8, bool captureSocketErrors=true);
+		ConnectionNode(ERoutingMethod routingMethod, i32_t sendThreadSleepTimeMs=10, i32_t keepAliveIntervalSeconds=8, bool captureSocketErrors=true);
 		virtual ~ConnectionNode();
 
 	public:
@@ -39,6 +39,7 @@ namespace Zerodelay
 		void getConnectionListCopy(std::vector<ZEndpoint>& endpoints);
 		// getters
 		ERoutingMethod getRoutingMethod() const;
+		bool isServer() const { return m_IsServer; }
 		// callbacks
 		void bindOnConnectResult(ConnectResultCallback cb)		{ bindCallback(m_ConnectResultCallbacks, cb); }
 		void bindOnNewConnection(NewConnectionCallback cb)		{ bindCallback(m_NewConnectionCallbacks, cb); }
@@ -76,6 +77,7 @@ namespace Zerodelay
 		template <typename List, typename Callback>
 		void forEachCallback( List& list, Callback cb );
 
+		bool m_IsServer;
 		bool m_SocketIsOpened;
 		bool m_SocketIsBound;
 		i32_t m_KeepAliveIntervalSeconds;

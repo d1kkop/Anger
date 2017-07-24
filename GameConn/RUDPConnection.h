@@ -25,6 +25,7 @@ namespace Zerodelay
 		virtual ~IConnection() = default;
 
 		// --- All functions thread safe ---
+		virtual bool wasConnector() const = 0; // Whether initiated the connection or was accepted.
 		virtual void addToSendQueue(u8_t id, const i8_t* data, i32_t len, EHeaderPacketType packetType, u8_t channel=0, bool relay=true) = 0;
 		virtual void addReliableNewest( u8_t id, const i8_t* data, i32_t len, u32_t groupId, i8_t groupBit ) = 0;
 		virtual void beginPoll() = 0;
@@ -34,6 +35,8 @@ namespace Zerodelay
 		virtual void recvData( const i8_t* buff, i32_t len ) = 0;
 		virtual void simulatePacketLoss(u8_t percentage) = 0;
 		virtual bool isDisconnectInvokedHere() const = 0;
+		virtual bool isConnected() const = 0;
+		virtual i32_t getLingerTimeMs() const = 0;
 
 		const EndPoint& getEndPoint() const { return m_EndPoint; }
 

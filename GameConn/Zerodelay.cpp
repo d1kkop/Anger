@@ -78,8 +78,8 @@ namespace Zerodelay
 	// -------- ZNode ----------------------------------------------------------------------------------------------
 
 
-	ZNode::ZNode(i32_t sendThreadSleepTimeMs, i32_t keepAliveIntervalSeconds, bool captureSocketErrors) :
-		p(new ConnectionNode(sendThreadSleepTimeMs, keepAliveIntervalSeconds, captureSocketErrors)),
+	ZNode::ZNode(ERoutingMethod routingMethod, i32_t sendThreadSleepTimeMs, i32_t keepAliveIntervalSeconds, bool captureSocketErrors) :
+		p(new ConnectionNode(routingMethod, sendThreadSleepTimeMs, keepAliveIntervalSeconds, captureSocketErrors)),
 		vgn(new VariableGroupNode()),
 		zp(new ZNodePrivate())
 	{
@@ -184,11 +184,11 @@ namespace Zerodelay
 			Platform::log( "socket was not created, possibly a platform issue" );
 	}
 
-	void ZNode::sendUnreliableSequenced(u8_t packId, const i8_t* data, i32_t len, const ZEndpoint* specific, bool exclude, u8_t channel, bool relay)
+	void ZNode::sendUnreliableSequenced(u8_t packId, const i8_t* data, i32_t len, const ZEndpoint* specific, bool exclude, u8_t channel, bool relay, bool discardSendIfNotConnected)
 	{
 		ISocket* sock = p->getSocket();
 		if ( sock )
-			p->send( packId, data, len, asEpt(specific), exclude, EHeaderPacketType::Unreliable_Sequenced, channel );
+			p->send( packId, data, len, asEpt(specific), exclude, EHeaderPacketType::Unreliable_Sequenced, channel, discardSendIfNotConnected );
 		else
 			Platform::log( "socket was not created, possibly a platform issue" );
 	}

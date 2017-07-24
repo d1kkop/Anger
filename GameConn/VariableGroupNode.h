@@ -64,7 +64,6 @@ namespace Zerodelay
 		/* sends */
 		void sendCreateVariableGroup( u32_t networkId, const i8_t* paramData, i32_t paramDataLen, i8_t channel );
 		void sendDestroyVariableGroup( u32_t networkId );
-		void sendIdPackRequest();
 		void sendIdPackProvide(const EndPoint& etp, i32_t numIds);
 		/* flow */
 		void intervalSendIdRequest();

@@ -48,37 +48,54 @@ namespace Zerodelay
 		delete m_ListenSocket;
 	}
 
-	void RecvPoint::send(u8_t id, const i8_t* data, i32_t len, const EndPoint* specific, bool exclude, EHeaderPacketType type, u8_t channel, bool relay)
+	void RecvPoint::send(u8_t id, const i8_t* data, i32_t len, const EndPoint* specific, bool exclude, EHeaderPacketType type, u8_t channel, bool relay, bool discardSendIfNotConnected)
 	{
-		size_t kNumConnections = 0;
+		assert( type == EHeaderPacketType::Reliable_Ordered || type == EHeaderPacketType::Unreliable_Sequenced );
+		u32_t kNumSends = 0;
+		m_TempConnections.clear();
+		copyConnectionsTo( m_TempConnections );
+		// Only in case of UnreliableSequenced check for discardSendIfNotConnected.
+		if ( type == EHeaderPacketType::Reliable_Ordered )
 		{
-			std::lock_guard<std::mutex> lock(m_ConnectionListMutex);
-			kNumConnections = m_Connections.size();
-			forEachConnection( specific, exclude, [&] (IConnection* conn) 
+			forEachConnection( specific, exclude, [&] (auto* conn)
 			{
 				conn->addToSendQueue( id, data, len, type, channel, relay );
+				kNumSends++;
 			});
 		}
-		if ( 0 == kNumConnections )
+		else
 		{
-			Platform::log("Trying to send reliable/unreliable data to 0 connections, perhaps not connected or already disconnected");
+			forEachConnection( specific, exclude, [&] (auto* conn)
+			{
+				if ( !discardSendIfNotConnected || conn->isConnected() )
+				{
+					conn->addToSendQueue( id, data, len, type, channel, relay );
+					kNumSends++;
+				}
+			});
+		}
+		if ( 0 == kNumSends )
+		{
+			char debugData[4048];
+			Platform::memCpy( debugData, 4048, data, len );
+			debugData[len] = '\0';
+			Platform::log("WARNING: Trying to send reliable/unreliable data to 0 connections, perhaps not connected or already disconnected. HdrId: %d, data: %s, dataId: %d", (u8_t)type, debugData, (u8_t)data[0] );
 		}
 	}
 
 	void RecvPoint::sendReliableNewest(u8_t id, u32_t groupId, i8_t groupBit, const i8_t* data, i32_t len, const EndPoint* specific, bool exclude)
 	{
-		size_t kNumConnections = 0;
+		u32_t kNumSends = 0;
+		m_TempConnections.clear();
+		copyConnectionsTo( m_TempConnections );
+		forEachConnection( specific, exclude, [&] (auto* conn)
 		{
-			std::lock_guard<std::mutex> lock(m_ConnectionListMutex);
-			kNumConnections = m_Connections.size();
-			forEachConnection( specific, exclude, [&] (IConnection* conn ) 
-			{
-				conn->addReliableNewest( id, data, len, groupId, groupBit );
-			});
-		}
-		if ( 0 == kNumConnections )
+			conn->addReliableNewest( id, data, len, groupId, groupBit );
+			kNumSends++;
+		});
+		if ( 0 == kNumSends )
 		{
-			Platform::log("Trying to send reliable newest data to 0 connections, perhaps not connected or already disconnected");
+			Platform::log("WARNING: Trying to send reliable newest data to 0 connections, perhaps not connected or already disconnected");
 		}
 	}
 
@@ -153,11 +170,17 @@ namespace Zerodelay
 				{
 					for ( auto& kvp : m_Connections )
 					{
+						conn = kvp.second;
+
 						// Do not immediately delete a disconnecting client, because data may still be destined to this address.
 						// If the client could reconnect immediately, we would also process the data of the previous session.
 						// So keep the client for some seconds in a lingering state.
-						if ( kvp.second->isPendingDelete() && /* If disconnect invoked here, immediately remove after done lingering. Else, keep in list for x seconds to avoid immediate reconnect. */
-							(kvp.second->isDisconnectInvokedHere() || kvp.second->getTimeSincePendingDelete() > 8000) ) // Keep for 8 sec in connect list to avoid immediate reconnect
+						if ( !conn->isPendingDelete() )
+							continue;
+						
+						bool shortLinger = (/*conn->isDisconnectInvokedHere() ||*/ conn->wasConnector());
+						if ( (shortLinger && conn->getTimeSincePendingDelete() > conn->getLingerTimeMs()) ||	// Keep lingering for 500 ms, if disconnect was invoked from here
+							(!shortLinger && conn->getTimeSincePendingDelete() > 5000) )	// Keep lingering for 5 sec, if disconnect was issued remote, to avoid reconnect immediately
 						{
 							delete kvp.second;
 							m_Connections.erase(kvp.first);
@@ -167,6 +190,7 @@ namespace Zerodelay
 				}
 
 				// Add new connections
+				conn = nullptr;
 				{
 					auto it = m_Connections.find( endPoint );
 					if ( it == m_Connections.end() )
@@ -190,8 +214,10 @@ namespace Zerodelay
 								buff[rawSize] = '\0';
 								i8_t norm_id = 0;
 								if ( rawSize > RUDPConnection::off_Norm_Id )
+								{
 									norm_id = buff[RUDPConnection::off_Norm_Id];
-								Platform::log("ignoring data for conn %s as is pending delete.... hdrId: %d data: %s, data id %d", conn->getEndPoint().asString().c_str(), (i32_t)buff[0], buff, norm_id);
+								}
+								Platform::log("Ignoring data for conn %s as is pending delete... hdrId %d, data %s, dataId %d", conn->getEndPoint().asString().c_str(), buff[0], buff, norm_id);
 							}
 							conn = nullptr;
 						}
@@ -219,5 +245,4 @@ namespace Zerodelay
 			}
 		}
 	}
-
 }

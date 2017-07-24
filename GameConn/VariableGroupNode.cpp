@@ -274,11 +274,6 @@ namespace Zerodelay
 		m_ZNode->sendReliableOrdered( (u8_t)EDataPacketType::VariableGroupDestroy, (const i8_t*)&networkId, sizeof(networkId) );
 	}
 
-	void VariableGroupNode::sendIdPackRequest()
-	{
-		m_ZNode->sendReliableOrdered((u8_t)EDataPacketType::IdPackRequest, nullptr, 0, nullptr, false, 0, false);
-	}
-
 	void VariableGroupNode::sendIdPackProvide(const EndPoint& etp, i32_t numIds)
 	{
 		assert( numIds >= 0 && "numIds invalid count" );
@@ -289,6 +284,7 @@ namespace Zerodelay
 		{
 			idPack[i] = m_UniqueIdCounter++;			
 		}
+		// Send reliable ordered. If connection is dropped just after sending, the connection is removed and no retransmission will take place.
 		m_ZNode->sendReliableOrdered((u8_t)EDataPacketType::IdPackProvide,
 									(const i8_t*)idPack, sizeof(u32_t)*numIds,
 									&toZpt(etp), false, 0, false);
@@ -300,6 +296,7 @@ namespace Zerodelay
 		if ( m_IsNetworkIdProvider )
 			return;
 
+		return; /// QQQ;
 		// Request new id's when necessary and only if at least a single connection is connected.
 		if ( (m_ZNode->getNumOpenConnections() > 0) && ((i32_t)m_UniqueIds.size() < sm_AvailableIds) )
 		{
@@ -308,7 +305,9 @@ namespace Zerodelay
 			if ( dt >= .5f )
 			{
 				m_LastIdPackRequestTS = tNow;
-				sendIdPackRequest();
+				// Send unreliable sequenced, because it is possible that at the time of sending the data, no connections
+				// are fully connected anymore in which case the reliable ordered packet becomes unreliable.
+				m_ZNode->sendUnreliableSequenced((u8_t)EDataPacketType::IdPackRequest, nullptr, 0, nullptr, false, 0, false);
 			}
 		}
 	}

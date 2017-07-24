@@ -40,7 +40,7 @@ namespace Zerodelay
 
 	public:
 		void send( u8_t id, const i8_t* data, i32_t len, const EndPoint* specific=nullptr, bool exclude=false, 
-				   EHeaderPacketType type=EHeaderPacketType::Reliable_Ordered, u8_t channel=0, bool relay=true );
+				   EHeaderPacketType type=EHeaderPacketType::Reliable_Ordered, u8_t channel=0, bool relay=true, bool discardSendIfNotConnected=true );
 		void sendReliableNewest( u8_t id, u32_t groupId, i8_t groupBit, const i8_t* data, i32_t len, const EndPoint* specific=nullptr, bool exclude=false );
 
 		void  setUserDataPtr( void* ptr) { m_UserPtr = ptr; }
@@ -59,6 +59,8 @@ namespace Zerodelay
 	private:
 		template <typename Callback>
 		void forEachConnection( const EndPoint* specific, bool exclude, Callback cb );
+		template <typename Callback, typename Array>
+		void forEachConnection( const EndPoint* specific, bool exclude, Callback cb, const Array& tempConnList );
 		void recvThread();
 		void sendThread();
 
@@ -73,8 +75,9 @@ namespace Zerodelay
 		std::mutex m_ConnectionListMutex;
 		std::vector<i32_t> m_SocketErrors;
 		std::map<EndPoint, class IConnection*, EndPoint::STLCompare> m_Connections;
+		std::vector<class IConnection*> m_TempConnections; // For operating on connections from main thread
 		void* m_UserPtr;
-		i32_t  m_UserIndex;
+		i32_t m_UserIndex;
 	};
 
 	template <typename Callback>
@@ -106,6 +109,41 @@ namespace Zerodelay
 			for ( auto& kvp : m_Connections ) 
 			{
 				cb( kvp.second );
+			}
+		}
+	}
+
+	template <typename Callback, typename Array>
+	void RecvPoint::forEachConnection(const EndPoint* specific, bool exclude, Callback cb, const Array& tempConnList)
+	{
+		if ( specific )
+		{
+			if ( exclude )
+			{
+				for ( auto& c : tempConnList )
+				{
+					if ( c->getEndPoint() != *specific )
+					{
+						cb( c );
+					}
+				}
+			}
+			else
+			{
+				for ( auto& c : tempConnList )
+				{
+					if ( c->getEndPoint() == *specific )
+					{
+						cb ( c );
+					}
+				}
+			}
+		}
+		else
+		{
+			for ( auto& c : tempConnList ) 
+			{
+				cb( c );
 			}
 		}
 	}

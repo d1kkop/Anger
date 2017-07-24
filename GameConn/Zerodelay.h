@@ -62,7 +62,8 @@ namespace Zerodelay
 	{
 		Succes,
 		CannotBind,
-		SocketError
+		SocketError,
+		AlreadyStartedServer
 	};
 
 	enum class EDisconnectCallResult
@@ -138,7 +139,11 @@ namespace Zerodelay
 	class ZDLL_DECLSPEC ZNode
 	{
 	public:
-		ZNode(i32_t sendThreadSleepTimeMs=20, i32_t keepAliveIntervalSeconds=8, bool captureSocketErrors=true);
+		/*	If routingMethod is set to ClientServer, only one ZNode should call 'listenOn', all clients should call: 'connect'.
+			In case of Peer2Peer, clients first connect to a server (channel) from which the server will set up the 
+			peer to peer connections. */
+		ZNode(ERoutingMethod routingMethod = ERoutingMethod::ClientServer,
+			  i32_t sendThreadSleepTimeMs=20, i32_t keepAliveIntervalSeconds=8, bool captureSocketErrors=true);
 		virtual ~ZNode();
 
 
@@ -238,7 +243,7 @@ namespace Zerodelay
 			- If not nullptr and exclude is true, then message is sent to all except the specific.
 			[channel]	On what channel to sent the message. Packets are sequenced and ordered per channel. Max of 8 channels.
 			[relay]		Whether to relay the message to other connected clients when it arrives. */
-		void sendUnreliableSequenced( u8_t packId, const i8_t* data, i32_t len, const ZEndpoint* specific=nullptr, bool exclude=false, u8_t channel=0, bool relay=true );
+		void sendUnreliableSequenced( u8_t packId, const i8_t* data, i32_t len, const ZEndpoint* specific=nullptr, bool exclude=false, u8_t channel=0, bool relay=true, bool discardSendIfNotConnected=true );
 
 
 		/*	Only one node in the network provides new network id's on request.
