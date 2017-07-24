@@ -168,9 +168,9 @@ namespace Zerodelay
 
 				// Delete (memory wise) dead connections
 				{
-					for ( auto& kvp : m_Connections )
+					for ( auto it = m_Connections.begin(); it != m_Connections.end(); )
 					{
-						conn = kvp.second;
+						conn = it->second;
 
 						// Do not immediately delete a disconnecting client, because data may still be destined to this address.
 						// If the client could reconnect immediately, we would also process the data of the previous session.
@@ -178,13 +178,11 @@ namespace Zerodelay
 						if ( !conn->isPendingDelete() )
 							continue;
 						
-						bool shortLinger = (/*conn->isDisconnectInvokedHere() ||*/ conn->wasConnector());
-						if ( (shortLinger && conn->getTimeSincePendingDelete() > conn->getLingerTimeMs()) ||	// Keep lingering for 500 ms, if disconnect was invoked from here
-							(!shortLinger && conn->getTimeSincePendingDelete() > 5000) )	// Keep lingering for 5 sec, if disconnect was issued remote, to avoid reconnect immediately
+						// Keep lingering for some time..
+						if ( conn->getTimeSincePendingDelete() > conn->getLingerTimeMs() )
 						{
-							delete kvp.second;
-							m_Connections.erase(kvp.first);
-							break;
+							delete it->second;
+							it = m_Connections.erase(it);
 						}
 					}
 				}

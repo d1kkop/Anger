@@ -26,7 +26,6 @@ namespace Zerodelay
 		m_LingerTimeMs(lingerTimeMs),
 		m_StartConnectingTS(-1),
 		m_KeepAliveTS(-1),
-		m_WasConnector(wasConnector),
 		m_IsWaitingForKeepAlive(false),
 		m_IsDisconnectInvokedHere(false),
 		m_State(EConnectionState::Idle)

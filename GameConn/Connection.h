@@ -52,7 +52,6 @@ namespace Zerodelay
 		i32_t getTimeSince(i32_t timestamp) const;  // in milliseconds
 		EConnectionState getState() const { return m_State; }
 		// -- IConnection interface
-		virtual bool wasConnector() const { return m_WasConnector; }
 		virtual i32_t getLingerTimeMs() const override { return m_LingerTimeMs; }
 		virtual bool isConnected() const override { return m_State == EConnectionState::Connected; }
 		virtual bool isDisconnectInvokedHere() const override { return m_IsDisconnectInvokedHere; }
@@ -70,7 +69,6 @@ namespace Zerodelay
 		clock_t m_DisconnectTS;
 		clock_t m_MarkDeleteTS;
 		// state
-		bool m_WasConnector;
 		bool m_IsWaitingForKeepAlive;
 		EConnectionState m_State;
 		std::atomic_bool m_IsDisconnectInvokedHere; // set from main, queried from others
