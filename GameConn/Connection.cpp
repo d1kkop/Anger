@@ -44,9 +44,9 @@ namespace Zerodelay
 		Ensure_State( Connected )
 		m_State = EConnectionState::Disconnecting;
 		m_DisconnectTS = ::clock();
+		sendSystemMessage( EDataPacketType::Disconnect );
 		setIsPendingDelete();
 		blockAllUpcomingSends(true);
-		sendSystemMessage( EDataPacketType::Disconnect );
 		return true;
 	}
 
