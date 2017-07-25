@@ -118,7 +118,7 @@ namespace Zerodelay
 			{
 				return EDisconnectCallResult::Succes;
 			}
-			return EDisconnectCallResult::AlreadyCalled;
+			return EDisconnectCallResult::NotConnected;
 		}
 		return EDisconnectCallResult::UnknownEndpoint;
 	}
@@ -348,7 +348,7 @@ namespace Zerodelay
 				std::lock_guard<std::mutex> lock(m_ConnectionListMutex);
 				numConnections = (i32_t)m_Connections.size();
 			}
-			if ( numConnections >= m_MaxIncomingConnections+1 )
+			if ( numConnections >= m_MaxIncomingConnections+1 ) // TODO why +1?
 			{
 				g->sendMaxConnectionsReached();
 				removeConnection( g, "removing conn, max number of connections reached %s", g->getEndPoint().asString().c_str() );

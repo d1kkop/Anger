@@ -74,7 +74,7 @@ namespace Zerodelay
 				}
 			});
 		}
-		if ( 0 == kNumSends )
+		if ( false && 0 == kNumSends ) // TODO discard silently ?
 		{
 			char debugData[4048];
 			Platform::memCpy( debugData, 4048, data, len );

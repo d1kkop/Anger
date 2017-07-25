@@ -69,7 +69,7 @@ namespace Zerodelay
 	enum class EDisconnectCallResult
 	{
 		Succes,
-		AlreadyCalled,
+		NotConnected,
 		UnknownEndpoint
 	};
 

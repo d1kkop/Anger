@@ -6,6 +6,7 @@
 #include <vector>
 #include <string>
 #include <thread>
+#include <cstdlib>
 
 #include "RpcMacros.h"
 #include "Netvar.h"
@@ -16,6 +17,8 @@
 using namespace Zerodelay;
 
 ZNode* g_Node;
+
+void SendFinal( const char* txt, int len );
 
 
 int g_NumClients =0;
@@ -33,6 +36,7 @@ int g_MsgId = 100;
 int g_LobbyId  = 101;
 int g_MaxLines = 20;
 bool g_Done = false;
+bool g_AutoChat = false;
 
 ChatLobby g_lobby;
 std::vector<std::string> g_lines;
@@ -77,7 +81,10 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
         return FALSE;
     }
 
-	bool isServ = (lpCmdLine[0] != '\0'); 
+	char buff[2048];
+	wcstombs_s( nullptr, buff,  lpCmdLine, 2048 );
+	bool isServ = strstr( buff, "-serv") != nullptr;
+	g_AutoChat  = strstr( buff, "-auto") != nullptr;
 	InitNetwork( isServ );
 
     HACCEL hAccelTable = LoadAccelerators(hInstance, MAKEINTRESOURCE(IDC_CHAT));
@@ -100,6 +107,18 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 		if ( isServ && g_NumClients > 0 )
 		{
 			g_Node->sendReliableOrdered( g_LobbyId, (const char*)&g_lobby, sizeof(g_lobby) );
+		}
+
+		if ( g_AutoChat )
+		{
+			int l = rand() % 10 + 10;
+			char buff[1024];
+			for (int i = 0; i < l ; i++)
+			{
+				buff[i] = rand() % 255;
+			}
+			buff[l] = '\0';
+			SendFinal( buff, l );
 		}
 
 		RefreshLobby();
@@ -314,6 +333,13 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    return TRUE;
 }
 
+void SendFinal( const char* text, int len )
+{
+	g_Node->sendReliableOrdered(100, text, len + 1);
+	g_lines.emplace_back(text);
+	RefreshTextField();
+}
+
 void Send()
 {
 	char text[2048];
@@ -322,10 +348,10 @@ void Send()
 	int kLen = (int)strlen(text);
 	if ( kLen <= 0 )
 		return;
-	g_Node->sendReliableOrdered(100, text, kLen + 1);
-	g_lines.emplace_back(text);
-	RefreshTextField();
+	SendFinal( text, kLen );
 }
+
+
 
 //
 //  FUNCTION: WndProc(HWND, UINT, WPARAM, LPARAM)

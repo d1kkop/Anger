@@ -748,11 +748,11 @@ namespace UnitTests
 		std::vector<BaseTest*> tests;
 
 		// add tests
-		//tests.emplace_back( new ConnectionLayerTest );
-	//	tests.emplace_back( new MassConnectTest );
-	//	tests.emplace_back( new ReliableOrderTest );
-		//tests.emplace_back( new RpcTest );
-	//	tests.emplace_back( new SyncGroupTest );
+//		tests.emplace_back( new ConnectionLayerTest );
+//		tests.emplace_back( new MassConnectTest );
+//		tests.emplace_back( new ReliableOrderTest );
+//		tests.emplace_back( new RpcTest );
+		tests.emplace_back( new SyncGroupTest );
 			
 		// run them
 		for ( auto* t : tests )
