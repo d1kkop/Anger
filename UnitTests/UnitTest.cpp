@@ -663,6 +663,16 @@ namespace UnitTests
 			if ( kTicks == 50 ) // 1000 ms
 				create_myGroup1( clients[0], 'e' );
 
+			if ( kTicks == 20 )
+			{
+				if ( this->m_unitsSelf.size() > 0 )
+				{
+					Unit* u = this->m_unitsSelf[0];
+					strcpy_s( ((Name2&)u->name).m, 64, "bartje" );
+					u->name.markChanged();
+				}
+			}
+
 			//// create random num groups
 			//int numGroups = ::rand() % 10;
 

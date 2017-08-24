@@ -9,14 +9,15 @@
 
 namespace Zerodelay
 {
-	NetVariable::NetVariable(i32_t nBytes):
+	NetVariable::NetVariable(i32_t nBytes, void* data, void* prevData):
 		m_Group(VariableGroup::Last),
-		m_Data(new i8_t[nBytes]),
-		m_PrevData(nullptr),
+		m_Data((i8_t*)data),
+		m_PrevData((i8_t*)prevData),
 		m_Length(nBytes),
 		m_Changed(false)
 	{
 		assert( m_Group != nullptr && "VariableGroup::Last" );
+		assert( data && prevData );
 		if ( m_Group == nullptr )
 		{
 			Platform::log("VariableGroup::Last not set before creating variable group in %s", __FUNCTION__ );
@@ -33,8 +34,8 @@ namespace Zerodelay
 		{
 			m_Group->markBroken();
 		}
-		delete [] m_PrevData;
-		delete [] m_Data;
+		//delete [] m_PrevData;
+		//delete [] m_Data;
 	}
 
 	Zerodelay::EVarControl NetVariable::getVarControl() const
@@ -61,16 +62,17 @@ namespace Zerodelay
 		
 		if ( m_PostUpdateCallback )
 		{
-			if ( !m_PrevData )
-			{
-				m_PrevData = new i8_t[m_Length];
-			}
+			assert( m_PrevData );
+			//if ( !m_PrevData )
+			//{
+			//	m_PrevData = new i8_t[m_Length];
+			//}
 			Platform::memCpy( m_PrevData, m_Length, m_Data, m_Length );
 		}
 		Platform::memCpy( m_Data, m_Length, buff, m_Length );
 		if ( m_PostUpdateCallback && memcmp( m_Data, m_PrevData, m_Length ) != 0 )
 		{
-			m_PostUpdateCallback( m_PrevData, m_Data );
+			m_PostUpdateCallback( (i8_t*)m_PrevData, m_Data );
 		}
 		
 		buff += m_Length;

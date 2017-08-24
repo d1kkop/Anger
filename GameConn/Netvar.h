@@ -20,7 +20,7 @@ namespace Zerodelay
 	class ZDLL_DECLSPEC NetVar
 	{
 	public:
-		NetVar(i32_t nBytes);
+		NetVar(i32_t nBytes, void* data, void* prevData);
 		virtual ~NetVar();
 
 
@@ -40,8 +40,13 @@ namespace Zerodelay
 		u32_t getNetworkGroupId() const;
 
 
-	protected:
+		/*	If a variable is written too, this can be called in addition to let the network stream know it has changed
+			and should be retransmitted. 
+			The function is automatically called when assigning data using the asignment(=) operator. */
 		void markChanged();
+
+
+	protected:
 		void bindOnPostUpdateCallback( const std::function<void (const i8_t*, const i8_t*)>& rawCallback );
 
 		i8_t* data();
@@ -62,7 +67,7 @@ namespace Zerodelay
 	class GenericNetVar : public NetVar
 	{
 	public:
-		GenericNetVar(): NetVar( sizeof(T) ) { forwardCallbacks(); }
+		GenericNetVar(): NetVar( sizeof(T), &m_Data, &m_PrevData ) { forwardCallbacks(); }
 		GenericNetVar(const T& o) : NetVar( sizeof(T) ) { forwardCallbacks(); }
 		virtual ~GenericNetVar<T>() = default;
 
@@ -75,10 +80,6 @@ namespace Zerodelay
 
 		operator T& () { return *(T*)data(); }
 		operator const T&() const { return *(const T*)data(); }
-
-		/*	If set, called just before the variable is about to be written to the network stream. */
-		std::function<void (const T& currentValue)> OnPreWriteCallback;
-
 
 		/*	If set, called when the variable gets updated from the network stream.
 			The variable itself holds the new value already when this function is called. */
@@ -96,6 +97,9 @@ namespace Zerodelay
 				}
 			});
 		}
+
+		T m_Data;
+		T m_PrevData;
 	};
 
 	using NetVarChar  = GenericNetVar<i8_t>;

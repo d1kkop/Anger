@@ -21,6 +21,7 @@ namespace Zerodelay
 		// reliable newest
 		u32_t numGroups;
 		u16_t groupBits;
+		u16_t skipBytes;
 		EHeaderPacketType type;
 	};
 

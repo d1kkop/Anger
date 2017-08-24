@@ -15,8 +15,10 @@ namespace Zerodelay
 	{
 		m_EndPoint = endPoint;
 		m_SendSeq_reliable_newest = 0;
-		m_RecvSeq_reliable_newest = -1; // the first expected seq is 0, so the previous is -1, as it starts sending this immediately, make sure it is recognized as older initially (-1).
-		m_RecvSeq_reliable_newest_ack = -1; // first expected new recved ack is 0, it will send: 'm_RecvSeq_reliable_newest', which is also -1 in the beginning, unless at least a single transmission is done
+		m_RecvSeq_reliable_newest_recvThread = 0;
+		m_RecvSeq_reliable_newest_sendThread = 1; // set to 1 to avoid immediate sending an ack as, (0 >= 0) == true, so is newer
+		m_RecvSeq_reliable_newest_ack = 0;
+		m_RecvSeq_reliable_newest_recvThread = 0;
 		for (i32_t i=0; i<sm_NumChannels; ++i)
 		{
 			m_SendSeq_reliable[i] = 0;
@@ -63,7 +65,7 @@ namespace Zerodelay
 
 	void RUDPConnection::addReliableNewest(u8_t id, const i8_t* data, i32_t len, u32_t groupId, i8_t groupBit)
 	{
-		if ( m_BlockNewSends ) // discard new packetes
+		if ( m_BlockNewSends ) // discard new packets
 			return; 
 		assert( groupBit >= 0 && groupBit < 16 );
 		std::lock_guard<std::mutex> lock(m_SendMutex);
@@ -80,12 +82,13 @@ namespace Zerodelay
 			Platform::memCpy(item.data, len, data, len);
 			// for the other items, set the correct local/remote revision, so that the group can be popped when an item acked (even for not used items)
 			reliableNewestDataGroup rd;
+			rd.dataId = id;
 			for ( auto i=0; i<16; i++ )
 			{
 				// initialize items in group
 				rd.groupItems[i].data = nullptr;
 				rd.groupItems[i].dataLen = rd.groupItems[i].dataCapacity = 0;
-				rd.groupItems[i].localRevision  = m_SendSeq_reliable_newest-1; // make sure both are on curr-1, so that they will not be seen as changed the first time
+				rd.groupItems[i].localRevision  = m_SendSeq_reliable_newest-1; // both -1 is correct, the variable that is actually changed (see above) has a diff of -1 between local and remote
 				rd.groupItems[i].remoteRevision = m_SendSeq_reliable_newest-1;
 			}
 			// copy new item
@@ -275,18 +278,24 @@ namespace Zerodelay
 		{
 			i32_t kBytesWrittenBeforeGroup = kBytesWritten; // remember this in case the group has no changed items
 			*(u32_t*)(dataBuffer + kBytesWritten) = kvp.first; // is groupId (4 bytes)
+			assert( kBytesWritten == off_RelNew_GroupId );
 			kBytesWritten += 4; // group id byte size
 			i8_t* groupBitsPtr = dataBuffer + kBytesWritten; // remember this position as the groupBits cannot be written yet
+			assert( kBytesWritten == off_RelNew_GroupBits );
 			kBytesWritten += 2;
 			i8_t* groupSkipPtr = dataBuffer + kBytesWritten; // keep store amount of bytes to skip in case on the recipient the group does not exist
+			assert( kBytesWritten == off_RelNew_GroupSkipBits );
 			kBytesWritten += 2;
+			dataBuffer[off_RelNew_Norm_Id] = kvp.second.dataId;
+			assert(kBytesWritten == off_RelNew_Norm_Id);
+			kBytesWritten += 1;
 			u16_t groupBits = 0;	// keeps track of which variables in the group are written
 			i32_t kBit = 0;			// which bit to set (if variable is written)
 			bool itemsWereWritten = false; // see if at least a single item is written
 			for (auto& it : kvp.second.groupItems)
 			{
 				reliableNewestItem& item = it;
-				if (isSequenceNewer(item.localRevision, item.remoteRevision)) // variable is changed compared to last acked revision
+				if (isSequenceNewerGroupItem(item.localRevision, item.remoteRevision)) // variable is changed compared to last acked revision
 				{
 					groupBits |= (1 << kBit);
 					assert(kBytesWritten + item.dataLen <= RecvPoint::sm_MaxRecvBuffSize); // TODO emit error and disconnect , this is critical!
@@ -306,7 +315,7 @@ namespace Zerodelay
 			*(u16_t*)(groupBitsPtr) = groupBits;
 			kNumGroupsWritten++;
 			// write skip bytes in case recipient does not know the group yet
-			*(u16_t*)(groupSkipPtr) = (kBytesWritten - kBytesWrittenBeforeGroup) - 8; /* hdr size */
+			*(u16_t*)(groupSkipPtr) = (kBytesWritten - kBytesWrittenBeforeGroup);
 			// quit loop if exceeding max send size
 			if ( kBytesWritten >= RecvPoint::sm_MaxSendSize )
 				break;
@@ -348,13 +357,20 @@ namespace Zerodelay
 
 	void RUDPConnection::dispatchRelNewestAckQueue(ISocket* socket)
 	{
+		// get value from receive thread, if value is changed after load, it will simply send again the next update, 
+		// do however not update the send_thread_value to a send load of the recv_thread value
+		uint32_t recvThreadAckValue = m_RecvSeq_reliable_newest_recvThread;
 		// stop acking if either, remote disconnected, or we disconnected ourselves
-		if ( isPendingDelete() || !isConnected() )
+		if ( isPendingDelete() || !isConnected() ||
+			 !isSequenceNewer(recvThreadAckValue, m_RecvSeq_reliable_newest_sendThread) )
+		{
 			return;
+		}
 		i8_t buff[8];
 		buff[off_Type] = (i8_t)EHeaderPacketType::Ack_Reliable_Newest;
-		*(u32_t*)&buff[off_Ack_RelNew_Seq] = m_RecvSeq_reliable_newest;
+		*(u32_t*)&buff[off_Ack_RelNew_Seq] = recvThreadAckValue;
 		socket->send(m_EndPoint, buff, 5);
+		m_RecvSeq_reliable_newest_sendThread = recvThreadAckValue+1;
 	}
 
 	void RUDPConnection::receiveReliableOrdered(const i8_t * buff, i32_t rawSize)
@@ -410,20 +426,23 @@ namespace Zerodelay
 		if ( rawSize < off_RelNew_Data ) // weak check to see if at least hdr size is available
 		{
 			// TODO emit warning, invalid reliableNewest data
+			Platform::log("ERROR: invalid reliable newest data, too short");
 			return;
 		}
 
 		// If sequence is older than already received, discarda all info
-		u32_t sendSequence = *(u32_t*)(buff + off_RelNew_Seq);
-		if ( !isSequenceNewer(sendSequence, m_RecvSeq_reliable_newest) )
+		u32_t sentSequence = *(u32_t*)(buff + off_RelNew_Seq);
+		if ( !isSequenceNewer(sentSequence, m_RecvSeq_reliable_newest_recvThread) )
 			return;
 		
-		m_RecvSeq_reliable_newest = sendSequence; // update to what we received
-		i32_t kNumGroups = *(i32_t*)(buff + off_RelNew_Num); // num of groups in pack
+		m_RecvSeq_reliable_newest_recvThread = sentSequence+1;			// from now on only interested in current sequence +1
+		i32_t kNumGroups = *(i32_t*)(buff + off_RelNew_Num);			// num of groups in pack
+		u16_t groupBits  = *(u16_t*)(buff + off_RelNew_GroupBits);		// group bits
+		u16_t skipBytes  = *(u16_t*)(buff + off_RelNew_GroupSkipBits);	// skip bytes in case group is not known
 
 		// do further processing of individual groups in higher level group unwrap system
 		Packet pack;
-		createPacketReliableNewest( pack, buff + off_RelNew_Num, rawSize - off_RelNew_Num, kNumGroups );
+		createPacketReliableNewest( pack, buff + off_RelNew_Norm_Id, rawSize - off_RelNew_Norm_Id, kNumGroups, groupBits, skipBytes );
 
 		std::lock_guard<std::mutex> lock(m_RecvMutex);
 		m_RecvQueue_reliable_newest.emplace_back( pack );
@@ -458,8 +477,8 @@ namespace Zerodelay
 		if ( !isSequenceNewer( ackSeq, m_RecvSeq_reliable_newest_ack ) )
 			return; // if sequence is already acked, ignore
 
-		// update to newer ack
-		m_RecvSeq_reliable_newest_ack = ackSeq;
+		// update to newer ack + 1;
+		m_RecvSeq_reliable_newest_ack = ackSeq+1;
 
 		std::lock_guard<std::mutex> lock(m_SendMutex);
 		auto& queue = m_SendQueue_reliable_newest;
@@ -473,7 +492,7 @@ namespace Zerodelay
 			{
 				auto& item = group.groupItems[k];
 				item.remoteRevision = ackSeq;
-				if ( removeGroup && isSequenceNewer( item.localRevision, item.remoteRevision ) )
+				if ( removeGroup && isSequenceNewerGroupItem( item.localRevision, item.remoteRevision ) )
 					removeGroup = false; // cannot remove group
 			}
 			if ( removeGroup )
@@ -514,25 +533,35 @@ namespace Zerodelay
 		pack.channel = channel;
 		pack.groupBits = 0;
 		pack.numGroups = 0;
+		pack.skipBytes = 0;
 		pack.relay = relay;
 		pack.type  = type;
 		Platform::memCpy(pack.data, pack.len, buff, pack.len); 
 	}
 
-	void RUDPConnection::createPacketReliableNewest(Packet& pack, const i8_t* buff, i32_t embeddedGroupsSize, i32_t numGroups) const
+	void RUDPConnection::createPacketReliableNewest(Packet& pack, const i8_t* buff, i32_t embeddedGroupsSize, i32_t numGroups, u16_t groupBits, u16_t groupBytes) const
 	{
 		pack.len  = embeddedGroupsSize;
 		pack.data = new i8_t[pack.len];
 		pack.channel = 0;
 		pack.numGroups = numGroups;
+		pack.groupBits = groupBits;
+		pack.skipBytes = groupBytes;
 		pack.relay = false;
-		pack.type  = EHeaderPacketType::Ack_Reliable_Newest;
+		pack.type  = EHeaderPacketType::Reliable_Newest;
 		Platform::memCpy(pack.data, pack.len, buff, pack.len); 
 	}
 
 	bool RUDPConnection::isSequenceNewer(u32_t incoming, u32_t having) const
 	{
-		incoming -= having;
-		return incoming <= (UINT_MAX>>1);
+		return (incoming >= having && (incoming - having) <= (UINT_MAX>>1)) || 
+			   (incoming < having && (having - incoming) > (UINT_MAX>>1));
 	}
+
+	bool RUDPConnection::isSequenceNewerGroupItem(u32_t incoming, u32_t having) const
+	{
+		return (incoming > having && (incoming - having) <= (UINT_MAX>>1)) || 
+			   (incoming < having && (having - incoming) > (UINT_MAX>>1));
+	}
+
 }

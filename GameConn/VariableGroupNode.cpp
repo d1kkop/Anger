@@ -87,7 +87,7 @@ namespace Zerodelay
 	{
 		intervalSendIdRequest();
 		resolvePendingGroups();	// causes groups to be created
-	//	sendVariableGroups();	// syncs variables in the groups
+		sendVariableGroups();	// syncs variables in the groups
 	}
 
 	bool VariableGroupNode::recvPacket(const Packet& pack, const IConnection* conn)
@@ -125,7 +125,7 @@ namespace Zerodelay
 
 		if ( paramDataLen >= PendingVariableGroup::MaxParamDataLength )
 		{
-			Platform::log( "param data too long for variable group in %s", __FUNCTION__ );
+			Platform::log( "CRITICAL param data too long for variable group in %s", __FUNCTION__ );
 			paramDataLen = PendingVariableGroup::MaxParamDataLength;
 			// TODO causee desync
 		}
@@ -184,7 +184,7 @@ namespace Zerodelay
 		const i32_t numIds = sm_AvailableIds;
 		if ( pack.len-1 != sizeof(u32_t)*sm_AvailableIds )
 		{
-			Platform::log( "invalid sender or serialization in: %s" , __FUNCTION__ );
+			Platform::log( "CRITIAL invalid sender or serialization in: %s" , __FUNCTION__ );
 			return;
 		}
 		u32_t* ids = (u32_t*)(pack.data+1);
@@ -200,7 +200,7 @@ namespace Zerodelay
 		i32_t len = pack.len-1; // minus hdr type byte
 		ZEndpoint ztp = toZpt( etp );
 
-		// relay creation of unit groups always for now
+		// If is client server, relay the message to other clients
 		if ( m_ZNode->getRoutingMethod() == ERoutingMethod::ClientServer )
 		{
 			m_ZNode->sendReliableOrdered( (u8_t)pack.type, payload, len, &ztp, true, pack.channel, false );
@@ -209,7 +209,7 @@ namespace Zerodelay
 		i8_t name[RPC_NAME_MAX_LENGTH];
 		if ( !ISocket::readFixed( name, RPC_NAME_MAX_LENGTH, payload, (RPC_NAME_MAX_LENGTH<len?RPC_NAME_MAX_LENGTH:len)) )
 		{
-			Platform::log( "serialization error in %s", __FUNCTION__ );
+			Platform::log( "CRITICAL serialization error in %s, trying to read function name %s", __FUNCTION__, name );
 			/// TODO critical as no group can be created, cause desync
 			return;
 		}
@@ -254,7 +254,7 @@ namespace Zerodelay
 			// returns ptr to next group or null if has reached end
 			if (!deserializeGroup(data, buffLen))
 			{
-				// TODO emit error, as deserialization failed
+				Platform::log( "ERROR deserialization of variable group failed dataLen %d\n", buffLen );
 				break;
 			}
 		}
@@ -296,7 +296,6 @@ namespace Zerodelay
 		if ( m_IsNetworkIdProvider )
 			return;
 
-		return; /// QQQ;
 		// Request new id's when necessary and only if at least a single connection is connected.
 		if ( (m_ZNode->getNumOpenConnections() > 0) && ((i32_t)m_UniqueIds.size() < sm_AvailableIds) )
 		{
@@ -308,6 +307,7 @@ namespace Zerodelay
 				// Send unreliable sequenced, because it is possible that at the time of sending the data, no connections
 				// are fully connected anymore in which case the reliable ordered packet becomes unreliable.
 				m_ZNode->sendUnreliableSequenced((u8_t)EDataPacketType::IdPackRequest, nullptr, 0, nullptr, false, 0, false);
+				Platform::log("Sending IdPack request...\n");
 			}
 		}
 	}

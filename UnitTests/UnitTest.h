@@ -105,6 +105,11 @@ namespace UnitTests
 	struct Name2
 	{
 		char m[64];
+
+		Name2()
+		{
+			strcpy_s(m, 64, "unnamed");
+		}
 	};
 
 	// Sync group unit
@@ -122,7 +127,10 @@ namespace UnitTests
 
 		Unit()
 		{
-			
+			name.OnPostUpdateCallback = [] (auto& oldValue, auto& newValue)
+			{
+				printf("Name changed from %s to %s\n", oldValue.m, newValue.m);
+			};
 		}
 	};
 

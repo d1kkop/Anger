@@ -171,11 +171,21 @@ namespace Zerodelay
 				// connection can have become pending delete after it has processed the packet, in that case do no longer update states or call callbacks
 				while ( !gc->isPendingDelete() && gc->poll(pack) ) 
 				{
-					// returns false if packet is not handled.
-					if ( !recvPacket( pack, gc ) )
+					// all possible packet types that can be processed by higher level systems than rudp handler
+					if ( (pack.type == EHeaderPacketType::Reliable_Ordered) || (pack.type == EHeaderPacketType::Unreliable_Sequenced) || 
+						 (pack.type == EHeaderPacketType::Reliable_Newest) )
 					{
-						// pass unhandled packets through to othe Node systems
-						unhandledCb( pack, gc );
+						// returns false if packet is not handled.
+						if ( (pack.type == EHeaderPacketType::Reliable_Newest) || !recvPacket( pack, gc ) )
+						{
+							// pass unhandled packets through to othe Node systems
+							unhandledCb( pack, gc );
+						}
+					}
+					else
+					{
+						Platform::log("ERROR: invalid packet forwared to higher level packet processors");
+						assert( false && "invalid packet forward to higher level packet processors" );
 					}
 					delete [] pack.data;
 				}

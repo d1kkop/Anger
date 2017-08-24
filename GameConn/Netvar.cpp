@@ -4,8 +4,8 @@
 
 namespace Zerodelay
 {
-	NetVar::NetVar(i32_t nBytes):
-		p(new NetVariable(nBytes))
+	NetVar::NetVar(i32_t nBytes, void* data, void* prevDat):
+		p(new NetVariable(nBytes, data, prevDat))
 	{
 	}
 
