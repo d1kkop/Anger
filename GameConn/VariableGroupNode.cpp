@@ -93,29 +93,39 @@ namespace Zerodelay
 	bool VariableGroupNode::recvPacket(const Packet& pack, const IConnection* conn)
 	{
 		assert( conn && "invalid ptr" );
-		EDataPacketType packType = (EDataPacketType)pack.data[0];
 		auto etp = conn->getEndPoint();
-		switch ( packType )
+
+		if ( pack.type == EHeaderPacketType::Reliable_Ordered || pack.type == EHeaderPacketType::Unreliable_Sequenced )
 		{
-		case EDataPacketType::IdPackRequest:
-			recvIdRequest( etp );	
-			break;
-		case EDataPacketType::IdPackProvide:
-			recvIdProvide( pack, etp );
-			break;
-		case EDataPacketType::VariableGroupCreate:
-			recvVariableGroupCreate( pack, etp );
-			break;
-		case EDataPacketType::VariableGroupDestroy:
-			recvVariableGroupDestroy( pack, etp );
-			break;
-		case EDataPacketType::VariableGroupUpdate:
-			recvVariableGroupUpdate( pack, etp );
-			break;
-		default:
-			return false;
+			EDataPacketType packType = (EDataPacketType)pack.data[0];
+			switch ( packType )
+			{
+			case EDataPacketType::IdPackRequest:
+				recvIdRequest( etp );	
+				break;
+			case EDataPacketType::IdPackProvide:
+				recvIdProvide( pack, etp );
+				break;
+			case EDataPacketType::VariableGroupCreate:
+				recvVariableGroupCreate( pack, etp );
+				break;
+			case EDataPacketType::VariableGroupDestroy:
+				recvVariableGroupDestroy( pack, etp );
+				break;
+			default:
+				// unhandled packet
+				return false;
+			}
+			// packet was handled
+			return true;
 		}
-		return true;
+		else if ( pack.type == EHeaderPacketType::Reliable_Newest )
+		{
+			recvVariableGroupUpdate( pack, etp );
+			return true;
+		}
+		// unhandled packet
+		return false;
 	}
 
 	void VariableGroupNode::beginGroup( const i8_t* paramData, i32_t paramDataLen, i8_t channel)
@@ -247,9 +257,14 @@ namespace Zerodelay
 
 	void VariableGroupNode::recvVariableGroupUpdate(const Packet& pack, const EndPoint& etp)
 	{
+		// Data in packet is now offsetted at 'off_RelNew_Num' from zero already.
+		// So first data at data[0] is stored value at 'off_RelNew_Num'
 		const auto* data = pack.data;
-		int32_t buffLen = pack.len;
-		for (u32_t i=0; i<pack.numGroups; ++i)
+		int32_t buffLen  = pack.len;
+		i32_t numGroups  = *(i32_t*)(data);
+		data += 4;
+		buffLen -= 4;
+		for (i32_t i=0; i<numGroups; ++i)
 		{
 			// returns ptr to next group or null if has reached end
 			if (!deserializeGroup(data, buffLen))
@@ -369,17 +384,17 @@ namespace Zerodelay
 	bool VariableGroupNode::deserializeGroup(const i8_t*& data, i32_t& buffLen)
 	{
 		u32_t groupId = *(u32_t*)data;
-		data += 4;
+		data += 4;	buffLen -= 4;
 		u16_t groupBits = *(u16_t*)data;
-		data += 2;
-		u16_t skipBytes = *(u16_t*)data; // in case group is not yet created or deleted
-		data += 2;
+		data += 2;	buffLen -= 2;
+		u16_t skipBytes = *(u16_t*)data; 
+		data += 2;	buffLen -= 2;
 		VariableGroup* vg = findRemoteGroup( groupId, nullptr );
 		if ( vg && !vg->isBroken() ) // group is broken if destructor's of variables inside group is called
 		{
 			if ( !vg->read(data, buffLen, groupBits) )
 			{
-				return false; // deserialie failure
+				return false; // deserialize failure
 			}
 		}
 		else

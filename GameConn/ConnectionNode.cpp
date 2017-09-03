@@ -287,6 +287,12 @@ namespace Zerodelay
 
 	bool ConnectionNode::recvPacket(struct Packet& pack, class Connection* g)
 	{
+		// Other packet types than these will not be considered in connection node, return immediately in such case
+		if (!(pack.type == EHeaderPacketType::Reliable_Ordered || pack.type == EHeaderPacketType::Unreliable_Sequenced))
+		{
+			// unhandled packet
+			return false;
+		}
 		EDataPacketType packType = (EDataPacketType)pack.data[0];
 		const i8_t* payload  = pack.data+1; // first byte is PacketType
 		i32_t payloadLen = pack.len-1;  // len includes the packetType byte
@@ -325,6 +331,7 @@ namespace Zerodelay
 		default:
 			if ( (u8_t)packType >= USER_ID_OFFSET )
 			{
+				// TODO should not be in connection node
 				recvUserPacket(g, pack );
 			}
 			else

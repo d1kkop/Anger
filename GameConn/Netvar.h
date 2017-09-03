@@ -59,8 +59,7 @@ namespace Zerodelay
 
 	
 
-	/*	The GenericNetVar is nothing more than a POD (plain old data) stucture that can hold
-		native types and structures.
+	/*	The GenericNetVar is a template for native variable types and structures without pointers.
 		It performs no Endiannes converions. So if this is not handled at the application level, 
 		transport between different Endiannes machines will fail. */
 	template <typename T>
@@ -102,8 +101,32 @@ namespace Zerodelay
 		T m_PrevData;
 	};
 
-	using NetVarChar  = GenericNetVar<i8_t>;
-	using NetVarInt	  = GenericNetVar<i32_t>;
-	using NetVarFloat = GenericNetVar<float>;
+
+	// Example NetVars
+	struct Vec3 { float x, y, z; };
+	struct Vec4 { float x, y, z, w; };
+	struct Quat { float x, y, z, w; };
+	struct Mat3 { float m[9]; };
+	struct Mat4 { float m[16]; };
+
+	struct Text32  { char data[32]; };
+	struct Text64  { char data[64]; };
+	struct Text128 { char data[128]; };
+	struct Text256 { char data[256]; };
+
+	using NetVarChar    = GenericNetVar<i8_t>;
+	using NetVarShort   = GenericNetVar<i16_t>;
+	using NetVarInt	    = GenericNetVar<i32_t>;
+	using NetVarFloat   = GenericNetVar<float>;
+	using NetVarDouble  = GenericNetVar<double>;
+	using NetVarVec3	= GenericNetVar<Vec3>;
+	using NetVarVec4	= GenericNetVar<Vec4>;
+	using NetVarQuat	= GenericNetVar<Quat>;
+	using NetVarMat3	= GenericNetVar<Mat3>;
+	using NetVarMat4	= GenericNetVar<Mat4>;
+	using NetVarText32  = GenericNetVar<Text32>;
+	using NetVarText64  = GenericNetVar<Text64>;
+	using NetVarText128 = GenericNetVar<Text128>;
+	using NetVarText256 = GenericNetVar<Text256>;
 
 }

@@ -81,7 +81,7 @@ namespace Zerodelay
 	class RUDPConnection: public IConnection
 	{
 	public:
-		// Packet layout offsets
+		// TODO Packet layout offsets should not be completely here because it contains higher level data layout information
 		static const i32_t off_Type = 0;	// Reliable, Unreliable or Ack
 		static const i32_t off_Ack_Chan = 1; // In case of ack, the channel
 		static const i32_t off_Ack_Num = 2;  // In case of ack, ther number of acks in one packet cluttered together
@@ -90,13 +90,13 @@ namespace Zerodelay
 		static const i32_t off_Norm_Seq  = 2;	// Normal, Seq numb
 		static const i32_t off_Norm_Id   = 6;	// Normal/Data, Packet Id 
 		static const i32_t off_Norm_Data = 7;	// Normal, Payload
-		static const i32_t off_RelNew_Seq = 1;	// RelNew, sequence
-		static const i32_t off_RelNew_Num = 5;	// RelNew, num groups
+		static const i32_t off_RelNew_Seq  = 1;	// RelNew, sequence
+		static const i32_t off_RelNew_Num  = 5;	// RelNew, num groups
 		static const i32_t off_RelNew_GroupId   = 9;		// ReliableNew, GroupId (4 bytes)
 		static const i32_t off_RelNew_GroupBits = 13;		// 2 Bytes (max 16 vars per group)
-		static const i32_t off_RelNew_GroupSkipBits = 15;	// 2 Bytes size of update reliable_newest packet data to skip in bytes
-		static const i32_t off_RelNew_Norm_Id = 17;			// data/normal id 
-		static const i32_t off_RelNew_Data	  = 18;			// ReliableNew, Payload
+		static const i32_t off_RelNew_GroupSkipBytes = 15;	// 2 bytes that hold amount of bytes to skip in case group id is is not known
+		static const i32_t off_RelNew_Data = 17;			// pay load
+		
 		static const i32_t off_Ack_RelNew_Seq = 1;			// Ack_ReliableNew_Seq numb
 
 		static const i32_t sm_NumChannels  = 8;
@@ -147,7 +147,6 @@ namespace Zerodelay
 		void assembleNormalPacket( Packet& pack, EHeaderPacketType packetType, u8_t dataId, const i8_t* data, i32_t len, i32_t hdrSize, i8_t channel, bool relay );
 		void extractChannelRelayAndSeq(const i8_t* buff, i32_t rawSize, i8_t& channOut, bool& relayOut, u32_t& seqOut );
 		void createNormalPacket(Packet& pack, const i8_t* buff, i32_t dataSize, i8_t channel, bool relay, EHeaderPacketType type) const;
-		void createPacketReliableNewest( Packet& pack, const i8_t* buff, i32_t embeddedGroupsSize, i32_t numGroups, u16_t groupBits, u16_t skipBytes ) const;
 		bool isSequenceNewer( u32_t incoming, u32_t having ) const;
 		bool isSequenceNewerGroupItem( u32_t incoming, u32_t having ) const; // This one is newer only when having is incoming-UINT_MAX/2
 

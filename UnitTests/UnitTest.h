@@ -127,9 +127,66 @@ namespace UnitTests
 
 		Unit()
 		{
-			name.OnPostUpdateCallback = [] (auto& oldValue, auto& newValue)
+			c.OnPostUpdateCallback = [] (auto& cOld, auto& cNew)
+			{
+				printf("c changed from %c to %c\n", cOld, cNew);
+			};
+
+			s.OnPostUpdateCallback = [] (auto& o, auto& n)
+			{
+				printf("s changed from %d to %d\n", o, n);
+			};
+
+			i.OnPostUpdateCallback = [] (auto& o, auto& n)
+			{
+				printf("i changed from %d to %d\n", o, n);
+			};
+
+			d.OnPostUpdateCallback = [&] (auto& o, auto& n)
+			{
+				printf("double changed from %f to %f\n", o, n);
+			};
+
+			f.OnPostUpdateCallback = [&] (auto& o, auto& n)
+			{
+				printf("float changed from %f to %f\n", o, n);
+			};
+
+			vec.OnPostUpdateCallback = [&] (auto& o, auto& n)
+			{
+				printf("vec3 changed from x %.3f y %.3f z %.3f  to ->  x %.3f y %.3f z %.3f \n", o.x, o.y, o.z, n.x, n.y, n.z);
+			};
+
+			quat.OnPostUpdateCallback = [&] (auto& o, auto& n)
+			{
+				printf("quat changed from x %.3f y %.3f z %.3f w %.3f  to ->  x %.3f y %.3f z %.3f w %.3f \n", o.x, o.y, o.z, o.w, n.x, n.y, n.z, n.w);
+			};
+
+			name.OnPostUpdateCallback = [&] (auto& oldValue, auto& newValue)
 			{
 				printf("Name changed from %s to %s\n", oldValue.m, newValue.m);
+			};
+
+			mat.OnPostUpdateCallback = [&] (auto& o, auto& n)
+			{
+				printf("mat3x3 changed from:\n");
+				for ( int i=0; i<3; i++) 
+				{
+					for (int j = 0; j < 3 ; j++)
+					{
+						printf("m[%d][%d] = %.3f", i, j, o.m[i][j]);
+					}
+					printf("\n");
+				}
+				printf("to->: \n");
+				for ( int i=0; i<3; i++) 
+				{
+					for (int j = 0; j < 3 ; j++)
+					{
+						printf("m[%d][%d] = %.3f", i, j, n.m[i][j]);
+					}
+					printf("\n");
+				}	
 			};
 		}
 	};

@@ -284,11 +284,8 @@ namespace Zerodelay
 			assert( kBytesWritten == off_RelNew_GroupBits );
 			kBytesWritten += 2;
 			i8_t* groupSkipPtr = dataBuffer + kBytesWritten; // keep store amount of bytes to skip in case on the recipient the group does not exist
-			assert( kBytesWritten == off_RelNew_GroupSkipBits );
+			assert( kBytesWritten == off_RelNew_GroupSkipBytes );
 			kBytesWritten += 2;
-			dataBuffer[off_RelNew_Norm_Id] = kvp.second.dataId;
-			assert(kBytesWritten == off_RelNew_Norm_Id);
-			kBytesWritten += 1;
 			u16_t groupBits = 0;	// keeps track of which variables in the group are written
 			i32_t kBit = 0;			// which bit to set (if variable is written)
 			bool itemsWereWritten = false; // see if at least a single item is written
@@ -308,6 +305,7 @@ namespace Zerodelay
 			// if no items in group written, move write ptr back and continue
 			if ( !itemsWereWritten )
 			{
+				// note, numGroupsWritten is not incremented, no need to undo written data to stream, just rewind write position
 				kBytesWritten = kBytesWrittenBeforeGroup;
 				continue;
 			}
@@ -431,18 +429,16 @@ namespace Zerodelay
 		}
 
 		// If sequence is older than already received, discarda all info
-		u32_t sentSequence = *(u32_t*)(buff + off_RelNew_Seq);
-		if ( !isSequenceNewer(sentSequence, m_RecvSeq_reliable_newest_recvThread) )
+		u32_t seq = *(u32_t*)(buff + off_RelNew_Seq);
+		if ( !isSequenceNewer(seq, m_RecvSeq_reliable_newest_recvThread) )
 			return;
 		
-		m_RecvSeq_reliable_newest_recvThread = sentSequence+1;			// from now on only interested in current sequence +1
-		i32_t kNumGroups = *(i32_t*)(buff + off_RelNew_Num);			// num of groups in pack
-		u16_t groupBits  = *(u16_t*)(buff + off_RelNew_GroupBits);		// group bits
-		u16_t skipBytes  = *(u16_t*)(buff + off_RelNew_GroupSkipBits);	// skip bytes in case group is not known
+		// from now on only interested in current sequence +1
+		m_RecvSeq_reliable_newest_recvThread = seq+1;					
 
 		// do further processing of individual groups in higher level group unwrap system
 		Packet pack;
-		createPacketReliableNewest( pack, buff + off_RelNew_Norm_Id, rawSize - off_RelNew_Norm_Id, kNumGroups, groupBits, skipBytes );
+		createNormalPacket( pack, buff + off_RelNew_Num, rawSize - off_RelNew_Num, 0, false, EHeaderPacketType::Reliable_Newest );
 
 		std::lock_guard<std::mutex> lock(m_RecvMutex);
 		m_RecvQueue_reliable_newest.emplace_back( pack );
@@ -531,24 +527,8 @@ namespace Zerodelay
 		pack.len  = dataSize;
 		pack.data = new i8_t[pack.len];
 		pack.channel = channel;
-		pack.groupBits = 0;
-		pack.numGroups = 0;
-		pack.skipBytes = 0;
 		pack.relay = relay;
 		pack.type  = type;
-		Platform::memCpy(pack.data, pack.len, buff, pack.len); 
-	}
-
-	void RUDPConnection::createPacketReliableNewest(Packet& pack, const i8_t* buff, i32_t embeddedGroupsSize, i32_t numGroups, u16_t groupBits, u16_t groupBytes) const
-	{
-		pack.len  = embeddedGroupsSize;
-		pack.data = new i8_t[pack.len];
-		pack.channel = 0;
-		pack.numGroups = numGroups;
-		pack.groupBits = groupBits;
-		pack.skipBytes = groupBytes;
-		pack.relay = false;
-		pack.type  = EHeaderPacketType::Reliable_Newest;
 		Platform::memCpy(pack.data, pack.len, buff, pack.len); 
 	}
 

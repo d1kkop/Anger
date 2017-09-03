@@ -18,10 +18,6 @@ namespace Zerodelay
 		i8_t* data;
 		i8_t channel;
 		bool relay;
-		// reliable newest
-		u32_t numGroups;
-		u16_t groupBits;
-		u16_t skipBytes;
 		EHeaderPacketType type;
 	};
 

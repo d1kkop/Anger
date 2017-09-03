@@ -63,10 +63,6 @@ namespace Zerodelay
 		if ( m_PostUpdateCallback )
 		{
 			assert( m_PrevData );
-			//if ( !m_PrevData )
-			//{
-			//	m_PrevData = new i8_t[m_Length];
-			//}
 			Platform::memCpy( m_PrevData, m_Length, m_Data, m_Length );
 		}
 		Platform::memCpy( m_Data, m_Length, buff, m_Length );
