@@ -178,7 +178,7 @@ namespace Zerodelay
 						// returns false if packet is not handled.
 						if ( (pack.type == EHeaderPacketType::Reliable_Newest) || !recvPacket( pack, gc ) )
 						{
-							// pass unhandled packets through to othe Node systems
+							// pass unhandled packets through to other Node systems
 							unhandledCb( pack, gc );
 						}
 					}
@@ -365,7 +365,9 @@ namespace Zerodelay
 				std::lock_guard<std::mutex> lock(m_ConnectionListMutex);
 				numConnections = (i32_t)m_Connections.size();
 			}
-			if ( numConnections >= m_MaxIncomingConnections+1 ) // TODO why +1?
+			// +1 because connection is already added to list when here, that is every data packet's sender address is added to the connection list,
+			// whether the connection will establish depends on further negotiations
+			if ( numConnections >= m_MaxIncomingConnections+1 )
 			{
 				g->sendMaxConnectionsReached();
 				removeConnection( g, "removing conn, max number of connections reached %s", g->getEndPoint().asString().c_str() );

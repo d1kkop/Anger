@@ -39,7 +39,7 @@ namespace Zerodelay
 		void markDestroySent()		{ m_DestroySent = true; }
 
 		void sendGroup(ZNode* node);
-		void unrefGroup(); // decouples variables from as group is about to be deleted
+		void unrefGroup(); // decouples variables from as group is about to be deleted and marks it broken
 
 	private:
 		bool m_Broken;

@@ -48,19 +48,19 @@ namespace Zerodelay
 		delete m_ListenSocket;
 	}
 
-	void RecvPoint::send(u8_t id, const i8_t* data, i32_t len, const EndPoint* specific, bool exclude, EHeaderPacketType type, u8_t channel, bool relay, bool discardSendIfNotConnected)
+	bool RecvPoint::send(u8_t id, const i8_t* data, i32_t len, const EndPoint* specific, bool exclude, EHeaderPacketType type, u8_t channel, bool relay, bool discardSendIfNotConnected)
 	{
 		assert( type == EHeaderPacketType::Reliable_Ordered || type == EHeaderPacketType::Unreliable_Sequenced );
-		u32_t kNumSends = 0;
 		m_TempConnections.clear();
 		copyConnectionsTo( m_TempConnections );
 		// Only in case of UnreliableSequenced check for discardSendIfNotConnected.
+		bool bWasAddedToQueue = false;
 		if ( type == EHeaderPacketType::Reliable_Ordered )
 		{
 			forEachConnection( specific, exclude, [&] (auto* conn)
 			{
 				conn->addToSendQueue( id, data, len, type, channel, relay );
-				kNumSends++;
+				bWasAddedToQueue = true;
 			});
 		}
 		else
@@ -70,17 +70,18 @@ namespace Zerodelay
 				if ( !discardSendIfNotConnected || conn->isConnected() )
 				{
 					conn->addToSendQueue( id, data, len, type, channel, relay );
-					kNumSends++;
+					bWasAddedToQueue = true;
 				}
 			});
 		}
-		if ( false && 0 == kNumSends ) // TODO discard silently ?
+		if ( 0 == m_TempConnections.size() ) 
 		{
 			char debugData[4048];
 			Platform::memCpy( debugData, 4048, data, len );
 			debugData[len] = '\0';
-			Platform::log("WARNING: Trying to send reliable/unreliable data to 0 connections, perhaps not connected or already disconnected. HdrId: %d, data: %s, dataId: %d", (u8_t)type, debugData, (u8_t)data[0] );
+			Platform::log("WARNING: Trying to send reliable/unreliable data to 0 connections, perhaps not connected or already disconnected. HdrId: %d, data: %s, dataId: %d", (u8_t)type, debugData, data ? (u8_t)data[0] : 0 );
 		}
+		return bWasAddedToQueue;
 	}
 
 	void RecvPoint::sendReliableNewest(u8_t id, u32_t groupId, i8_t groupBit, const i8_t* data, i32_t len, const EndPoint* specific, bool exclude)
@@ -147,6 +148,10 @@ namespace Zerodelay
 			i32_t  rawSize = sm_MaxRecvBuffSize;
 			auto eResult = m_ListenSocket->recv( buff, rawSize, endPoint );
 
+			// discard socket interrupt 'errors' if closing
+			if ( m_IsClosing )
+				break;
+
 			if ( eResult != ERecvResult::Succes || rawSize <= 0 )
 			{
 				// optionally capture the socket errors
@@ -155,8 +160,7 @@ namespace Zerodelay
 					i32_t err = m_ListenSocket->getUnderlayingSocketError();
 					if ( err != 0 )
 					{
-						std::lock_guard<std::mutex> lock(m_ConnectionListMutex);
-						m_SocketErrors.push_back( err ); // TODO is this how we want it?
+						Platform::log("Socket error in recvPoint %d\n", err);
 					}
 				}
 				continue;
@@ -173,7 +177,7 @@ namespace Zerodelay
 						conn = it->second;
 
 						// Do not immediately delete a disconnecting client, because data may still be destined to this address.
-						// If the client could reconnect immediately, we would also process the data of the previous session.
+						// If the client could reconnect immediately, we would also process the data of the previous session (not actually true because sender will have diff bound port).
 						// So keep the client for some seconds in a lingering state.
 						if ( !conn->isPendingDelete() )
 						{

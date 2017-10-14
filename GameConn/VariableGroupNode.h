@@ -20,7 +20,6 @@ namespace Zerodelay
 		i8_t  ParamData[MaxParamDataLength];
 		i32_t ParamDataLength;
 		i8_t  Channel;
-		class VariableGroup* Vg;
 	};
 
 
@@ -49,9 +48,9 @@ namespace Zerodelay
 		void update();
 		bool recvPacket(const struct Packet& pack, const class IConnection* conn);
 
-		void beginGroup(const i8_t* paramData, i32_t paramDataLen, i8_t channel);
-		void beginGroupFromRemote(u32_t nid, const ZEndpoint& ztp);
-		void endGroup();
+		void deferredCreateGroup(const i8_t* paramData, i32_t paramDataLen, i8_t channel);
+		void beginNewGroup(u32_t nid, const ZEndpoint* ztp);
+		void endNewGroup();
 		void setIsNetworkIdProvider( bool isProvider );
 
 	private:
@@ -70,8 +69,9 @@ namespace Zerodelay
 		void resolvePendingGroups();
 		void sendVariableGroups();
 		/* support */
+		void callCreateVariableGroup(i8_t* data, i32_t len, bool remote, const ZEndpoint* ztp);
 		bool deserializeGroup(const i8_t*& data, int32_t& buffLen);
-		VariableGroup* findRemoteGroup( u32_t networkId, const EndPoint* etp = nullptr, bool removeOnFind = false );
+		class VariableGroup* findOrRemoveBrokenGroup( u32_t networkId, const EndPoint* etp = nullptr );
 
 		bool m_IsNetworkIdProvider; // Only 1 node is the owner of all id's, it provides id's on request.
 		std::deque<u32_t> m_UniqueIds;
@@ -83,6 +83,5 @@ namespace Zerodelay
 		u32_t   m_UniqueIdCounter;
 		// --- ptrs to other managers
 		class ZNode* m_ZNode;
-		class ZNodePrivate* m_PrivZ;
 	};
 }

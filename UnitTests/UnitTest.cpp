@@ -72,6 +72,7 @@ namespace UnitTests
 		g2->bindOnDisconnect( discLamda );
 		g1->connect("localhost",27000,"lala");
 		g2->setMaxIncomingConnections(1);
+		g2->setIsNetworkIdProvider(true);
 		g2->listenOn(27000, "lala");
 
 		volatile bool bClose = false;
@@ -170,6 +171,7 @@ namespace UnitTests
 		}
 
 		ZNode* listener = new ZNode();
+		listener->setIsNetworkIdProvider(true);
 		auto eRes = listener->listenOn(27001, pw);
 		if ( (int)eRes != 0 )
 		{
@@ -229,6 +231,20 @@ namespace UnitTests
 
 		g1->connect( "localhost", 27000 );
 		g2->listenOn( 27000 );
+
+		int kTicks = 0;
+		while ( g1->getNumOpenConnections() == 0 )
+		{
+			g2->update();
+			g1->update();
+			std::this_thread::sleep_for(std::chrono::milliseconds(50));
+			if ( kTicks++ == 100 )
+			{
+				printf("FAILED connecting in %s\n", this->Name.c_str());
+				this->Result = false;
+				return;
+			}
+		}
 
 		int kSends = NumSends;
 		static const int nch = 8;
@@ -397,6 +413,7 @@ namespace UnitTests
 
 		g1->connect( "localhost", 27000 );
 		g2->listenOn( 27000 );
+		g2->setIsNetworkIdProvider(true);
 
 		volatile bool bThreadClose = false;
 		std::thread t( [&] () {
@@ -444,12 +461,14 @@ namespace UnitTests
 		if ( u->c.getVarConrol() == EVarControl::Remote )
 		{
 			printf("group %d created remotely\n", groupIdx);
-			sgt->m_unitsRemote.emplace_back( u );
+			assert(sgt->m_unitsRemote.count(groupIdx)==0);
+			sgt->m_unitsRemote.insert(std::make_pair(groupIdx, u));
 		}
 		else
 		{
 			printf("group %d created locally\n", groupIdx);
-			sgt->m_unitsSelf.emplace_back( u );
+			assert(sgt->m_unitsSelf.count(groupIdx)==0);
+			sgt->m_unitsSelf.insert(std::make_pair(groupIdx, u));
 		}
 	}
 
@@ -457,7 +476,7 @@ namespace UnitTests
 	{
 		SyncGroupTest* sgt = (SyncGroupTest*) zn->getUserDataPtr();
 		Unit* u = new Unit();
-		groupCreateFeedback( 0, u, sgt );
+		groupCreateFeedback( u->c.getNetworkGroupId(), u, sgt );
 	}
 
 	DECL_VAR_GROUP_1( myGroup1, zn, char, c )
@@ -467,7 +486,7 @@ namespace UnitTests
 		Unit* u = new Unit();
 		u->c = c;
 
-		groupCreateFeedback( 1, u, sgt );
+		groupCreateFeedback( u->c.getNetworkGroupId(), u, sgt );
 	}
 
 	DECL_VAR_GROUP_2( myGroup2, zn, char, c, short, s )
@@ -478,7 +497,7 @@ namespace UnitTests
 		u->c = c;
 		u->s = s;
 
-		groupCreateFeedback(2, u, sgt );
+		groupCreateFeedback( u->c.getNetworkGroupId(), u, sgt );
 	}
 
 	DECL_VAR_GROUP_3( myGroup3, zn, char, c, short, s, int, i )
@@ -490,7 +509,7 @@ namespace UnitTests
 		u->s = s;
 		u->i = i;
 
-		groupCreateFeedback( 3, u, sgt );
+		groupCreateFeedback( u->c.getNetworkGroupId(), u, sgt );
 	}
 
 	DECL_VAR_GROUP_4( myGroup4, zn, char, c, short, s, int, i, float, f )
@@ -503,7 +522,7 @@ namespace UnitTests
 		u->i = i;
 		u->f = f;
 
-		groupCreateFeedback( 4, u, sgt );
+		groupCreateFeedback( u->c.getNetworkGroupId(), u, sgt );
 	}
 
 	DECL_VAR_GROUP_5( myGroup5, zn, char, c, short, s, int, i, float, f, double, d )
@@ -517,7 +536,7 @@ namespace UnitTests
 		u->f = f;
 		u->d = d;
 
-		groupCreateFeedback( 5, u, sgt );
+		groupCreateFeedback( u->c.getNetworkGroupId(), u, sgt );
 	}
 
 	DECL_VAR_GROUP_6( myGroup6, zn, char, c, short, s, int, i, float, f, double, d, Vec3, vec )
@@ -532,7 +551,7 @@ namespace UnitTests
 		u->d = d;
 		u->vec = vec;
 
-		groupCreateFeedback( 6, u, sgt );
+		groupCreateFeedback( u->c.getNetworkGroupId(), u, sgt );
 	}
 
 	DECL_VAR_GROUP_7( myGroup7, zn, char, c, short, s, int, i, float, f, double, d, Vec3, vec, Quat, quat )
@@ -548,7 +567,7 @@ namespace UnitTests
 		u->vec  = vec;
 		u->quat = quat;
 
-		groupCreateFeedback( 7, u, sgt );
+		groupCreateFeedback( u->c.getNetworkGroupId(), u, sgt );
 	}
 
 	DECL_VAR_GROUP_8( myGroup8, zn, char, c, short, s, int, i, float, f, double, d, Vec3, vec, Quat, quat, Mat3x3, m3x3 )
@@ -565,7 +584,7 @@ namespace UnitTests
 		u->quat = quat;
 		u->mat  = m3x3;
 
-		groupCreateFeedback( 8, u, sgt );
+		groupCreateFeedback( u->c.getNetworkGroupId(), u, sgt );
 	}
 
 	DECL_VAR_GROUP_9( myGroup9, zn, char, c, short, s, int, i, float, f, double, d, Vec3, vec, Quat, quat, Mat3x3, m3x3, Name2, name )
@@ -590,7 +609,7 @@ namespace UnitTests
 		assert( bComp && "lel" );
 		strcpy_s( ((Name2&)u->name).m, 64, name.m );
 
-		groupCreateFeedback( 9, u, sgt );
+		groupCreateFeedback( u->c.getNetworkGroupId(), u, sgt );
 	}
 
 	void SyncGroupTest::initialize()
@@ -599,6 +618,29 @@ namespace UnitTests
 
 	void SyncGroupTest::run()
 	{
+		auto fnGroupUpdated = [](const ZEndpoint* ept, u32_t groupId) 
+		{
+			printf("group %d updated\n", groupId);
+		};
+
+		auto fnGroupDestroyed = [this](const ZEndpoint* ept, u32_t groupId) 
+		{
+			if (ept)
+			{
+				assert(this->m_unitsRemote.count(groupId)==1);
+				delete this->m_unitsRemote[groupId];
+				this->m_unitsRemote.erase(groupId);
+			}
+			else
+			{
+				assert(this->m_unitsSelf.count(groupId)==1);
+				//delete this->m_unitsSelf[groupId];
+				this->m_unitsSelf.erase(groupId);
+			}
+
+			printf("group %d removed\n", groupId);
+		};
+
 		ZNode* g1 = new ZNode();
 		g1->setUserDataPtr( this );
 
@@ -608,8 +650,32 @@ namespace UnitTests
 		{
 			clients.emplace_back( new ZNode() );
 			clients[i]->setUserDataPtr( this );
+			clients[i]->bindOnGroupUpdated( fnGroupUpdated );
+			clients[i]->bindOnGroupDestroyed( fnGroupDestroyed );
 			clients[i]->connect("localhost", 27000);
 		}
+		g1->listenOn( 27000 );
+		g1->setIsNetworkIdProvider( true );
+
+		g1->bindOnGroupUpdated( fnGroupUpdated );
+		g1->bindOnGroupDestroyed( fnGroupDestroyed );
+
+		int kTicks2=0;
+		while ( ++kTicks2 < 100 )
+		{
+			g1->update();
+			int jConnected = 0;
+			for (int i = 0; i < kClients ; i++)
+			{
+				clients[i]->update();
+				if ( clients[i]->getNumOpenConnections() > 0 )
+					jConnected++;
+			}
+			if ( jConnected == kClients )
+				break;
+			std::this_thread::sleep_for(std::chrono::milliseconds(50));
+		}
+
 
 		create_myGroup2(clients[0], 'a', 22 );
 
@@ -641,81 +707,60 @@ namespace UnitTests
 		char* c = name.m;
 		sprintf_s( c, 32, "a random name" );
 
-		// -------------------------------------------------------------------------------------------------------------------------------
-
-		g1->listenOn( 27000 );
-		g1->setIsNetworkIdProvider( true );
-
-
 		int kTicks = 0;
 		while ( true )
 		{
+			kTicks++;
+
 			g1->update();
-			//g2->update();
 			for ( auto* z : clients )
 			{
 				z->update();
 			}
-			std::this_thread::sleep_for(20ms);
 
-			kTicks++;
+			// create random num groups
+			int numGroups = ::rand() % 10;
 
-			if ( kTicks == 50 ) // 1000 ms
-				create_myGroup1( clients[0], 'e' );
-
-			if ( kTicks == 20 )
+			// create num groups on random client
+			ZNode* curClient = clients[ ::rand() % kClients];
+			for (int i = 0; i < numGroups ; i++)
 			{
-				if ( this->m_unitsSelf.size() > 0 )
+				// create group with random num params
+				int kr = ::rand() % 10;
+				switch (kr)
 				{
-					Unit* u = this->m_unitsSelf[0];
-					strcpy_s( ((Name2&)u->name).m, 64, "bartje" );
-					u->name.markChanged();
-				}
+				case 0:
+				create_myGroup1( curClient, 'E' );
+				break;
+				case 1:
+				create_myGroup2( curClient, 'E', 6533 );
+				break;
+				case 2:
+				create_myGroup3( curClient, 'E', 6533, ~0 );
+				break;
+				case 9:
+				create_myGroup4( curClient, 'E', 6533, ~0, 2*10e20f );
+				break;
+				case 3:
+				create_myGroup5( curClient, 'E', 6533, ~0, 2*10e20f, 7172773.881238 );
+				break;
+				case 4:
+				create_myGroup6( curClient, 'E', 6533, ~0, 2*10e20f, 7172773.881238, v );
+				break;
+				case 5:
+				create_myGroup7( curClient, 'E', 6533, ~0, 2*10e20f, 7172773.881238, v, q );
+				break;
+				case 6:
+				create_myGroup8( curClient, 'E', 6533, ~0, 2*10e20f, 7172773.881238, v, q, mm );
+				break;
+				case 7:
+				create_myGroup9( curClient, 'E', 6533, ~0, 2*10e20f, 7172773.881238, v, q, mm, name );
+				break;
+				case 8:
+				create_myGroup0( curClient );
+				break;
+				}	
 			}
-
-			//// create random num groups
-			//int numGroups = ::rand() % 10;
-
-			//// create num gruops on random client
-			//ZNode* curClient = clients[ ::rand() % kClients];
-			//for (int i = 0; i < numGroups ; i++)
-			//{
-			//	// create group with random num params
-			//	int kr = ::rand() % 10;
-			//	switch (kr)
-			//	{
-			//	case 0:
-			//	create_myGroup1( curClient, 'E' );
-			//	break;
-			//	case 1:
-			//	create_myGroup2( curClient, 'E', 6533 );
-			//	break;
-			//	case 2:
-			//	create_myGroup3( curClient, 'E', 6533, ~0 );
-			//	break;
-			//	case 9:
-			//	create_myGroup4( curClient, 'E', 6533, ~0, 2*10e20f );
-			//	break;
-			//	case 3:
-			//	create_myGroup5( curClient, 'E', 6533, ~0, 2*10e20f, 7172773.881238 );
-			//	break;
-			//	case 4:
-			//	create_myGroup6( curClient, 'E', 6533, ~0, 2*10e20f, 7172773.881238, v );
-			//	break;
-			//	case 5:
-			//	create_myGroup7( curClient, 'E', 6533, ~0, 2*10e20f, 7172773.881238, v, q );
-			//	break;
-			//	case 6:
-			//	create_myGroup8( curClient, 'E', 6533, ~0, 2*10e20f, 7172773.881238, v, q, mm );
-			//	break;
-			//	case 7:
-			//	create_myGroup9( curClient, 'E', 6533, ~0, 2*10e20f, 7172773.881238, v, q, mm, name );
-			//	break;
-			//	case 8:
-			//	create_myGroup0( curClient );
-			//	break;
-			//	}	
-			//}
 
 			//// delete some unit groups
 			//numGroups = ::rand()%5;
@@ -724,23 +769,98 @@ namespace UnitTests
 			//	if ( m_unitsSelf.size() == 0 )
 			//		break;
 			//	int ridx = rand() % m_unitsSelf.size();
-			//	auto* unit = m_unitsSelf.at(ridx);
-			//	if ( unit )
-			//		delete unit;
-			//	m_unitsSelf.at(ridx) = nullptr;
+			//	for (auto it = m_unitsSelf.begin(); it != m_unitsSelf.end(); it++)
+			//	{
+			//		if (0 == ridx)
+			//		{
+			//			delete it->second;
+			//			it->second = nullptr;
+			//			break;
+			//		}
+			//		ridx--;
+			//	}
 			//}
+
+			// assign data
+			for (int i = 0; i<100; i++)
+			{
+				if (m_unitsSelf.empty())
+					break;
+
+				int r2 = rand() % m_unitsSelf.size();
+
+				Unit* uu = nullptr;
+				for (auto& it = m_unitsSelf.begin(); it != m_unitsSelf.end(); ++it)
+				{
+					if (0 == r2)
+					{
+						uu = it->second;
+						break;
+					}
+					r2--;
+				}
+
+				if (uu == nullptr)
+					continue;
+
+				int r = rand() % 9;
+				switch(r)
+				{
+				case 0:
+				uu->c += '8';
+				break;
+
+				case 1:
+				uu->s = uu->s - 65532;
+				break;
+
+				case 2:
+				uu->i *= (~0)/2;
+				break;
+
+				case 3:
+				uu->d -= 2e30;
+				break;
+
+				case 4:
+				uu->f += 2e4;
+				break;
+
+				case 5:
+				uu->vec = v;
+				break;
+
+				case 6:
+				uu->quat = q;
+				break;
+
+				case 7:
+				{
+					Name2 kName;
+					strcpy_s(kName.m, 32, "hoi hoi");
+					uu->name = kName;
+				}
+				break;
+
+				case 8:
+				uu->mat = mm;
+				break;
+				}
+			}
 
 			if ( kTicks == 300 )
 				clients[0]->disconnectAll();
 
-			if ( kTicks > 1500 )
+			if ( kTicks > 15000 )
 				break;
+
+			std::this_thread::sleep_for(std::chrono::milliseconds(1));
 		}
 
-		for ( auto* u : m_unitsSelf )
-			delete u;
-		for (auto * u : m_unitsRemote )
-			delete u;
+		for ( auto& u : m_unitsSelf )
+			delete u.second;
+		for (auto& u : m_unitsRemote )
+			delete u.second;
 		delete g1;
 		for ( auto z : clients )
 			delete z;
@@ -758,10 +878,10 @@ namespace UnitTests
 		std::vector<BaseTest*> tests;
 
 		// add tests
-//		tests.emplace_back( new ConnectionLayerTest );
-//		tests.emplace_back( new MassConnectTest );
-//		tests.emplace_back( new ReliableOrderTest );
-//		tests.emplace_back( new RpcTest );
+		//tests.emplace_back( new ConnectionLayerTest );
+		//tests.emplace_back( new MassConnectTest );
+		//tests.emplace_back( new ReliableOrderTest );
+		//tests.emplace_back( new RpcTest );
 		tests.emplace_back( new SyncGroupTest );
 			
 		// run them

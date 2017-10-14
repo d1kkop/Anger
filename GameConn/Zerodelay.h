@@ -26,7 +26,6 @@ namespace Zerodelay
 	using i32_t = int;
 	using u32_t = unsigned int;
 
-	// Not be confused with EHeaderPacketType
 	enum class EDataPacketType: u8_t
 	{
 		ConnectRequest,
@@ -197,8 +196,8 @@ namespace Zerodelay
 
 
 		/*	Fills the vector with all fully connected connections, that is all connections which are not in an any other state than
-			connected. That is, connecting or disconnecting connections are discarded. */
-		void getConnectionListCopy(std::vector<ZEndpoint>& listOut);
+			connected. Therefore, connections in connecting state or disconnecting state are discareded. */
+		void getConnectionListCopy( std::vector<ZEndpoint>& listOut );
 
 
 		/*	Returns initially specified routing method. */
@@ -218,8 +217,9 @@ namespace Zerodelay
 						- If not nullptr and exclude is false, then message is only sent to the specific address.
 						- If not nullptr and exclude is true, then message is sent to all except the specific.
 			[channel]	On what channel to sent the message. Packets are sequenced and ordered per channel. Max of 8 channels.
-			[relay]		Whether to relay the message to other connected clients when it arrives. */
-		void sendReliableOrdered( u8_t packId, const i8_t* data, i32_t len, const ZEndpoint* specific=nullptr, bool exclude=false, u8_t channel=0, bool relay=true );
+			[relay]		Whether to relay the message to other connected clients when it arrives. 
+						Returns true if was added to a dispatch queue, false otherwise. */
+		bool sendReliableOrdered( u8_t packId, const i8_t* data, i32_t len, const ZEndpoint* specific=nullptr, bool exclude=false, u8_t channel=0, bool relay=true );
 
 
 		/*	The last message of a certain 'dataId' is guarenteed to arrive. That is, if twice data is send with the same 'dataId' the first one may not arrive.
@@ -239,8 +239,8 @@ namespace Zerodelay
 			[data]		Actual payload of message.
 			[len]		Length of payload.
 			[specific]	- If nullptr, message is sent to all connections in node.
-			- If not nullptr and exclude is false, then message is only sent to the specific address.
-			- If not nullptr and exclude is true, then message is sent to all except the specific.
+						- If not nullptr and exclude is false, then message is only sent to the specific address.
+						- If not nullptr and exclude is true, then message is sent to all except the specific.
 			[channel]	On what channel to sent the message. Packets are sequenced and ordered per channel. Max of 8 channels.
 			[relay]		Whether to relay the message to other connected clients when it arrives. */
 		void sendUnreliableSequenced( u8_t packId, const i8_t* data, i32_t len, const ZEndpoint* specific=nullptr, bool exclude=false, u8_t channel=0, bool relay=true, bool discardSendIfNotConnected=true );
@@ -254,12 +254,12 @@ namespace Zerodelay
 		/*	----- Callbacks ----------------------------------------------------------------------------------------------- */
 
 		/*	For handling connect request results. This callback is invoked as a result of calling 'connect'. */
-		void bindOnConnectResult( std::function<void (const ZEndpoint&, EConnectResult)> cb );
+		void bindOnConnectResult( const std::function<void (const ZEndpoint&, EConnectResult)>& cb );
 
 
 		/*	For handling new incoming connections. 
 			In a client-server achitecture, this event is relayed to all other clients by the server. */
-		void bindOnNewConnection( std::function<void (const ZEndpoint&)> cb );
+		void bindOnNewConnection( const std::function<void (const ZEndpoint&)>& cb );
 
 
 		/*	For when connection is closed or gets dropped.
@@ -267,58 +267,47 @@ namespace Zerodelay
 			[isThisConnection]	Is true, if a client-server architecture and server closed connection or if
 								is p2p connection and one of the peers closed connection.
 								All other cases false, eg. if a remote client disconnected in a client-server architecture. */
-		void bindOnDisconnect( std::function<void (bool isThisConnection, const ZEndpoint&, EDisconnectReason)> cb );
+		void bindOnDisconnect( const std::function<void (bool isThisConnection, const ZEndpoint&, EDisconnectReason)>& cb );
 
 
 		/*	For all other data that is specific to the application. */
-		void bindOnCustomData( std::function<void (const ZEndpoint&, u8_t id, const i8_t* data, i32_t length, u8_t channel)> cb );
+		void bindOnCustomData( const std::function<void (const ZEndpoint&, u8_t id, const i8_t* data, i32_t length, u8_t channel)>& cb );
+
+
+		/*	If at least a single variable inside the group is updated, this callback is invoked.
+			Note that varialbes can also have custom callbacks that are called per variable. 
+			If called locally, ZEndpoint is a null ptr. */
+		void bindOnGroupUpdated( const std::function<void (const ZEndpoint*, u8_t id)>& cb );
+
+
+		/*	Called when group gets destroyed. If called locally, ZEndpoint is a null ptr. */
+		void bindOnGroupDestroyed( const std::function<void (const ZEndpoint*, u8_t id)>& cb );
 
 
 		/*	----- End Callbacks ----------------------------------------------------------------------------------------------- */
 
 
-		/*	Custom ptr to provide a way to come from a 'global' variable group or rpc functions to application code. */
+		/*	Custom ptr to provide a way to get from a 'global' variable group or rpc functions to application code. */
 		void  setUserDataPtr( void* ptr );
 		void* getUserDataPtr() const;
 
 
-		/*	Custom handle to provide a way to come from a 'global' variable group or rpc functions to application code. */
+		/*	Custom handle to provide a way to get from a 'global' variable group or rpc functions to application code. */
 		void setUserDataIdx( i32_t idx );
 		i32_t  gtUserDataIdx() const;
 
 
-		/*	Begin constructing a new variable group.
-			All GenericNetVar declared between this call end EndVariable group are put in a group with a unique ID.
-			The creation and destruction of the group is send in Reliable_Ordered way, where 'channel'
-			specifies in which channel this should occur.
-			However, updating the variables inside the group happens in a Reliable_Newest_Only fashion,
-			this means that only the last data in variable will be guarenteed to be received. There is no
-			notion of channels in updating the variables inside the group. */
-		void beginVariableGroup( const i8_t* constructData=nullptr, i32_t constructDataLen=0, i8_t channel=1 );
-		void endVariableGroup();
+		/*	Deferred create variable group from serialized data.
+			Causes 'createGroup_xxx' to be called when a network Id is available.
+			Usually this function is only used by the system internally. 
+			Use createGroup directly instead. */
+		void deferredCreateVariableGroup( const i8_t* constructData=nullptr, i32_t constructDataLen=0, i8_t channel=1 );
 
 
 	private:
 		class ConnectionNode* p;
 		class VariableGroupNode* vgn;
-		class ZNodePrivate* zp;
-	};
 
-
-
-	/** ---------------------------------------------------------------------------------------------------------------------------------
-	/*	FOR PRIVATE USE, DO NOT USE! */
-	class ZDLL_DECLSPEC ZNodePrivate
-	{
-		friend class ZNode;
-
-	public:
-		void priv_beginVarialbeGroupRemote(u32_t nid, const ZEndpoint& ztp);
-		void priv_endVariableGroup();
-		ZNode* priv_getUserNode() const;
-
-	private:
-		ZNode* m_ZNode;
-		VariableGroupNode* vgn;
+		friend class VariableGroupNode;
 	};
 }

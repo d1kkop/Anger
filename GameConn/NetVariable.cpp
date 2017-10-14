@@ -30,16 +30,16 @@ namespace Zerodelay
 
 	NetVariable::~NetVariable()
 	{
+		// Group becomes null if groups gest destroyed remotely.
 		if ( m_Group )
 		{
 			m_Group->markBroken();
 		}
-		//delete [] m_PrevData;
-		//delete [] m_Data;
 	}
 
 	Zerodelay::EVarControl NetVariable::getVarControl() const
 	{
+		// Group becomes null if groups gest destroyed remotely.
 		if ( !m_Group )
 			return EVarControl::Full;
 		return m_Group->getVarControl();
@@ -47,6 +47,7 @@ namespace Zerodelay
 
 	i32_t NetVariable::getGroupId() const
 	{
+		// Group becomes null if groups gest destroyed remotely.
 		if ( !m_Group )
 			return 0;
 		return m_Group->getNetworkId();
@@ -88,6 +89,7 @@ namespace Zerodelay
 
 	void NetVariable::markChanged()
 	{
+		// Group becomes null if groups gest destroyed remotely.
 		if ( m_Group )
 		{
 			m_Group->setDirty( true );
@@ -98,6 +100,11 @@ namespace Zerodelay
 	void NetVariable::markUnchanged()
 	{
 		m_Changed = false;
+	}
+
+	bool NetVariable::isInNetwork() const
+	{
+		return m_Group != nullptr && m_Group->getNetworkId() != 0;
 	}
 
 	void NetVariable::sendNewest(ZNode* node, i32_t groupBit)

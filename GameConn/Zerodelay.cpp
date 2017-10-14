@@ -2,6 +2,7 @@
 #include "ConnectionNode.h"
 #include "RUDPConnection.h"
 #include "Socket.h"
+#include "VariableGroup.h"
 #include "VariableGroupNode.h"
 
 
@@ -80,13 +81,9 @@ namespace Zerodelay
 
 	ZNode::ZNode(ERoutingMethod routingMethod, i32_t sendThreadSleepTimeMs, i32_t keepAliveIntervalSeconds, bool captureSocketErrors) :
 		p(new ConnectionNode(routingMethod, sendThreadSleepTimeMs, keepAliveIntervalSeconds, captureSocketErrors)),
-		vgn(new VariableGroupNode()),
-		zp(new ZNodePrivate())
+		vgn(new VariableGroupNode())
 	{
 		vgn->m_ZNode = this;
-		vgn->m_PrivZ = zp;
-		zp->m_ZNode = this;
-		zp->vgn = this->vgn;
 		vgn->postInitialize();
 	}
 
@@ -94,7 +91,6 @@ namespace Zerodelay
 	{
 		delete p;
 		delete vgn;
-		delete zp;
 	}
 
 	EConnectCallResult ZNode::connect(const ZEndpoint& endPoint, const std::string& pw, i32_t timeoutSeconds)
@@ -135,7 +131,7 @@ namespace Zerodelay
 			// unhandled packets, are sent through this callback
 			if ( vgn->recvPacket( p, g ) )
 				return;
-			Platform::log( "received unknown packet from %s", g->getEndPoint().asString().c_str() );
+			Platform::log( "WARNING: received unknown packet from %s", g->getEndPoint().asString().c_str() );
 			// TODO handle packet in other systems..
 		});
 		vgn->update();
@@ -166,13 +162,15 @@ namespace Zerodelay
 		p->simulatePacketLoss( percentage );
 	}
 
-	void ZNode::sendReliableOrdered(u8_t id, const i8_t* data, i32_t len, const ZEndpoint* specific, bool exclude, u8_t channel, bool relay)
+	bool ZNode::sendReliableOrdered(u8_t id, const i8_t* data, i32_t len, const ZEndpoint* specific, bool exclude, u8_t channel, bool relay)
 	{
 		ISocket* sock = p->getSocket();
+		bool bAdded = false;
 		if ( sock )
-			p->send( id, data, len, asEpt(specific), exclude, EHeaderPacketType::Reliable_Ordered, channel );
+			bAdded = p->send( id, data, len, asEpt(specific), exclude, EHeaderPacketType::Reliable_Ordered, channel );
 		else
 			Platform::log( "socket was not created, possibly a platform issue" );
+		return bAdded;
 	}
 
 	void ZNode::sendReliableNewest(u8_t packId, u32_t groupId, i8_t groupBit, const i8_t* data, i32_t len, const ZEndpoint* specific, bool exclude)
@@ -198,31 +196,59 @@ namespace Zerodelay
 		vgn->setIsNetworkIdProvider( isProvider );
 	}
 
-	void ZNode::bindOnConnectResult(std::function<void(const ZEndpoint&, EConnectResult)> cb)
+	void ZNode::bindOnConnectResult(const std::function<void(const ZEndpoint&, EConnectResult)>& cb)
 	{
 		p->bindOnConnectResult( [=] (auto etp, auto res) {
 			cb( toZpt(etp), res );
 		});
 	}
 
-	void ZNode::bindOnNewConnection(std::function<void (const ZEndpoint&)> cb)
+	void ZNode::bindOnNewConnection(const std::function<void (const ZEndpoint&)>& cb)
 	{
 		p->bindOnNewConnection( [=] (auto etp) {
 			cb( toZpt(etp) );
 		});
 	}
 
-	void ZNode::bindOnDisconnect(std::function<void (bool isThisConnection, const ZEndpoint&, EDisconnectReason)> cb)
+	void ZNode::bindOnDisconnect(const std::function<void (bool isThisConnection, const ZEndpoint&, EDisconnectReason)>& cb)
 	{
 		p->bindOnDisconnect( [=] (bool thisConn, auto etp, auto reason) {
 			cb( thisConn, toZpt( etp ), reason );
 		});
 	}
 
-	void ZNode::bindOnCustomData(std::function<void (const ZEndpoint&, u8_t id, const i8_t* data, i32_t length, u8_t channel)> cb)
+	void ZNode::bindOnCustomData(const std::function<void (const ZEndpoint&, u8_t id, const i8_t* data, i32_t length, u8_t channel)>& cb)
 	{
 		p->bindOnCustomData( [=] ( auto etp, auto id, auto data, auto len, auto chan ) {
 			cb( toZpt( etp ), id, data, len, chan );
+		});
+	}
+
+	void ZNode::bindOnGroupUpdated(const std::function<void(const ZEndpoint*, u8_t id)>& cb)
+	{
+		p->bindOnGroupUpdated( [=] ( auto etp, auto id ) {
+			ZEndpoint zept;
+			ZEndpoint* zeptr = nullptr;
+			if ( etp )
+			{
+				zept = toZpt(*etp);
+				zeptr = &zept;
+			}
+			cb( zeptr, id );
+		});
+	}
+
+	void ZNode::bindOnGroupDestroyed(const std::function<void(const ZEndpoint*, u8_t id)>& cb)
+	{
+		p->bindOnGroupDestroyed( [=] ( auto etp, auto id ) {
+			ZEndpoint zept;
+			ZEndpoint* zeptr = nullptr;
+			if ( etp )
+			{
+				zept = toZpt(*etp);
+				zeptr = &zept;
+			}
+			cb( zeptr, id );
 		});
 	}
 
@@ -246,34 +272,9 @@ namespace Zerodelay
 		return p->getUserDataIdx();
 	}
 
-	void ZNode::beginVariableGroup(const i8_t* paramData, i32_t paramDataLen, i8_t channel)
+	void ZNode::deferredCreateVariableGroup(const i8_t* paramData, i32_t paramDataLen, i8_t channel)
 	{
-		vgn->beginGroup( paramData, paramDataLen, channel );
-	}
-
-	void ZNode::endVariableGroup()
-	{
-		vgn->endGroup();
-	}
-
-
-
-	// -------- ZNodePrivate ----------------------------------------------------------------------------------------------
-
-
-	void ZNodePrivate::priv_beginVarialbeGroupRemote(u32_t nid, const ZEndpoint& ztp)
-	{
-		vgn->beginGroupFromRemote(nid, ztp);
-	}
-
-	void ZNodePrivate::priv_endVariableGroup()
-	{
-		vgn->endGroup();
-	}
-
-	ZNode* ZNodePrivate::priv_getUserNode() const
-	{
-		return m_ZNode;
+		vgn->deferredCreateGroup( paramData, paramDataLen, channel );
 	}
 
 }

@@ -274,17 +274,19 @@ namespace Zerodelay
 		*(u32_t*)(dataBuffer + off_RelNew_Seq) = m_SendSeq_reliable_newest; // followed by sequence number
 		i32_t kNumGroupsWritten = 0;  // keeps track of num groups as is not know yet
 		i32_t kBytesWritten = off_RelNew_GroupId; // skip 4 bytes, as num groups is not yet known
-		for (auto& kvp : m_SendQueue_reliable_newest)
+		//for (auto& kvp : m_SendQueue_reliable_newest)
+		for (auto& it = m_SendQueue_reliable_newest.begin(); it != m_SendQueue_reliable_newest.end(); it++)
 		{
+			auto& kvp = *it;
 			i32_t kBytesWrittenBeforeGroup = kBytesWritten; // remember this in case the group has no changed items
 			*(u32_t*)(dataBuffer + kBytesWritten) = kvp.first; // is groupId (4 bytes)
-			assert( kBytesWritten == off_RelNew_GroupId );
+			assert( it != m_SendQueue_reliable_newest.begin() || kBytesWritten == off_RelNew_GroupId );
 			kBytesWritten += 4; // group id byte size
 			i8_t* groupBitsPtr = dataBuffer + kBytesWritten; // remember this position as the groupBits cannot be written yet
-			assert( kBytesWritten == off_RelNew_GroupBits );
+			assert( it != m_SendQueue_reliable_newest.begin() || kBytesWritten == off_RelNew_GroupBits );
 			kBytesWritten += 2;
 			i8_t* groupSkipPtr = dataBuffer + kBytesWritten; // keep store amount of bytes to skip in case on the recipient the group does not exist
-			assert( kBytesWritten == off_RelNew_GroupSkipBytes );
+			assert( it != m_SendQueue_reliable_newest.begin() || kBytesWritten == off_RelNew_GroupSkipBytes );
 			kBytesWritten += 2;
 			u16_t groupBits = 0;	// keeps track of which variables in the group are written
 			i32_t kBit = 0;			// which bit to set (if variable is written)
@@ -295,7 +297,12 @@ namespace Zerodelay
 				if (isSequenceNewerGroupItem(item.localRevision, item.remoteRevision)) // variable is changed compared to last acked revision
 				{
 					groupBits |= (1 << kBit);
-					assert(kBytesWritten + item.dataLen <= RecvPoint::sm_MaxRecvBuffSize); // TODO emit error and disconnect , this is critical!
+					assert(kBytesWritten + item.dataLen <= RecvPoint::sm_MaxRecvBuffSize); 
+					if ( kBytesWritten + item.dataLen > RecvPoint::sm_MaxRecvBuffSize )
+					{
+						Platform::log("CRITICAL buffer overrun detected in %s", __FUNCTION__);
+						return;
+					}
 					Platform::memCpy(dataBuffer + kBytesWritten, item.dataLen, item.data, item.dataLen);
 					kBytesWritten += item.dataLen;
 					itemsWereWritten = true;
@@ -423,7 +430,6 @@ namespace Zerodelay
 	{
 		if ( rawSize < off_RelNew_Data ) // weak check to see if at least hdr size is available
 		{
-			// TODO emit warning, invalid reliableNewest data
 			Platform::log("ERROR: invalid reliable newest data, too short");
 			return;
 		}

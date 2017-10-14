@@ -31,7 +31,7 @@ namespace Zerodelay
 			bool isWritten = (groupBits & (1 << i)) != 0;
 			if ( isWritten && !v->read( data, buffLen ) )
 			{
-				// TODO emit error, because data cannot be read, yet sender may not resend data anymore (so not reliable!)
+				Platform::log("WARNING: serialization error in variable group detected, synchronization may end up different than expected!");
 				return false;
 			}
 		}
@@ -69,6 +69,7 @@ namespace Zerodelay
 				v->unrefGroup(); // sets group ptr to null as group is about to be deleted
 			}
 		}
+		markBroken();
 	}
 
 	VariableGroup* VariableGroup::Last = nullptr;

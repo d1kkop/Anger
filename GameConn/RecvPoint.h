@@ -36,7 +36,7 @@ namespace Zerodelay
 		virtual class IConnection* createNewConnection( const EndPoint& endPoint ) const = 0;
 
 	public:
-		void send( u8_t id, const i8_t* data, i32_t len, const EndPoint* specific=nullptr, bool exclude=false, 
+		bool send( u8_t id, const i8_t* data, i32_t len, const EndPoint* specific=nullptr, bool exclude=false, 
 				   EHeaderPacketType type=EHeaderPacketType::Reliable_Ordered, u8_t channel=0, bool relay=true, bool discardSendIfNotConnected=true );
 		void sendReliableNewest( u8_t id, u32_t groupId, i8_t groupBit, const i8_t* data, i32_t len, const EndPoint* specific=nullptr, bool exclude=false );
 
@@ -70,7 +70,6 @@ namespace Zerodelay
 		std::thread* m_SendThread;
 		std::condition_variable m_SendThreadCv;
 		std::mutex m_ConnectionListMutex;
-		std::vector<i32_t> m_SocketErrors;
 		std::map<EndPoint, class IConnection*, EndPoint::STLCompare> m_Connections;
 		std::vector<class IConnection*> m_TempConnections; // For operating on connections from main thread
 		void* m_UserPtr;

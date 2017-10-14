@@ -6,6 +6,7 @@
 #include "Socket.h"
 #include "SyncGroups.h"
 #include "RUDPConnection.h"
+#include "ConnectionNode.h"
 
 #include <cassert>
 
@@ -128,49 +129,53 @@ namespace Zerodelay
 		return false;
 	}
 
-	void VariableGroupNode::beginGroup( const i8_t* paramData, i32_t paramDataLen, i8_t channel)
+	void VariableGroupNode::deferredCreateGroup( const i8_t* paramData, i32_t paramDataLen, i8_t channel)
 	{
-		assert( VariableGroup::Last == nullptr && "should be NULL" );
-		VariableGroup::Last = new VariableGroup();
-
 		if ( paramDataLen >= PendingVariableGroup::MaxParamDataLength )
 		{
-			Platform::log( "CRITICAL param data too long for variable group in %s", __FUNCTION__ );
-			paramDataLen = PendingVariableGroup::MaxParamDataLength;
-			// TODO causee desync
+			Platform::log( "CRITICAL param data too long for variable group in %s, variable group was not created", __FUNCTION__ );
+			return;
 		}
 
 		// networkId will later be pushed in front as first param (but after rpcName of function)
 		PendingVariableGroup pvg;
 		Platform::memCpy( pvg.ParamData, PendingVariableGroup::MaxParamDataLength, paramData, paramDataLen );
 		pvg.ParamDataLength = paramDataLen;
-		pvg.Vg = VariableGroup::Last;
 		pvg.Channel = channel;
 		m_PendingGroups.emplace_back( pvg );
 	}
 
-	void VariableGroupNode::beginGroupFromRemote(u32_t networkId, const ZEndpoint& ztp)
+	void VariableGroupNode::beginNewGroup(u32_t networkId, const ZEndpoint* ztp)
 	{
 		assert( VariableGroup::Last == nullptr && "should be NULL" );
 		VariableGroup::Last = new VariableGroup();
 		VariableGroup::Last->setNetworkId( networkId );
-		VariableGroup::Last->setControl( EVarControl::Remote );
+		VariableGroup::Last->setControl( ztp ? EVarControl::Remote : (m_ZNode->getRoutingMethod() == ERoutingMethod::ClientServer ? EVarControl::Semi : EVarControl::Full) );
 		// ----------------------------
-		EndPoint etp = toEtp ( ztp );
-		auto remoteGroupIt = m_RemoteVariableGroups.find( etp );
-		if ( remoteGroupIt != m_RemoteVariableGroups.end() ) // see if remote endpoint is know
+		if (ztp) // is remote group
 		{
-			remoteGroupIt->second.insert( std::make_pair( networkId, VariableGroup::Last ) );
+			EndPoint etp = toEtp ( *ztp );
+			auto remoteGroupIt = m_RemoteVariableGroups.find( etp );
+			if ( remoteGroupIt != m_RemoteVariableGroups.end() ) // see if remote endpoint is know
+			{
+				assert(remoteGroupIt->second.count(networkId)==0);
+				remoteGroupIt->second.insert( std::make_pair( networkId, VariableGroup::Last ) );
+			}
+			else // discards any creation before connection was established or after was disconnected/lost
+			{
+				Platform::log("INFO: Discarding remote group creation from %s, as it was not connected or already disconnected\n", ztp->asString().c_str());
+			}
 		}
-		else // discards any creation before connection was established or after was disconnected/lost
+		else
 		{
-			Platform::log("INFO: Discarding remote group creation from %s, as it was not connected or already disconnected\n", ztp.asString().c_str());
+			assert(m_VariableGroups.count(networkId)==0);
+			m_VariableGroups.insert( std::make_pair(networkId, VariableGroup::Last) );
 		}
 	}
 
-	void VariableGroupNode::endGroup()
+	void VariableGroupNode::endNewGroup()
 	{
-		assert ( VariableGroup::Last != nullptr && "should be not NULL" );
+		assert( VariableGroup::Last != nullptr && "should not be NULL" );
 		VariableGroup::Last = nullptr;
 	}
 
@@ -183,7 +188,7 @@ namespace Zerodelay
 	{
 		if ( !m_IsNetworkIdProvider )
 		{
-			Platform::log( "id requested on node that is not a network id provider" );
+			Platform::log( "NetworkId requested on node that is not a network id provider. If there is no network id provider the network, no variable groups can be created. Usually the server or super peer (in peer2peer) is a network id provider. Use Znode->setNetworkIdProvider(true) on server or super peer." );
 			return;
 		}
 		sendIdPackProvide(etp, sm_AvailableIds);
@@ -202,6 +207,7 @@ namespace Zerodelay
 		{
 			m_UniqueIds.emplace_back( ids[i] );
 		}
+		Platform::log("Received %d new Ids from %s", sm_AvailableIds, etp.asString().c_str());
 	}
 
 	void VariableGroupNode::recvVariableGroupCreate(const Packet& pack, const EndPoint& etp)
@@ -216,42 +222,26 @@ namespace Zerodelay
 			m_ZNode->sendReliableOrdered( (u8_t)pack.type, payload, len, &ztp, true, pack.channel, false );
 		}
 
-		i8_t name[RPC_NAME_MAX_LENGTH];
-		if ( !ISocket::readFixed( name, RPC_NAME_MAX_LENGTH, payload, (RPC_NAME_MAX_LENGTH<len?RPC_NAME_MAX_LENGTH:len)) )
-		{
-			Platform::log( "CRITICAL serialization error in %s, trying to read function name %s", __FUNCTION__, name );
-			/// TODO critical as no group can be created, cause desync
-			return;
-		}
-		i8_t fname[RPC_NAME_MAX_LENGTH*2];
-		Platform::formatPrint( fname, RPC_NAME_MAX_LENGTH*2, "__sgp_deserialize_%s", name );
-		void* pf = Platform::getPtrFromName( fname );
-		if ( pf )
-		{
-			// function signature
-			void (*pfunc)(ZNodePrivate*, const i8_t*, i32_t, const ZEndpoint&, EHeaderPacketType);
-			pfunc = (decltype(pfunc)) pf;
-			pfunc( m_PrivZ, payload, len, ztp, pack.type );
-		}
-		else
-		{
-			Platform::log( "removing conn, serialize group function: %s not found, trying from: %s", fname, __FUNCTION__ );
-			/// TODO remove connection
-		}
+		callCreateVariableGroup(payload, len, true, &ztp);
 	}
 
 	void VariableGroupNode::recvVariableGroupDestroy(const Packet& pack, const EndPoint& etp)
 	{
 		u32_t id = *(u32_t*)(pack.data+1);		
-		VariableGroup* vg = findRemoteGroup( id, nullptr, true );
+		VariableGroup* vg = findOrRemoveBrokenGroup( id, nullptr );
 		if ( vg )
 		{
 			vg->unrefGroup();
-			delete vg;
 		#if _DEBUG
-			vg =  findRemoteGroup( id, nullptr, false );
+			vg =  findOrRemoveBrokenGroup( id, nullptr );
 			assert( vg == nullptr && "vg still available" );
 		#endif
+			// call callbacks after all is done
+			m_ZNode->p->doGroupDestroyCallbackss(&etp, id);
+		}
+		else
+		{
+			Platform::log( "WARNING: tried to remove variable group (id = %d) which was already destroyed or never created.", id );
 		}
 	}
 
@@ -267,10 +257,16 @@ namespace Zerodelay
 		for (i32_t i=0; i<numGroups; ++i)
 		{
 			// returns ptr to next group or null if has reached end
+			u32_t groupId = *(u32_t*)data;
 			if (!deserializeGroup(data, buffLen))
 			{
-				Platform::log( "ERROR deserialization of variable group failed dataLen %d\n", buffLen );
+				Platform::log( "ERROR deserialization of variable group failed dataLen %d.", buffLen );
 				break;
+			}
+			else
+			{
+				// call callbacks after all is done
+				m_ZNode->p->doGroupUpdateCallbacks(&etp, groupId);
 			}
 		}
 		// If all data is exactly read, then buffLen should be zero, if groups are skipped, then this is subtracted from BuffLen, so should still be zero.
@@ -281,12 +277,18 @@ namespace Zerodelay
 	{
 		// now that networkId is known, push it in front as first parameter of paramData
 		*(u32_t*)(paramData + RPC_NAME_MAX_LENGTH) = networkId;
-		m_ZNode->sendReliableOrdered( (u8_t)EDataPacketType::VariableGroupCreate, paramData, paramDataLen, nullptr, false, channel, true );
+		if ( !m_ZNode->sendReliableOrdered( (u8_t)EDataPacketType::VariableGroupCreate, paramData, paramDataLen, nullptr, false, channel, true )) 
+		{
+			Platform::log("FAILED: to dispatch create variable group with network id %d..", networkId);
+		}
 	}
 
 	void VariableGroupNode::sendDestroyVariableGroup(u32_t networkId)
 	{
-		m_ZNode->sendReliableOrdered( (u8_t)EDataPacketType::VariableGroupDestroy, (const i8_t*)&networkId, sizeof(networkId) );
+		if ( !m_ZNode->sendReliableOrdered( (u8_t)EDataPacketType::VariableGroupDestroy, (const i8_t*)&networkId, sizeof(networkId) ))
+		{
+			Platform::log("FAILED: sending destroy variable group with id %d...", networkId);
+		}
 	}
 
 	void VariableGroupNode::sendIdPackProvide(const EndPoint& etp, i32_t numIds)
@@ -322,7 +324,7 @@ namespace Zerodelay
 				// Send unreliable sequenced, because it is possible that at the time of sending the data, no connections
 				// are fully connected anymore in which case the reliable ordered packet becomes unreliable.
 				m_ZNode->sendUnreliableSequenced((u8_t)EDataPacketType::IdPackRequest, nullptr, 0, nullptr, false, 0, false);
-				Platform::log("Sending IdPack request...\n");
+				Platform::log("Sending IdPack request...");
 			}
 		}
 	}
@@ -347,9 +349,8 @@ namespace Zerodelay
 			u32_t id = m_UniqueIds.front();
 			m_PendingGroups.pop_front();
 			m_UniqueIds.pop_front();
-			pvg.Vg->setNetworkId(id); // now that the id is set to something not 0, it will be automatically sync itself
-			m_VariableGroups.insert( std::make_pair( id, pvg.Vg ) );
 			sendCreateVariableGroup( id, pvg.ParamData, pvg.ParamDataLength, pvg.Channel );
+			callCreateVariableGroup( pvg.ParamData, pvg.ParamDataLength, false, nullptr );
 		}
 	}
 
@@ -359,7 +360,7 @@ namespace Zerodelay
 		//for ( auto& kvp : m_VariableGroups )
 		{
 			VariableGroup* vg = vgIt->second;
-			if ( vg->getNetworkId() == 0 )
+			if ( vg->getNetworkId() == 0 ) // network id not set yet (the case when no free id's available, have to wait)
 			{
 				vgIt++;
 				continue;
@@ -368,6 +369,7 @@ namespace Zerodelay
 			if ( vg->isDirty() && !vg->isBroken() )
 			{
 				vg->sendGroup(m_ZNode);
+				m_ZNode->p->doGroupUpdateCallbacks(nullptr, vg->getNetworkId());
 				vgIt++;
 			}
 			// if broken but this info is not yet transmitted, do so now
@@ -375,44 +377,91 @@ namespace Zerodelay
 			{
 				vg->markDestroySent();
 				sendDestroyVariableGroup( vg->getNetworkId() );
+				m_ZNode->p->doGroupDestroyCallbackss(nullptr, vg->getNetworkId());
 				delete vg;
 				vgIt = m_VariableGroups.erase(vgIt);
 			}
+			else // group not dirty and not broken, skip
+			{
+				vgIt++;
+			}
+		}
+	}
+
+	void VariableGroupNode::callCreateVariableGroup(i8_t* data, i32_t len, bool remote, const ZEndpoint* ztp)
+	{
+		i8_t name[RPC_NAME_MAX_LENGTH];
+		if (!ISocket::readFixed(name, RPC_NAME_MAX_LENGTH, data, (RPC_NAME_MAX_LENGTH < len ? RPC_NAME_MAX_LENGTH : len)))
+		{
+			Platform::log("CRITICAL serialization error in %s, trying to read function name %s, remote variable group was not created!", __FUNCTION__, name);
+			return;
+		}
+		u32_t nId = *(u32_t*)(data + RPC_NAME_MAX_LENGTH);
+		i8_t fname[RPC_NAME_MAX_LENGTH * 2];
+		Platform::formatPrint(fname, RPC_NAME_MAX_LENGTH * 2, "__sgp_deserialize_%s", name);
+		void* ptrUserCb = Platform::getPtrFromName(fname);
+		if (ptrUserCb)
+		{
+			beginNewGroup( nId, ztp );
+			// Call user code for variable group
+			void(*userCallback)(ZNode*, const i8_t*, i32_t);
+			userCallback = (decltype(userCallback))ptrUserCb;
+			userCallback(m_ZNode, data, len);
+			endNewGroup();
+		}
+		else
+		{
+			Platform::log("CRITICAL: serialize group function: %s not found, from: %s, no remote variable group was created!", fname, __FUNCTION__);
 		}
 	}
 
 	bool VariableGroupNode::deserializeGroup(const i8_t*& data, i32_t& buffLen)
 	{
+		// remember old ptr and buffLen in case the group is not available and must be skipped
+		auto oldDataPtr = data;
+		auto oldBuffLen = buffLen;
+		// deserialize group
 		u32_t groupId = *(u32_t*)data;
 		data += 4;	buffLen -= 4;
 		u16_t groupBits = *(u16_t*)data;
 		data += 2;	buffLen -= 2;
 		u16_t skipBytes = *(u16_t*)data; 
 		data += 2;	buffLen -= 2;
-		VariableGroup* vg = findRemoteGroup( groupId, nullptr );
-		if ( vg && !vg->isBroken() ) // group is broken if destructor's of variables inside group is called
+		VariableGroup* vg = findOrRemoveBrokenGroup( groupId, nullptr );
+		assert( !vg || (vg && !vg->isBroken()) );
+		bool bSkip   = vg == nullptr;
+		bool bResult = true;
+		if ( !bSkip )
 		{
+			i32_t oldBuffLen = buffLen;
 			if ( !vg->read(data, buffLen, groupBits) )
 			{
-				return false; // deserialize failure
+				bSkip   = true;
+				bResult = false; // deserialize failure
 			}
 		}
-		else
+		if (bSkip)
 		{
-			if ( vg && vg->isBroken() )
-			{
-				findRemoteGroup( groupId, nullptr, true );
-				vg->unrefGroup();
-				delete vg;
-			}
-			data += skipBytes;
-			buffLen -= skipBytes;
+			// skip entire group
+			data    = oldDataPtr + skipBytes;
+			buffLen = oldBuffLen - skipBytes;
 		}
-		return true;
+		return bResult;
 	}
 
-	VariableGroup* VariableGroupNode::findRemoteGroup(u32_t networkId, const EndPoint* etp, bool removeOnFind)
+	VariableGroup* VariableGroupNode::findOrRemoveBrokenGroup(u32_t networkId, const EndPoint* etp)
 	{
+		auto fnCheckBrokenAndReturn = [] (auto& it, auto& nVars)
+		{
+			if ( it->second->isBroken() )
+			{
+				delete it->second;
+				nVars.erase(it);
+				return (VariableGroup*)nullptr;
+			}
+			return it->second;
+		};
+
 		if ( etp )
 		{
 			auto remoteGroupIt = m_RemoteVariableGroups.find( *etp );
@@ -422,12 +471,7 @@ namespace Zerodelay
 				auto& groupIt = networkVariables.find( networkId );
 				if ( groupIt != networkVariables.end() )
 				{
-					VariableGroup* vg = groupIt->second;
-					if ( removeOnFind )
-					{
-						networkVariables.erase( groupIt );
-					}
-					return vg;
+					return fnCheckBrokenAndReturn( groupIt, networkVariables );
 				}
 			}
 		}
@@ -439,12 +483,7 @@ namespace Zerodelay
 				auto& groupIt = networkVariables.find( networkId );
 				if ( groupIt != networkVariables.end() )
 				{
-					VariableGroup* vg = groupIt->second;
-					if ( removeOnFind )
-					{
-						networkVariables.erase( groupIt );
-					}
-					return vg;
+					return fnCheckBrokenAndReturn( groupIt, networkVariables );
 				}
 			}
 		}

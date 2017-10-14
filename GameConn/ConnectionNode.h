@@ -18,6 +18,7 @@ namespace Zerodelay
 		typedef std::function<void (bool, const EndPoint&, EDisconnectReason)>			DisconnectCallback;
 		typedef std::function<void (const EndPoint&)>									NewConnectionCallback;
 		typedef std::function<void (const EndPoint&, u8_t, const i8_t*, i32_t, u8_t)>	CustomDataCallback;
+		typedef std::function<void (const EndPoint*, u32_t)>							GroupCallback;
 
 	public:
 		ConnectionNode(ERoutingMethod routingMethod, i32_t sendThreadSleepTimeMs=10, i32_t keepAliveIntervalSeconds=8, bool captureSocketErrors=true);
@@ -41,10 +42,24 @@ namespace Zerodelay
 		ERoutingMethod getRoutingMethod() const;
 		bool isServer() const { return m_IsServer; }
 		// callbacks
-		void bindOnConnectResult(ConnectResultCallback cb)		{ bindCallback(m_ConnectResultCallbacks, cb); }
-		void bindOnNewConnection(NewConnectionCallback cb)		{ bindCallback(m_NewConnectionCallbacks, cb); }
-		void bindOnDisconnect(DisconnectCallback cb)			{ bindCallback(m_DisconnectCallbacks, cb); }
-		void bindOnCustomData(CustomDataCallback cb)			{ bindCallback(m_CustomDataCallbacks, cb); }
+		void bindOnConnectResult(const ConnectResultCallback& cb)		{ bindCallback(m_ConnectResultCallbacks, cb); }
+		void bindOnNewConnection(const NewConnectionCallback& cb)		{ bindCallback(m_NewConnectionCallbacks, cb); }
+		void bindOnDisconnect(const DisconnectCallback& cb)				{ bindCallback(m_DisconnectCallbacks, cb); }
+		void bindOnCustomData(const CustomDataCallback& cb)				{ bindCallback(m_CustomDataCallbacks, cb); }
+		// group callbacks
+		void bindOnGroupUpdated(const GroupCallback& cb)				{ bindCallback(m_GroupUpdateCallbacks, cb); }
+		void bindOnGroupDestroyed(const GroupCallback& cb)				{ bindCallback(m_GroupDestroyCallbacks, cb); }
+		// do callbacks
+		void doGroupUpdateCallbacks(const EndPoint* ept, u32_t id)
+		{
+			for (auto& cb : m_GroupUpdateCallbacks) 
+				cb(ept, id);
+		}
+		void doGroupDestroyCallbackss(const EndPoint* ept, u32_t id)
+		{
+			for (auto& cb : m_GroupDestroyCallbacks) 
+				cb(ept, id);
+		}
 
 	private:
 		virtual class IConnection* createNewConnection( const EndPoint& endPoint ) const override; // called by recv thread
@@ -74,7 +89,7 @@ namespace Zerodelay
 		template <typename List, typename Callback>
 		void bindCallback( List& list, Callback cb );
 		template <typename List, typename Callback>
-		void forEachCallback( List& list, Callback cb );
+		void forEachCallback( const List& list, const Callback& cb );
 
 		bool m_IsServer;
 		bool m_SocketIsOpened;
@@ -87,6 +102,8 @@ namespace Zerodelay
 		std::vector<DisconnectCallback>		m_DisconnectCallbacks;
 		std::vector<NewConnectionCallback>	m_NewConnectionCallbacks;
 		std::vector<CustomDataCallback>		m_CustomDataCallbacks;
+		std::vector<GroupCallback> m_GroupUpdateCallbacks;
+		std::vector<GroupCallback> m_GroupDestroyCallbacks;
 		std::vector<IConnection*> m_TempConnections;  // Copy of current connection list when doing callback functions
 		std::vector<IConnection*> m_TempConnections2; // For when calling disconnectAll from within a callback function
 	};
@@ -99,11 +116,13 @@ namespace Zerodelay
 	}
 
 	template <typename List, typename Callback>
-	void ConnectionNode::forEachCallback(List& list, Callback cb)
+	void ConnectionNode::forEachCallback(const List& list, const Callback& cb)
 	{
 		for (auto it = list.begin(); it != list.end(); ++it)
 		{
 			cb( *it );
 		}
 	}
+
+
 }

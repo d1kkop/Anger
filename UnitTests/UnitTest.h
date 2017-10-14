@@ -2,6 +2,7 @@
 
 #include <string>
 #include <vector>
+#include <map>
 
 #include "Zerodelay.h"
 #include "Netvar.h"
@@ -193,11 +194,15 @@ namespace UnitTests
 
 	struct SyncGroupTest: public BaseTest
 	{
+		SyncGroupTest()
+		{
+		}
+
 		virtual void initialize() override;
 		virtual void run() override;
 		
-		std::vector<Unit*> m_unitsSelf;
-		std::vector<Unit*> m_unitsRemote;
+		std::map<u32_t, Unit*>  m_unitsSelf;
+		std::map<u32_t, Unit*>  m_unitsRemote;
 	};
 
 	struct NetworkTests
