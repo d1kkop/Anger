@@ -57,15 +57,19 @@
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="..\Zerodelay.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="..\Zerodelay.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="..\Zerodelay.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="..\Zerodelay.props" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup />
@@ -130,6 +134,7 @@
     </ClCompile>
     <ClCompile Include="Netvar.cpp" />
     <ClCompile Include="ConnectionNode.cpp" />
+    <ClCompile Include="Util.cpp" />
     <ClCompile Include="VariableGroup.cpp" />
     <ClCompile Include="VariableGroupNode.cpp" />
     <ClCompile Include="Zerodelay.cpp" />
@@ -146,6 +151,7 @@
     <ClInclude Include="Netvar.h" />
     <ClInclude Include="ConnectionNode.h" />
     <ClInclude Include="SyncGroups.h" />
+    <ClInclude Include="Util.h" />
     <ClInclude Include="VariableGroup.h" />
     <ClInclude Include="VariableGroupNode.h" />
     <ClInclude Include="Zerodelay.h" />

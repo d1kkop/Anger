@@ -4,39 +4,28 @@
 
 namespace Zerodelay
 {
+
+	ISocket::ISocket():
+		m_Open(false),
+		m_Bound(false),
+		m_IpProto(IPProto::Ipv4),
+		m_LastError(0)
+	{
+	}
+
 	ISocket* ISocket::create()
 	{
 		Platform::initialize();
+	#if ZERODELAY_WIN32SOCKET
 		return new BSDSocket();
+	#endif
+	#if ZERODELAY_SDLSOCKET
+		return new SDLSocket();
+	#endif
+		return nullptr;
 	}
 
-	bool ISocket::readString(i8_t* buff, i32_t buffSize, const i8_t* buffIn, i32_t buffInSize)
-	{
-		if ( !buff || !buffIn )
-			return false;
-		i32_t k = 0;
-		while ((*buffIn != '\0') && (k < buffSize-1) && (k < buffInSize))
-		{
-			*buff++ = *buffIn++;
-			++k;
-		}
-		if ( buffSize > 0 )
-		{
-			*buff = '\0';
-			return true;
-		}
-		return false;
-	}
-
-	bool ISocket::readFixed(i8_t* dst, i32_t dstSize, const i8_t* buffIn, i32_t buffInSize)
-	{
-		if ( !dst || !buffIn || buffInSize < dstSize )
-			return false;
-		memcpy( dst, buffIn, dstSize );
-		return true;
-	}
-
-#ifdef ZNETWORK_DEBUG
+#if ZERODELAY_FAKESOCKET
 
 	//////////////////////////////////////////////////////////////////////////
 	// Fake Socket
@@ -94,12 +83,16 @@ namespace Zerodelay
 	}
 #endif
 
+#if ZERODELAY_WIN32SOCKET
+
+	//////////////////////////////////////////////////////////////////////////
+	// BSDWin32 Socket
+	//////////////////////////////////////////////////////////////////////////
+
 	BSDSocket::BSDSocket():
-		m_LastError(0),
-		m_Open(false),
-		m_Bound(false),
 		m_Socket(INVALID_SOCKET)
 	{
+		m_Blocking = true;
 	}
 
 	bool BSDSocket::open(IPProto ipv, bool reuseAddr)
@@ -247,9 +240,80 @@ namespace Zerodelay
 		return ERecvResult::Succes;
 	}
 
-	i32_t BSDSocket::getUnderlayingSocketError() const
+#endif
+
+
+#if ZERODELAY_SDLSOCKET
+
+	//////////////////////////////////////////////////////////////////////////
+	// BSDWin32 Socket
+	/////////////////////////////////////////////////////////////////////////
+
+	SDLSocket::SDLSocket():
+		m_Socket(nullptr)
 	{
-		return m_LastError;
+		m_Blocking = true;
 	}
 
+	bool SDLSocket::open(IPProto ipProto, bool reuseAddr)
+	{
+		m_Open = true;
+		return true;
+	}
+
+	bool SDLSocket::bind(u16_t port)
+	{
+		if (m_Bound)
+			return true;
+		m_Socket = SDLNet_UDP_Open(port);
+		return m_Socket != nullptr;
+	}
+
+	bool SDLSocket::close()
+	{
+		m_Open   = false;
+		m_Bound  = false;
+		if (m_Socket != nullptr)
+		{
+			SDLNet_UDP_Close(m_Socket);
+			m_Socket = nullptr;
+			return true;
+		}
+		return false;
+	}
+
+	ESendResult SDLSocket::send( const struct EndPoint& endPoint, const i8_t* data, i32_t len )
+	{
+		if ( m_Socket == nullptr )
+			return ESendResult::SocketClosed;
+
+		IPaddress dstIp;
+		dstIp.host = endPoint.getIpv4NetworkOrder();
+		dstIp.port = endPoint.getPortNetworkOrder();
+
+		UDPpacket* pack = SDLNet_AllocPacket(len);
+		pack->channel = 0;
+		pack->len     = len;
+		pack->maxlen  = len * 2;
+		pack->status  = 0;
+		pack->address = dstIp;
+		Platform::memCpy( pack->data, len, data, len );
+
+		if ( 1 != SDLNet_UDP_Send( m_Socket, -1, pack ) )
+		{
+			m_LastError = pack->status;
+			SDLNet_FreePacket(pack);
+			return ESendResult::Error;
+		}
+
+		SDLNet_FreePacket(pack);
+		return ESendResult::Succes;
+	}
+
+	ERecvResult SDLSocket::recv( i8_t* buff, i32_t& rawSize, struct EndPoint& endPoint )
+	{
+		return ERecvResult::Error;
+	}
+
+#endif
 }

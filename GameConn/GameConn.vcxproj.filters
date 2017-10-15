@@ -13,6 +13,9 @@
     <Filter Include="NetVariables">
       <UniqueIdentifier>{b43bdc28-9d91-4936-87c9-ff92d1626019}</UniqueIdentifier>
     </Filter>
+    <Filter Include="3rdParty">
+      <UniqueIdentifier>{bfbe2779-c521-4bb3-a091-114decb166af}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Socket.cpp">
@@ -51,6 +54,9 @@
     </ClCompile>
     <ClCompile Include="VariableGroupNode.cpp">
       <Filter>NetVariables</Filter>
+    </ClCompile>
+    <ClCompile Include="Util.cpp">
+      <Filter>Core</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -95,6 +101,9 @@
     </ClInclude>
     <ClInclude Include="SyncGroups.h">
       <Filter>User</Filter>
+    </ClInclude>
+    <ClInclude Include="Util.h">
+      <Filter>Core</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

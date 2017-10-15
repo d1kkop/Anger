@@ -3,6 +3,7 @@
 #include "Socket.h"
 #include "EndPoint.h"
 #include "RpcMacros.h"
+#include "Util.h"
 
 
 namespace Zerodelay
@@ -348,7 +349,7 @@ namespace Zerodelay
 	{
 		static const i32_t kBuffSize=1024;
 		i8_t pw[kBuffSize];
-		if ( !ISocket::readString( pw, kBuffSize, payload, payloadLen ))
+		if ( !Util::readString( pw, kBuffSize, payload, payloadLen ))
 		{
 			removeConnection( g, "removing conn, serialization error %s", __FUNCTION__ );
 			return; // invalid serialization
@@ -494,17 +495,14 @@ namespace Zerodelay
 	void ConnectionNode::recvRpcPacket(const i8_t* payload, i32_t len, class Connection* g)
 	{
 		i8_t name[RPC_NAME_MAX_LENGTH];
-		if ( !ISocket::readFixed( name, RPC_NAME_MAX_LENGTH, payload, (RPC_NAME_MAX_LENGTH<len?RPC_NAME_MAX_LENGTH:len)) )
+		if ( !Util::readFixed( name, RPC_NAME_MAX_LENGTH, payload, (RPC_NAME_MAX_LENGTH<len?RPC_NAME_MAX_LENGTH:len)) )
 		{
 			removeConnection( g, "rpc serialiation error %s", __FUNCTION__ );
 			return;
 		}
 		i8_t fname[RPC_NAME_MAX_LENGTH*2];
-	#if _WIN32
-		sprintf_s(fname, RPC_NAME_MAX_LENGTH*2, "__rpc_deserialize_%s", name);
-	#else	
-		sprintf(fname, "__rpc_deserialize_%s", name);
-	#endif
+		auto* ptrNext = Util::appendString(fname, RPC_NAME_MAX_LENGTH*2, "__rpc_deserialize_");
+		Util::appendString(ptrNext, RPC_NAME_MAX_LENGTH, name);
 		void* pf = Platform::getPtrFromName( fname );
 		if ( pf )
 		{

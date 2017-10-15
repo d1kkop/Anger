@@ -1,5 +1,6 @@
 #include "EndPoint.h"
 #include "Platform.h"
+#include "Util.h"
 
 
 namespace Zerodelay
@@ -17,24 +18,22 @@ namespace Zerodelay
 		// Ip
 		i8_t ipBuff[128] = { 0 };
 
-#if _WIN32
+	#if ZERODELAY_WIN32SOCKET
 		inet_ntop(m_SockAddr.si_family, (PVOID)&m_SockAddr.Ipv4, ipBuff, 128);
-#else
-//#pragma error("no implement");
-#endif
+	#endif
+	#if ZERODELAY_SDLSOCKET
+
+	#endif
 
 		// Port
 		i8_t portBuff[32] = { 0 };
-#if _WIN32
-		sprintf_s(portBuff, 32, "%d", getPortHostOrder());
-#else
-		sprintf(portBuff, "%d", getPortHostOrder());
-#endif
+		Platform::formatPrint(portBuff, 32, "%d", getPortHostOrder());
 		return std::string(ipBuff) + ":" + portBuff;
 	}
 
 	bool EndPoint::resolve(const std::string& name, u16_t port)
 	{
+	#if ZERODELAY_WIN32SOCKET
 		addrinfo hints;
 		addrinfo *addrInfo = nullptr;
 
@@ -47,13 +46,9 @@ namespace Zerodelay
 
 		i8_t ipBuff[128];
 		i8_t portBuff[32];
-#if _WIN32
 		sprintf_s(ipBuff, 128, "%s", name.c_str());
 		sprintf_s(portBuff, 32, "%d", port);
-#else
-		sprintf(ipBuff, "%s", name.c_str());
-		sprintf(portBuff, "%d", port);
-#endif
+
 		m_LastError = getaddrinfo(ipBuff, portBuff, &hints, &addrInfo);
 		if (m_LastError != 0)
 		{
@@ -71,20 +66,103 @@ namespace Zerodelay
 
 		freeaddrinfo(addrInfo);
 		return false;
+	#endif
+
+	#if ZERODELAY_SDLSOCKET
+		// put port in network order
+		if ( 0 == SDLNet_ResolveHost( &m_IpAddress, name.c_str(), Util::swap16(port) ) )
+		{
+			return true;
+		}
+	#endif
+
+		return false;
 	}
 
 	u16_t EndPoint::getPortHostOrder() const
 	{
-		return ntohs( getPortNetworkOrder() );
+	#if ZERODELAY_WIN32SOCKET
+		return ntohs(getPortNetworkOrder());
+	#endif
+	#if ZERODELAY_SDLSOCKET
+		return SDL_Swap16(getPortNetworkOrder());
+	#endif
+		return (u16_t)-1;
 	}
 
 	u16_t EndPoint::getPortNetworkOrder() const
 	{
-#if _WIN32
+	#if ZERODELAY_WIN32SOCKET
 		return m_SockAddr.Ipv4.sin_port;
-#else
-//#pragma error
-#endif
+	#endif
+	#if ZERODELAY_SDLSOCKET
+		return m_IpAddress.port;
+	#endif	
+		return (u16_t)-1;
+	}
+
+	u32_t EndPoint::getIpv4HostOrder() const
+	{
+	#if ZERODELAY_WIN32SOCKET
+		return ntohl(getIpv4NetworkOrder());
+	#endif
+	#if ZERODELAY_SDLSOCKET
+		return SDL_Swap32(getIpv4NetworkOrder());
+	#endif
+		return (u32_t)-1;
+	}
+
+	u32_t EndPoint::getIpv4NetworkOrder() const
+	{
+	#if ZERODELAY_WIN32SOCKET
+		return m_SockAddr.Ipv4.sin_addr.S_un.S_addr;
+	#endif
+	#if ZERODELAY_SDLSOCKET
+		return m_IpAddress.host;
+	#endif	
+		return (u32_t)-1;
+	}
+
+	const void* EndPoint::getLowLevelAddr() const
+	{
+	#if ZERODELAY_WIN32SOCKET
+		return &m_SockAddr;
+	#endif
+	#if ZERODELAY_SDLSOCKET
+		return &m_IpAddress;
+	#endif	
+		return nullptr;
+	}
+
+	i32_t EndPoint::getLowLevelAddrSize() const
+	{
+	#if ZERODELAY_WIN32SOCKET
+		return sizeof(m_SockAddr);
+	#endif
+	#if ZERODELAY_SDLSOCKET
+		return sizeof(m_IpAddress);
+	#endif	
+		return 0;
+	}
+
+	void EndPoint::setIpAndPortFromNetworkOrder(u32_t ip, u16_t port)
+	{
+	#if ZERODELAY_WIN32SOCKET
+		memset(&m_SockAddr, 0, sizeof(m_SockAddr));
+		m_SockAddr.Ipv4.sin_port = port;
+		m_SockAddr.Ipv4.sin_addr.S_un.S_addr = ip;
+		m_SockAddr.si_family = AF_INET;
+		m_SockAddr.Ipv4.sin_family = AF_INET;
+	#endif
+	#if ZERODELAY_SDLSOCKET
+		m_IpAddress.host = ip;
+		m_IpAddress.port = port;
+	#endif	
+	}
+
+	void EndPoint::setIpAndPortFromHostOrder(u32_t ip, u16_t port)
+	{
+		setIpAndPortFromNetworkOrder(Util::swap32(ip), Util::swap16(port));
 	}
 
 	i32_t EndPoint::compareLess(const EndPoint& a, const EndPoint& b)
@@ -96,22 +174,27 @@ namespace Zerodelay
 
 	i32_t EndPoint::write(i8_t* buff, i32_t len) const
 	{
-		i32_t addrSize = getLowLevelAddrSize();
-		if ( len >= addrSize )
+		u16_t port = getPortNetworkOrder();
+		u32_t ipv4 = getIpv4NetworkOrder();
+		if ( len >= 6 )
 		{
-			memcpy_s( buff, addrSize, getLowLevelAddr(), addrSize );
-			return addrSize;
+			Platform::memCpy( buff, 4, &ipv4, 4 );
+			Platform::memCpy( buff+4, 2, &port, 2 );
+			return 6;
 		}
 		return -1;
 	}
 
 	i32_t EndPoint::read(const i8_t* buff, i32_t len)
 	{
-		i32_t addrSize = getLowLevelAddrSize();
-		if ( len >= addrSize )
+		if ( len >= 6 )
 		{
-			memcpy_s( &m_SockAddr, addrSize, buff, addrSize );
-			return addrSize;
+			u32_t ipv4;
+			u16_t port;
+			Platform::memCpy( &ipv4, 4, buff, 4 );
+			Platform::memCpy( &port, 2, buff+4, 2 );
+			setIpAndPortFromNetworkOrder( ipv4, port );
+			return 6;
 		}
 		return -1;
 	}

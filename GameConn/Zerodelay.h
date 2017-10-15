@@ -148,14 +148,15 @@ namespace Zerodelay
 
 		/*	Connect  to specific endpoint. 
 			A succesful call does not mean a connection is established.
-			To know if a connection is established, bindOnConnectResult. */
+			To know if a connection is established, bindOnConnectResult. 
+			Port must be in native machine order. No conversion to network order necessary. */
 		EConnectCallResult connect( const ZEndpoint& endPoint, const std::string& pw="", i32_t timeoutSeconds=8 );
 		EConnectCallResult connect( const std::string& name, i32_t port, const std::string& pw="", i32_t timeoutSeconds=8 );
 
 
 		/*	Listen on a specific port for incoming connections.
 			Bind onNewConnection to do something with the new connections. 
-			[port]				The port.
+			[port]				The port in native machine order.
 			[pw]				Password string.
 			[maxConnections]	Maximum number of connections. 
 			[relayEvents]		If true, events such as ´disconnect´ will be relayed to other connections. If not client-server architecture, the parameter is ignored. */
@@ -248,7 +249,7 @@ namespace Zerodelay
 
 		/*	Only one node in the network provides new network id's on request.
 			Typically, this is the Server in a client-server model or the 'Super-Peer' in a p2p network. */
-		void setIsNetworkIdProvider(bool isProvider);
+		void setIsNetworkIdProvider( bool isProvider );
 
 
 		/*	----- Callbacks ----------------------------------------------------------------------------------------------- */

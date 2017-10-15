@@ -3,6 +3,12 @@
 #include <cassert>
 #include "RpcMacros.h"
 
+#define VG_CPY_STR2(cname) \
+	i32_t _k=0; \
+	char*_c = cname; \
+	for (;_c[_k]!='\0' && _k<(RPC_NAME_MAX_LENGTH-1); ++_k) t.sgp_name[_k]=_c[_k]; \
+	t.sgp_name[_k]='\0';
+
 
 #define DECL_VAR_GROUP_0( name, _zn) \
 	void __sgp_call_local_##name( ZNode* _zn );\
@@ -19,7 +25,7 @@
 	void create_##name( ZNode* gn, u8_t channel=1 )\
 	{\
 		sgp_struct_##name t;\
-		::sprintf_s( t.sgp_name, RPC_NAME_MAX_LENGTH, "%s", #name ); \
+		VG_CPY_STR2(#name); \
 		gn->deferredCreateVariableGroup((const i8_t*)&t, sizeof(t), channel); \
 	}\
 	void __sgp_call_local_##name( ZNode* _zn )
@@ -40,7 +46,7 @@
 	void create_##name( ZNode* gn, a at, u8_t channel=1 )\
 	{\
 		sgp_struct_##name t;\
-		::sprintf_s( t.sgp_name, RPC_NAME_MAX_LENGTH, "%s", #name ); \
+		VG_CPY_STR2(#name); \
 		t._a = at; \
 		gn->deferredCreateVariableGroup((const i8_t*)&t, sizeof(t), channel); \
 	}\
@@ -62,7 +68,7 @@
 	void create_##name( ZNode* gn, a at, b bt, u8_t channel=1 )\
 	{\
 		sgp_struct_##name t;\
-		::sprintf_s( t.sgp_name, RPC_NAME_MAX_LENGTH, "%s", #name ); \
+		VG_CPY_STR2(#name); \
 		t._a = at; t._b = bt; \
 		gn->deferredCreateVariableGroup((const i8_t*)&t, sizeof(t), channel); \
 	}\
@@ -84,7 +90,7 @@
 	void create_##name( ZNode* gn, a at, b bt, c ct, u8_t channel=1 )\
 	{\
 		sgp_struct_##name t;\
-		::sprintf_s( t.sgp_name, RPC_NAME_MAX_LENGTH, "%s", #name ); \
+		VG_CPY_STR2(#name); \
 		t._a = at; t._b = bt; t._c = ct; \
 		gn->deferredCreateVariableGroup((const i8_t*)&t, sizeof(t), channel); \
 	}\
@@ -106,7 +112,7 @@
 	void create_##name( ZNode* gn, a at, b bt, c ct, d dt, u8_t channel=1 )\
 	{\
 		sgp_struct_##name t;\
-		::sprintf_s( t.sgp_name, RPC_NAME_MAX_LENGTH, "%s", #name ); \
+		VG_CPY_STR2(#name); \
 		t._a = at; t._b = bt; t._c = ct; t._d = dt; \
 		gn->deferredCreateVariableGroup((const i8_t*)&t, sizeof(t), channel); \
 	}\
@@ -128,7 +134,7 @@
 	void create_##name( ZNode* gn, a at, b bt, c ct, d dt, e et, u8_t channel=1 )\
 	{\
 		sgp_struct_##name t;\
-		::sprintf_s( t.sgp_name, RPC_NAME_MAX_LENGTH, "%s", #name ); \
+		VG_CPY_STR2(#name); \
 		t._a = at; t._b = bt; t._c = ct; t._d = dt; t._e = et; \
 		gn->deferredCreateVariableGroup((const i8_t*)&t, sizeof(t), channel); \
 	}\
@@ -150,7 +156,7 @@
 	void create_##name( ZNode* gn, a at, b bt, c ct, d dt, e et, f ft, u8_t channel=1 )\
 	{\
 		sgp_struct_##name t;\
-		::sprintf_s( t.sgp_name, RPC_NAME_MAX_LENGTH, "%s", #name ); \
+		VG_CPY_STR2(#name); \
 		t._a = at; t._b = bt; t._c = ct; t._d = dt; t._e = et; t._f = ft; \
 		gn->deferredCreateVariableGroup((const i8_t*)&t, sizeof(t), channel); \
 	}\
@@ -172,7 +178,7 @@
 	void create_##name( ZNode* gn, a at, b bt, c ct, d dt, e et, f ft, h ht, u8_t channel=1)\
 	{\
 		sgp_struct_##name t;\
-		::sprintf_s( t.sgp_name, RPC_NAME_MAX_LENGTH, "%s", #name ); \
+		VG_CPY_STR2(#name); \
 		t._a = at; t._b = bt; t._c = ct; t._d = dt; t._e = et; t._f = ft; t._h = ht; \
 		gn->deferredCreateVariableGroup((const i8_t*)&t, sizeof(t), channel); \
 	}\
@@ -194,7 +200,7 @@
 	void create_##name( ZNode* gn, a at, b bt, c ct, d dt, e et, f ft, h ht, i it, u8_t channel=1 )\
 	{\
 		sgp_struct_##name t;\
-		::sprintf_s( t.sgp_name, RPC_NAME_MAX_LENGTH, "%s", #name ); \
+		VG_CPY_STR2(#name); \
 		t._a = at; t._b = bt; t._c = ct; t._d = dt; t._e = et; t._f = ft; t._h = ht; t._i = it; \
 		gn->deferredCreateVariableGroup((const i8_t*)&t, sizeof(t), channel); \
 	}\
@@ -216,7 +222,7 @@
 	void create_##name( ZNode* gn, a at, b bt, c ct, d dt, e et, f ft, h ht, i it, j jt, u8_t channel=1 )\
 	{\
 		sgp_struct_##name t;\
-		::sprintf_s( t.sgp_name, RPC_NAME_MAX_LENGTH, "%s", #name ); \
+		VG_CPY_STR2(#name); \
 		t._a = at; t._b = bt; t._c = ct; t._d = dt; t._e = et; t._f = ft; t._h = ht; t._i = it; t._j = jt; \
 		gn->deferredCreateVariableGroup((const i8_t*)&t, sizeof(t), channel); \
 	}\

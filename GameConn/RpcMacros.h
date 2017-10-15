@@ -1,13 +1,26 @@
 #pragma once
 
 #include <cassert>
-#include "Platform.h"
+
 
 #define RPC_NAME_MAX_LENGTH 32
 
+#if _WIN32
+	#define RPC_EXPORT __declspec(dllexport)
+	#define ALIGN(n) __declspec(align(n))
+	#pragma comment(lib, "User32.lib")
+#else
+	#define RPC_EXPORT
+	#define ALIGN(n)
+#endif
 
-#define RPC_CPY_N_SEND2(name) \
-	gn->sendReliableOrdered((u8_t)EDataPacketType::Rpc, (const i8_t*)&t, sizeof(name), specific, exclude, channel, relay);\
+
+#define RPC_CPY_N_SEND2(name, cname) \
+	i32_t _k=0; \
+	char*_c = cname; \
+	for (;_c[_k]!='\0' && _k<(RPC_NAME_MAX_LENGTH-1); ++_k) t.rpc_name[_k]=_c[_k]; \
+	t.rpc_name[_k]='\0'; \
+	gn->sendReliableOrdered((u8_t)EDataPacketType::Rpc, (const i8_t*)&t, sizeof(name), specific, exclude, channel, relay);
 
 #define RPC_ASSERT_N_CPY2(name) \
 	assert( len == (sizeof(name)) && "invalid struct size" ); \
@@ -26,9 +39,7 @@
 	void rpc_##name( ZNode* gn, bool localCall = true, const ZEndpoint* specific=nullptr, bool exclude=false, u8_t channel=0, bool relay=true )\
 	{\
 		rpc_struct_##name t; \
-		t.rpc_name[0]='\0'; \
-		::sprintf_s( t.rpc_name, RPC_NAME_MAX_LENGTH, "%s", #name ); \
-		RPC_CPY_N_SEND2(rpc_struct_##name) \
+		RPC_CPY_N_SEND2(rpc_struct_##name, #name) \
 		if ( localCall ) { name(); } \
 	}\
 	void name()
@@ -49,9 +60,7 @@
 	{\
 		rpc_struct_##name t; \
 		t._a = at; \
-		t.rpc_name[0]='\0'; \
-		::sprintf_s( t.rpc_name, RPC_NAME_MAX_LENGTH, "%s", #name ); \
-		RPC_CPY_N_SEND2(rpc_struct_##name) \
+		RPC_CPY_N_SEND2(rpc_struct_##name, #name) \
 		if ( localCall ) { name( at ); } \
 	}\
 	void name( a at )
@@ -72,9 +81,7 @@
 	{\
 		rpc_struct_##name t; \
 		t._a = at; t._b = bt; \
-		t.rpc_name[0] = '\0'; \
-		::sprintf_s( t.rpc_name, RPC_NAME_MAX_LENGTH, "%s", #name ); \
-		RPC_CPY_N_SEND2(rpc_struct_##name) \
+		RPC_CPY_N_SEND2(rpc_struct_##name, #name) \
 		if ( localCall ) { name( at, bt ); } \
 	}\
 	void name( a at, b bt )
@@ -95,9 +102,7 @@
 	{\
 		rpc_struct_##name t;\
 		t._a = at; t._b = bt; t._c = ct;\
-		t.rpc_name[0] = '\0'; \
-		::sprintf_s( t.rpc_name, RPC_NAME_MAX_LENGTH, "%s", #name ); \
-		RPC_CPY_N_SEND2(rpc_struct_##name) \
+		RPC_CPY_N_SEND2(rpc_struct_##name, #name) \
 		if ( localCall ) { name( at, bt, ct ); } \
 	}\
 	void name( a at, b bt, c ct )
@@ -118,9 +123,7 @@
 	{\
 		rpc_struct_##name t;\
 		t._a = at; t._b = bt; t._c = ct; t._d = dt; \
-		t.rpc_name[0] = '\0'; \
-		::sprintf_s( t.rpc_name, RPC_NAME_MAX_LENGTH, "%s", #name ); \
-		RPC_CPY_N_SEND2(rpc_struct_##name) \
+		RPC_CPY_N_SEND2(rpc_struct_##name, #name) \
 		if ( localCall ) { name( at, bt, ct, dt ); } \
 	}\
 	void name( a at, b bt, c ct, d dt )
@@ -141,9 +144,7 @@
 	{\
 		rpc_struct_##name t;\
 		t._a = at; t._b = bt; t._c = ct; t._d = dt; t._e = et; \
-		t.rpc_name[0] = '\0'; \
-		::sprintf_s( t.rpc_name, RPC_NAME_MAX_LENGTH, "%s", #name ); \
-		RPC_CPY_N_SEND2(rpc_struct_##name) \
+		RPC_CPY_N_SEND2(rpc_struct_##name, #name) \
 		if ( localCall ) { name( at, bt, ct, dt, et ); } \
 	}\
 	void name( a at, b bt, c ct, d dt, e et )
@@ -163,9 +164,7 @@
 	{\
 		rpc_struct_##name t;\
 		t._a = at; t._b = bt; t._c = ct; t._d = dt; t._e = et; t._f = ft; \
-		t.rpc_name[0] ='\0'; \
-		::sprintf_s( t.rpc_name, RPC_NAME_MAX_LENGTH, "%s", #name ); \
-		RPC_CPY_N_SEND2(rpc_struct_##name) \
+		RPC_CPY_N_SEND2(rpc_struct_##name, #name) \
 		if ( localCall ) { name( at, bt, ct, dt, et, ft ); } \
 	}\
 	void name( a at, b bt, c ct, d dt, e et, f ft )
@@ -186,9 +185,7 @@
 	{\
 		rpc_struct_##name t; \
 		t._a = at; t._b = bt; t._c = ct; t._d = dt; t._e = et; t._f = ft; t._h = ht; \
-		t.rpc_name[0] = '\0'; \
-		::sprintf_s( t.rpc_name, RPC_NAME_MAX_LENGTH, "%s", #name ); \
-		RPC_CPY_N_SEND2(rpc_struct_##name) \
+		RPC_CPY_N_SEND2(rpc_struct_##name, #name) \
 		if ( localCall ) { name( at, bt, ct, dt, et, ft, ht ); } \
 	}\
 	void name( a at, b bt, c ct, d dt, e et, f ft, h ht )
@@ -209,9 +206,7 @@
 	{\
 		rpc_struct_##name t; \
 		t._a = at; t._b = bt; t._c = ct; t._d = dt; t._e = et; t._f = ft; t._h = ht; t._i = it; \
-		t.rpc_name[0] = '\0'; \
-		::sprintf_s( t.rpc_name, RPC_NAME_MAX_LENGTH, "%s", #name ); \
-		RPC_CPY_N_SEND2(rpc_struct_##name) \
+		RPC_CPY_N_SEND2(rpc_struct_##name, #name) \
 		if ( localCall ) { name( at, bt, ct, dt, et, ft, ht, it ); } \
 	}\
 	void name( a at, b bt, c ct, d dt, e et, f ft, h ht, i it )
@@ -232,9 +227,7 @@
 	{\
 		rpc_struct_##name t;\
 		t._a = at; t._b = bt; t._c = ct; t._d = dt; t._e = et; t._f = ft; t._h = ht; t._i = it; t._j = jt; \
-		t.rpc_name[0] = '\0'; \
-		::sprintf_s( t.rpc_name, RPC_NAME_MAX_LENGTH, "%s", #name ); \
-		RPC_CPY_N_SEND2(rpc_struct_##name) \
+		RPC_CPY_N_SEND2(rpc_struct_##name, #name) \
 		if ( localCall ) { name( at, bt, ct, dt, et, ft, ht, it, jt ); } \
 	}\
 	void name( a at, b bt, c ct, d dt, e et, f ft, h ht, i it, j jt )

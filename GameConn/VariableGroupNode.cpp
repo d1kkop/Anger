@@ -7,6 +7,7 @@
 #include "SyncGroups.h"
 #include "RUDPConnection.h"
 #include "ConnectionNode.h"
+#include "Util.h"
 
 #include <cassert>
 
@@ -391,14 +392,15 @@ namespace Zerodelay
 	void VariableGroupNode::callCreateVariableGroup(i8_t* data, i32_t len, bool remote, const ZEndpoint* ztp)
 	{
 		i8_t name[RPC_NAME_MAX_LENGTH];
-		if (!ISocket::readFixed(name, RPC_NAME_MAX_LENGTH, data, (RPC_NAME_MAX_LENGTH < len ? RPC_NAME_MAX_LENGTH : len)))
+		if (!Util::readFixed(name, RPC_NAME_MAX_LENGTH, data, (RPC_NAME_MAX_LENGTH < len ? RPC_NAME_MAX_LENGTH : len)))
 		{
 			Platform::log("CRITICAL serialization error in %s, trying to read function name %s, remote variable group was not created!", __FUNCTION__, name);
 			return;
 		}
 		u32_t nId = *(u32_t*)(data + RPC_NAME_MAX_LENGTH);
 		i8_t fname[RPC_NAME_MAX_LENGTH * 2];
-		Platform::formatPrint(fname, RPC_NAME_MAX_LENGTH * 2, "__sgp_deserialize_%s", name);
+		i8_t* ptNxt = Util::appendString(fname, RPC_NAME_MAX_LENGTH * 2, "__sgp_deserialize_");
+		Util::appendString(ptNxt, RPC_NAME_MAX_LENGTH, name);
 		void* ptrUserCb = Platform::getPtrFromName(fname);
 		if (ptrUserCb)
 		{

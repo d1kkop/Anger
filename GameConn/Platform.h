@@ -1,28 +1,31 @@
 #pragma once
 
 
+#define ZERODELAY_FAKESOCKET							(0)
+#define ZERODELAY_WIN32SOCKET							(1)
+#define ZERODELAY_SDLSOCKET								(0)
+#define ZERODELAY_SDL									(1)
+
+
 #ifdef _WIN32
-	#define RPC_EXPORT __declspec(dllexport)
+	
+	#include <ws2tcpip.h>
+	#include <ws2ipdef.h>
+
+	#pragma comment(lib, "Ws2_32.lib")
+	#pragma comment(lib, "User32.lib")
+
+	#if ZERODELAY_SDL // if windows and SDL 
+		#include "SDL.h"
+		#include "SDL_net.h"
+		#pragma  comment(lib, "SDL2.lib")
+		#pragma  comment(lib, "SDL2_net.lib")
+	#endif
+	
 #else
-	#define RPC_EXPORT
+
 #endif
 
-#ifdef _WIN32
-	#define ALIGN(n) __declspec(align(n))
-#else
-	#define ALIGN(n)
-#endif
-
-#ifdef _WIN32
-#include <ws2tcpip.h>
-#include <ws2ipdef.h>
-#pragma comment(lib, "Ws2_32.lib")
-#endif
-
-#ifdef linux
-#include <sys/types.h>
-#include <sys/socket.h>
-#endif
 
 #include <string>
 #include <map>

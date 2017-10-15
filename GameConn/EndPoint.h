@@ -24,7 +24,17 @@ namespace Zerodelay
 
 		u16_t getPortHostOrder() const;
 		u16_t getPortNetworkOrder() const;
+		u32_t getIpv4HostOrder() const;
+		u32_t getIpv4NetworkOrder() const;
 		i32_t  getLastError() const { return m_LastError; }
+
+		// Returns ptr to actual host data
+		const void* getLowLevelAddr() const;
+		// Returns size that contains host data
+		i32_t   getLowLevelAddrSize() const;
+
+		void setIpAndPortFromNetworkOrder( u32_t ip, u16_t port );
+		void setIpAndPortFromHostOrder( u32_t ip, u16_t port );
 
 		struct STLCompare
 		{
@@ -36,18 +46,21 @@ namespace Zerodelay
 		i32_t write( i8_t* buff, i32_t len ) const;
 		i32_t read( const i8_t* buff, i32_t len );
 
-		const void* getLowLevelAddr() const { return &m_SockAddr; }
-		i32_t   getLowLevelAddrSize() const { return sizeof(m_SockAddr); }
-
-#ifdef _WIN32
 	private:
-		SOCKADDR_INET m_SockAddr;
-#endif
 		i32_t m_LastError;
 
-#ifdef MOTOR_NETWORK_DEBUG
+	#if ZERODELAY_WIN32SOCKET
+		SOCKADDR_INET m_SockAddr;
+	#endif
+
+	#if ZERODELAY_SDLSOCKET
+		IPaddress m_IpAddress;
+	#endif
+		
+	#if ZERODELAY_FAKESOCKET
 	public:
 		class ISocket* m_Socket;
-#endif
+	#endif
+
 	};
 }

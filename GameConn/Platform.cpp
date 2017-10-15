@@ -2,6 +2,11 @@
 
 #include "Platform.h"
 
+#if ZERODELAY_SDL
+	#include "SDL.h"
+	#include "SDL_net.h"
+#endif
+
 
 namespace Zerodelay
 {
@@ -10,33 +15,53 @@ namespace Zerodelay
 		if ( wasInitialized )
 			return 0;
 
-#if _WIN32
+	#if ZERODELAY_SDL
 
-		WORD wVersionRequested;
-		WSADATA wsaData;
-		i32_t err;
-
-		/* Use the MAKEWORD(lowbyte, highbyte) macro declared in Windef.h */
-		wVersionRequested = MAKEWORD(2, 2);
-
-		err = WSAStartup(wVersionRequested, &wsaData);
-		if ( err != 0 )
-			return err;
-
-		/* Confirm that the WinSock DLL supports 2.2.*/
-		/* Note that if the DLL supports versions greater    */
-		/* than 2.2 in addition to 2.2, it will still return */
-		/* 2.2 in wVersion since that is the version we      */
-		/* requested.                                        */
-
-		if (LOBYTE(wsaData.wVersion) != 2 || HIBYTE(wsaData.wVersion) != 2) 
-		{
-			/* Tell the user that we could not find a usable */
-			/* WinSock DLL.                                  */
-			WSACleanup();
-			return -1;
+		i32_t err =  SDL_Init(0);
+		if (err != 0) 
+		{ 
+			Platform::log("SDL error %s.", SDL_GetError());
+			return err; 
 		}
-#endif
+
+		err = SDLNet_Init();
+		if (err != 0) 
+		{
+			Platform::log("SDL net error %s.", SDL_GetError());
+			return err;
+		}
+
+	#else
+
+	#if _WIN32
+
+			WORD wVersionRequested;
+			WSADATA wsaData;
+			i32_t err;
+
+			/* Use the MAKEWORD(lowbyte, highbyte) macro declared in Windef.h */
+			wVersionRequested = MAKEWORD(2, 2);
+
+			err = WSAStartup(wVersionRequested, &wsaData);
+			if ( err != 0 )
+				return err;
+
+			/* Confirm that the WinSock DLL supports 2.2.*/
+			/* Note that if the DLL supports versions greater    */
+			/* than 2.2 in addition to 2.2, it will still return */
+			/* 2.2 in wVersion since that is the version we      */
+			/* requested.                                        */
+
+			if (LOBYTE(wsaData.wVersion) != 2 || HIBYTE(wsaData.wVersion) != 2) 
+			{
+				/* Tell the user that we could not find a usable */
+				/* WinSock DLL.                                  */
+				WSACleanup();
+				return -1;
+			}
+	#endif
+
+	#endif
 
 		wasInitialized = true;
 		return 0;
@@ -47,9 +72,16 @@ namespace Zerodelay
 		if ( !wasInitialized )
 			return;
 
-#if _WIN32
-		WSACleanup();
-#endif
+	#if ZERODELAY_SDL
+		SDLNet_Quit();
+		SDL_Quit();
+	#else
+
+	#if _WIN32
+			WSACleanup();
+	#endif
+
+	#endif
 
 		name2RpcFunction.clear();
 		wasInitialized = false;
@@ -61,16 +93,26 @@ namespace Zerodelay
 		auto it = name2RpcFunction.find( name );
 		if ( it == name2RpcFunction.end() )
 		{
-#if _WIN32
+			// ptr to function
+			void* pf = nullptr;
+
+	#if ZERODELAY_SDL
+			pf = SDL_LoadFunction(nullptr, name);
+	#else
+
+		#if _WIN32
 			HMODULE hModule = ::GetModuleHandle(NULL);
-			auto* pf = ::GetProcAddress( hModule, name );
+			pf = ::GetProcAddress( hModule, name );
+		#endif
+
+	#endif
+
 			if ( pf )
 			{
 				name2RpcFunction.insert( std::make_pair( name, pf ) );
-				return pf;
 			}
-#endif
-			return nullptr;
+
+			return pf;
 		}
 		return it->second;
 	}
