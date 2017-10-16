@@ -2,9 +2,11 @@
 
 
 #define ZERODELAY_FAKESOCKET							(0)
-#define ZERODELAY_WIN32SOCKET							(1)
-#define ZERODELAY_SDLSOCKET								(0)
+#define ZERODELAY_WIN32SOCKET							(0)
+#define ZERODELAY_SDLSOCKET								(1)
 #define ZERODELAY_SDL									(1)
+
+#define ZERODELAY_LIL_ENDIAN							(1)		// TODO to be automated
 
 
 #ifdef _WIN32

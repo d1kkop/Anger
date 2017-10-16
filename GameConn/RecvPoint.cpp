@@ -144,9 +144,9 @@ namespace Zerodelay
 				std::this_thread::sleep_for(100ms);
 			}
 
-			i8_t buff[RecvPoint::sm_MaxRecvBuffSize];
-			i32_t  rawSize = sm_MaxRecvBuffSize;
-			auto eResult = m_ListenSocket->recv( buff, rawSize, endPoint );
+			i8_t buff[ISocket::sm_MaxRecvBuffSize];
+			i32_t rawSize = ISocket::sm_MaxRecvBuffSize;
+			ERecvResult eResult = m_ListenSocket->recv( buff, rawSize, endPoint );
 
 			// discard socket interrupt 'errors' if closing
 			if ( m_IsClosing )

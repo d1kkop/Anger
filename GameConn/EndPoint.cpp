@@ -2,6 +2,8 @@
 #include "Platform.h"
 #include "Util.h"
 
+#include <cassert>
+
 
 namespace Zerodelay
 {
@@ -15,20 +17,21 @@ namespace Zerodelay
 	{
 		Platform::initialize();
 
+	#if ZERODELAY_WIN32SOCKET
 		// Ip
 		i8_t ipBuff[128] = { 0 };
-
-	#if ZERODELAY_WIN32SOCKET
 		inet_ntop(m_SockAddr.si_family, (PVOID)&m_SockAddr.Ipv4, ipBuff, 128);
+		return ipBuff;
 	#endif
+
 	#if ZERODELAY_SDLSOCKET
-
+		IPaddress iph;
+		iph.host = Util::swap32(m_IpAddress.host);
+		iph.port = Util::swap16(m_IpAddress.port);
+		return  SDLNet_ResolveIP(&iph); // expects in host form
 	#endif
 
-		// Port
-		i8_t portBuff[32] = { 0 };
-		Platform::formatPrint(portBuff, 32, "%d", getPortHostOrder());
-		return std::string(ipBuff) + ":" + portBuff;
+		return "";
 	}
 
 	bool EndPoint::resolve(const std::string& name, u16_t port)
@@ -70,7 +73,7 @@ namespace Zerodelay
 
 	#if ZERODELAY_SDLSOCKET
 		// put port in network order
-		if ( 0 == SDLNet_ResolveHost( &m_IpAddress, name.c_str(), Util::swap16(port) ) )
+		if ( 0 == SDLNet_ResolveHost( &m_IpAddress, name.c_str(), port ) )
 		{
 			return true;
 		}
@@ -81,13 +84,7 @@ namespace Zerodelay
 
 	u16_t EndPoint::getPortHostOrder() const
 	{
-	#if ZERODELAY_WIN32SOCKET
-		return ntohs(getPortNetworkOrder());
-	#endif
-	#if ZERODELAY_SDLSOCKET
-		return SDL_Swap16(getPortNetworkOrder());
-	#endif
-		return (u16_t)-1;
+		return Util::swap16(getPortNetworkOrder());
 	}
 
 	u16_t EndPoint::getPortNetworkOrder() const
@@ -103,13 +100,7 @@ namespace Zerodelay
 
 	u32_t EndPoint::getIpv4HostOrder() const
 	{
-	#if ZERODELAY_WIN32SOCKET
-		return ntohl(getIpv4NetworkOrder());
-	#endif
-	#if ZERODELAY_SDLSOCKET
-		return SDL_Swap32(getIpv4NetworkOrder());
-	#endif
-		return (u32_t)-1;
+		return Util::swap32(getIpv4NetworkOrder());
 	}
 
 	u32_t EndPoint::getIpv4NetworkOrder() const
@@ -131,6 +122,7 @@ namespace Zerodelay
 	#if ZERODELAY_SDLSOCKET
 		return &m_IpAddress;
 	#endif	
+		assert(0);
 		return nullptr;
 	}
 
@@ -142,6 +134,7 @@ namespace Zerodelay
 	#if ZERODELAY_SDLSOCKET
 		return sizeof(m_IpAddress);
 	#endif	
+		assert(0);
 		return 0;
 	}
 
@@ -167,8 +160,8 @@ namespace Zerodelay
 
 	i32_t EndPoint::compareLess(const EndPoint& a, const EndPoint& b)
 	{
-		if ( a.getLowLevelAddrSize() < b.getLowLevelAddrSize() ) return -1;
-		if ( a.getLowLevelAddrSize() > b.getLowLevelAddrSize() ) return 1;
+		//if ( a.getLowLevelAddrSize() < b.getLowLevelAddrSize() ) return -1;
+		//if ( a.getLowLevelAddrSize() > b.getLowLevelAddrSize() ) return 1;
 		return ::memcmp( a.getLowLevelAddr(), b.getLowLevelAddr(), a.getLowLevelAddrSize() ) ;
 	}
 

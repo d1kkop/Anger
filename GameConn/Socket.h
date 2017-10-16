@@ -34,6 +34,10 @@ namespace Zerodelay
 
 	class ISocket
 	{
+	public:
+		static const i32_t sm_MaxRecvBuffSize = 8192; // Ensure that this at easily encompasses the maxSendSize as it makes computations in some algorithms easier. Eg. twice as big as max SendSize.
+		static const i32_t sm_MaxSendSize = 1600;
+
 	protected:
 		ISocket();
 
@@ -117,6 +121,7 @@ namespace Zerodelay
 	{
 	public:
 		SDLSocket();
+		virtual ~SDLSocket();
 
 		// ISocket
 		virtual bool open(IPProto ipProto, bool reuseAddr) override;
@@ -127,6 +132,7 @@ namespace Zerodelay
 
 	protected:
 		UDPsocket m_Socket;
+		SDLNet_SocketSet m_SocketSet;
 	};
 #endif
 }

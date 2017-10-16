@@ -117,8 +117,7 @@ namespace Zerodelay
 		bool resolve( const std::string& name, u16_t port );
 
 
-		/*	Formats to common ipv4 notation or ipv6 notation and adds port to it with a double dot in between.
-			eg: 255.173.28.53:19234. */
+		/*	Returns canonical form of endpoint, eg: 73.123.24,18. */
 		std::string asString() const;
 
 

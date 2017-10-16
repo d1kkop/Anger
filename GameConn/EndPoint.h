@@ -18,8 +18,7 @@ namespace Zerodelay
 		// Use to see if a host can be connected to. If false is erturned, use getLastError to obtain more info.
 		bool resolve( const std::string& name, u16_t port );
 
-		// Formats to common ipv4 notation or ipv6 notation and adds port to it witha double dot in between.
-		// eg: 255.173.28.53:19234
+		// Return in canonical form.
 		std::string asString() const;
 
 		u16_t getPortHostOrder() const;

@@ -1,5 +1,5 @@
 #include "Util.h"
-
+#include "Platform.h"
 
 namespace Zerodelay
 {
@@ -40,12 +40,20 @@ namespace Zerodelay
 
 	u32_t Util::swap32(u32_t val)
 	{
+	#if ZERODELAY_LIL_ENDIAN
 		return ((val & 255)<<24) | (val>>24) | ((val & 0xFF0000)>>8) | ((val & 0xFF00)<<8);
+	#else
+		return val;
+	#endif
 	}
 
 	u16_t Util::swap16(u16_t val)
 	{
+	#if ZERODELAY_LIL_ENDIAN
 		return ((val & 255)<<8) | (val>>8);
+	#else
+		return val;
+	#endif
 	}
 
 }

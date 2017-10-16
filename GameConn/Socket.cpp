@@ -1,6 +1,8 @@
 #include "Socket.h"
 #include "Platform.h"
 
+#include <cassert>
+
 
 namespace Zerodelay
 {
@@ -250,9 +252,18 @@ namespace Zerodelay
 	/////////////////////////////////////////////////////////////////////////
 
 	SDLSocket::SDLSocket():
-		m_Socket(nullptr)
+		m_Socket(nullptr),
+		m_SocketSet(nullptr)
 	{
 		m_Blocking = true;
+		m_SocketSet = SDLNet_AllocSocketSet(1);
+	}
+
+	SDLSocket::~SDLSocket()
+	{
+		assert (!m_Open);
+		close();
+		SDLNet_FreeSocketSet(m_SocketSet);
 	}
 
 	bool SDLSocket::open(IPProto ipProto, bool reuseAddr)
@@ -263,23 +274,34 @@ namespace Zerodelay
 
 	bool SDLSocket::bind(u16_t port)
 	{
+		if (!m_Open)
+			return false;
 		if (m_Bound)
 			return true;
+		assert(m_SocketSet);
 		m_Socket = SDLNet_UDP_Open(port);
-		return m_Socket != nullptr;
+		m_Bound  = m_Socket != nullptr;
+		if (m_Bound)
+		{
+			SDLNet_UDP_AddSocket(m_SocketSet, m_Socket);
+		}
+		return m_Bound;
 	}
 
 	bool SDLSocket::close()
 	{
-		m_Open   = false;
-		m_Bound  = false;
+		m_Open   = false;		
 		if (m_Socket != nullptr)
 		{
+			if (m_Bound)
+			{
+				SDLNet_UDP_DelSocket(m_SocketSet, m_Socket);
+			}
+			m_Bound  = false;
 			SDLNet_UDP_Close(m_Socket);
 			m_Socket = nullptr;
-			return true;
 		}
-		return false;
+		return true;
 	}
 
 	ESendResult SDLSocket::send( const struct EndPoint& endPoint, const i8_t* data, i32_t len )
@@ -291,28 +313,65 @@ namespace Zerodelay
 		dstIp.host = endPoint.getIpv4NetworkOrder();
 		dstIp.port = endPoint.getPortNetworkOrder();
 
-		UDPpacket* pack = SDLNet_AllocPacket(len);
-		pack->channel = 0;
-		pack->len     = len;
-		pack->maxlen  = len * 2;
-		pack->status  = 0;
-		pack->address = dstIp;
-		Platform::memCpy( pack->data, len, data, len );
+		UDPpacket pack;
+		pack.len     = len;
+		pack.maxlen  = len;
+		pack.address = dstIp;
+		pack.data    = (Uint8*)data;
+//		Platform::memCpy( pack.data, len, data, len );
 
-		if ( 1 != SDLNet_UDP_Send( m_Socket, -1, pack ) )
+		if ( 1 != SDLNet_UDP_Send( m_Socket, -1, &pack ) )
 		{
-			m_LastError = pack->status;
-			SDLNet_FreePacket(pack);
+			m_LastError = pack.status;
+			Platform::log("SDL send udp packet error %s", SDLNet_GetError());
 			return ESendResult::Error;
 		}
 
-		SDLNet_FreePacket(pack);
+//		SDLNet_FreePacket(pack);
 		return ESendResult::Succes;
 	}
 
 	ERecvResult SDLSocket::recv( i8_t* buff, i32_t& rawSize, struct EndPoint& endPoint )
 	{
-		return ERecvResult::Error;
+		if (!m_Socket || !m_SocketSet)
+			return ERecvResult::SocketClosed;
+
+		i32_t res = SDLNet_CheckSockets( m_SocketSet, 10000000 );
+		if (!m_Open || !m_Socket) // if closing, ignore error
+			return ERecvResult::SocketClosed;
+		if ( res == -1 )
+			return ERecvResult::Error;
+		if ( res == 0 || !SDLNet_SocketReady(m_Socket) )
+			return ERecvResult::NoData;
+
+		const auto maxBuffSize = ISocket::sm_MaxRecvBuffSize;
+		UDPpacket packet = { 0 };
+		packet.data = (Uint8 *) buff;
+		packet.len  = rawSize;
+		packet.maxlen = rawSize;
+		i32_t numPackets = SDLNet_UDP_Recv( m_Socket, &packet );
+		
+		if (!m_Open)
+		{
+			return ERecvResult::SocketClosed;
+		}
+
+		if ( numPackets == 0 )
+		{
+			return ERecvResult::NoData;
+		}
+
+		if ( -1 == numPackets )
+		{
+			Platform::log("SDL recv error %s.:", SDLNet_GetError());
+			return ERecvResult::Error;
+		}
+
+		rawSize = packet.len;
+		endPoint.setIpAndPortFromNetworkOrder( packet.address.host, packet.address.port );
+//		Platform::memCpy( buff, rawSize, packet.data, packet.len );
+
+		return ERecvResult::Succes;
 	}
 
 #endif

@@ -76,11 +76,9 @@ namespace Zerodelay
 		SDLNet_Quit();
 		SDL_Quit();
 	#else
-
-	#if _WIN32
+		#if _WIN32
 			WSACleanup();
-	#endif
-
+		#endif
 	#endif
 
 		name2RpcFunction.clear();
@@ -99,12 +97,10 @@ namespace Zerodelay
 	#if ZERODELAY_SDL
 			pf = SDL_LoadFunction(nullptr, name);
 	#else
-
 		#if _WIN32
 			HMODULE hModule = ::GetModuleHandle(NULL);
 			pf = ::GetProcAddress( hModule, name );
 		#endif
-
 	#endif
 
 			if ( pf )
