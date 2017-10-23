@@ -1,7 +1,9 @@
 #pragma once
 
-#include "RUDPConnection.h"
 #include <ctime>
+
+#include "Zerodelay.h"
+#include "EndPoint.h"
 
 
 namespace Zerodelay
@@ -22,12 +24,12 @@ namespace Zerodelay
 	enum class EDataPacketType:u8_t;
 	enum class EDisconnectReason:u8_t;
 
-	class Connection: public RUDPConnection
+	class Connection
 	{
 	public:
-		Connection( bool wasConnector, const struct EndPoint& endPoint, i32_t timeoutSeconds=8, i32_t keepAliveIntervalSeconds=8, i32_t lingerTimeMs = 300 );
-		virtual ~Connection();
-		bool disconnect();
+		Connection( class ConnectionNode* connectionNode, bool wasConnector, class RUDPLink* link, i32_t timeoutSeconds=8, i32_t keepAliveIntervalSeconds=8 );
+		~Connection();
+		bool disconnect(bool sendDisconnect);
 		bool acceptDisconnect();
 		bool setInvalidPassword();
 		bool setMaxConnectionsReached();
@@ -38,10 +40,9 @@ namespace Zerodelay
 		bool sendKeepAliveAnswer();
 		bool sendIncorrectPassword();
 		bool sendMaxConnectionsReached();
+		bool sendAlreadyConnected();
 		// -- receives
 		bool onReceiveConnectAccept();
-		bool onReceiveRemoteConnected(const i8_t* data, i32_t len, EndPoint& ept);
-		bool onReceiveRemoteDisconnected(const i8_t* data, i32_t len, EndPoint& ept, EDisconnectReason& reason);
 		bool onReceiveKeepAliveRequest();
 		bool onReceiveKeepAliveAnswer();
 		// -- updates
@@ -49,19 +50,20 @@ namespace Zerodelay
 		bool updateKeepAlive();		// same
 		bool updateDisconnecting();	// same
 		// -- getters
-		i32_t getTimeSince(i32_t timestamp) const;  // in milliseconds
-		EConnectionState getState() const { return m_State; }
-		// -- IConnection interface
-		virtual i32_t getLingerTimeMs() const override { return m_LingerTimeMs; }
-		virtual bool isConnected() const override { return m_State == EConnectionState::Connected; }
+		const EndPoint& getEndPoint() const;
+		EConnectionState getState() const;
+		bool isConnected() const;
 
 	private:
 		void sendSystemMessage( EDataPacketType type, const i8_t* payload=nullptr, i32_t payloadLen=0 );
 
+		class ConnectionNode* m_ConnectionNode;
+		class RUDPLink* m_Link;
+		// how was initialized (from connect accept, or started connected)
+		bool m_WasConnector;
 		// timings
 		i32_t m_ConnectTimeoutSeconMs;
 		i32_t m_KeepAliveIntervalMs;
-		i32_t m_LingerTimeMs;
 		// timestamps
 		clock_t m_StartConnectingTS;
 		clock_t m_KeepAliveTS;

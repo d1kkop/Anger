@@ -1,10 +1,6 @@
 #pragma once
 
 #include "Platform.h"
-#include "Zerodelay.h"
-
-#include <cstring>
-#include <mutex>
 
 
 namespace Zerodelay

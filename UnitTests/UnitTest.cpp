@@ -762,24 +762,24 @@ namespace UnitTests
 				}	
 			}
 
-			//// delete some unit groups
-			//numGroups = ::rand()%5;
-			//for (int i = 0; i < 5 ; i++)
-			//{
-			//	if ( m_unitsSelf.size() == 0 )
-			//		break;
-			//	int ridx = rand() % m_unitsSelf.size();
-			//	for (auto it = m_unitsSelf.begin(); it != m_unitsSelf.end(); it++)
-			//	{
-			//		if (0 == ridx)
-			//		{
-			//			delete it->second;
-			//			it->second = nullptr;
-			//			break;
-			//		}
-			//		ridx--;
-			//	}
-			//}
+			// delete some unit groups
+			numGroups = ::rand()%5;
+			for (int i = 0; i < 5 ; i++)
+			{
+				if ( m_unitsSelf.size() == 0 )
+					break;
+				int ridx = rand() % m_unitsSelf.size();
+				for (auto it = m_unitsSelf.begin(); it != m_unitsSelf.end(); it++)
+				{
+					if (0 == ridx)
+					{
+						delete it->second;
+						it->second = nullptr;
+						break;
+					}
+					ridx--;
+				}
+			}
 
 			// assign data
 			for (int i = 0; i<100; i++)

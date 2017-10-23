@@ -3,6 +3,7 @@
 #include "Socket.h"
 #include "EndPoint.h"
 #include "RpcMacros.h"
+#include "RecvNode.h"
 #include "Util.h"
 
 
@@ -11,19 +12,25 @@ namespace Zerodelay
 	extern ZEndpoint toZpt( const EndPoint& r );
 
 
-	ConnectionNode::ConnectionNode(ERoutingMethod routingMethod, i32_t sendThreadSleepTimeMs, i32_t keepAliveIntervalSeconds, bool captureSocketErrors):
-		RecvPoint(captureSocketErrors, sendThreadSleepTimeMs),
+	ConnectionNode::ConnectionNode(ERoutingMethod routingMethod, i32_t keepAliveIntervalSeconds):
+		m_DispatchNode(nullptr),
+		m_ProcessingConnection(nullptr),
 		m_RoutingMethod(routingMethod),
 		m_IsServer(false),
-		m_SocketIsOpened(false),
-		m_SocketIsBound(false),
 		m_KeepAliveIntervalSeconds(keepAliveIntervalSeconds),
-		m_MaxIncomingConnections(32)
+		m_MaxIncomingConnections(32),
+		m_CriticalErrors(ECriticalError::None)
 	{
 	}
 
 	ConnectionNode::~ConnectionNode()
 	{
+	}
+
+	void ConnectionNode::postInitialize(RecvNode* recvNode)
+	{
+		assert(!m_DispatchNode);
+		m_DispatchNode = recvNode;
 	}
 
 	EConnectCallResult ConnectionNode::connect(const std::string& name, i32_t port, const std::string& pw, i32_t timeoutSeconds)
@@ -38,35 +45,18 @@ namespace Zerodelay
 
 	EConnectCallResult ConnectionNode::connect(const EndPoint& endPoint, const std::string& pw, i32_t timeoutSeconds)
 	{
-		if ( !m_ListenSocket )
-		{
-			return EConnectCallResult::SocketError;
-		}
-
-		if ( !openSocket() )
+		if ( !m_DispatchNode->openSocketOnPort(0) )
 		{
 			return EConnectCallResult::SocketError; 
 		}
 
-		// explicitly binding here, because otherwise we cannot start waiting for data on the socket
-		if ( !bindSocket(0) )
+		if ( m_Connections.find( endPoint ) != m_Connections.end() )
 		{
-			return EConnectCallResult::CannotBind;
+			return EConnectCallResult::AlreadyExists;
 		}
-
-		Connection* g;
-		std::lock_guard<std::mutex> lock(m_ConnectionListMutex);
-		{
-			if ( m_Connections.find( endPoint ) != m_Connections.end() )
-			{
-				return EConnectCallResult::AlreadyExists;
-			}
-			g = new Connection( true, endPoint, timeoutSeconds, m_KeepAliveIntervalSeconds );
-			m_Connections.insert( std::make_pair( endPoint, g ) );
-		}
-
+		Connection* g = new Connection( this, true, nullptr, timeoutSeconds, m_KeepAliveIntervalSeconds );
+		m_Connections.insert( std::make_pair( endPoint, g ) );
 		g->sendConnectRequest( pw );
-		startThreads();
 		return EConnectCallResult::Succes;
 	}
 
@@ -77,45 +67,24 @@ namespace Zerodelay
 			return EListenCallResult::AlreadyStartedServer;
 		}
 
-		if ( !m_ListenSocket )
+		if ( !m_DispatchNode->openSocketOnPort(port) )
 		{
 			return EListenCallResult::SocketError;
-		}
-
-		if ( !openSocket() )
-		{
-			return EListenCallResult::SocketError;
-		}
-
-		if ( !bindSocket(port) )
-		{
-			return EListenCallResult::CannotBind;
 		}
 
 		setPassword( pw );
-		startThreads();
 		m_IsServer = true;
 		return EListenCallResult::Succes;
 	}
 
-	EDisconnectCallResult ConnectionNode::disconnect(const EndPoint& endPoint)
+	EDisconnectCallResult ConnectionNode::disconnect(const EndPoint& endPoint, bool sendDisconnect)
 	{
-		Connection* conn = nullptr;
+		// check if exists
+		auto& it = m_Connections.find( endPoint );
+		if ( it != m_Connections.end() )
 		{
-			std::lock_guard<std::mutex> lock(m_ConnectionListMutex);
-			auto& it = m_Connections.find( endPoint );
-			if ( it != m_Connections.end() )
-			{
-				conn = static_cast<Connection*>(it->second); // TODO change to dynamic_cast if can be multiple types
-				if ( conn->isPendingDelete() ) // dont allow a pending for delete connection to work on
-				{
-					conn = nullptr;
-				}
-			}
-		}
-		if ( conn )
-		{
-			if ( conn->disconnect() )
+			Connection* conn = it->second;
+			if ( conn->disconnect(sendDisconnect) ) // returns false if connection is not in 'connected' state
 			{
 				return EDisconnectCallResult::Succes;
 			}
@@ -124,31 +93,23 @@ namespace Zerodelay
 		return EDisconnectCallResult::UnknownEndpoint;
 	}
 
-	void ConnectionNode::disconnectAll()
+	void ConnectionNode::disconnectAll(bool sendDisconnect)
 	{
-		// Copy to tempConnections2, as disconnectAll may be called from a callback function
-		// in which case TempConnections is already in use.
-		m_TempConnections2.clear();
-		copyConnectionsTo( m_TempConnections2 );
-		for ( auto* conn : m_TempConnections2 )
+		for ( auto it : m_Connections )
 		{
-			// Connection* gc = dynamic_cast<Connection*>(conn);
-			Connection* gc = static_cast<Connection*>(conn); // TODO change to dynamic when more connection types are there
-			if ( gc )
-			{
-				gc->disconnect();
-			}
+			assert( it.second );
+			if ( it.second ) 
+				it.second->disconnect(sendDisconnect);
 		}
 	}
 
 	i32_t ConnectionNode::getNumOpenConnections()
 	{
 		i32_t num = 0;
-		m_TempConnections.clear();
-		copyConnectionsTo( m_TempConnections );
-		for ( auto* conn : m_TempConnections )
+		for ( auto& kvp : m_Connections )
 		{
-			if ( conn->isConnected() )
+			Connection* c = kvp.second;
+			if ( c && c->isConnected() )
 			{
 				num++;
 			}
@@ -156,46 +117,95 @@ namespace Zerodelay
 		return num;
 	}
 
-	void ConnectionNode::update(std::function<void(const Packet&, IConnection*)> unhandledCb)
+	//void ConnectionNode::update(std::function<void(const Packet&, IConnection*)> unhandledCb)
+	//{
+	//	// Called from game thread
+	//	m_TempConnections.clear();
+	//	copyConnectionsTo( m_TempConnections );
+	//	for ( auto* conn : m_TempConnections )
+	//	{
+	//		// Connection* gc = dynamic_cast<Connection*>(conn);
+	//		Connection* gc = static_cast<Connection*>(conn); // TODO change to dynamic when more Connection types are there
+	//		if ( gc )
+	//		{
+	//			gc->beginPoll();
+	//			Packet pack;
+	//			// connection can have become pending delete after it has processed the packet, in that case do no longer update states or call callbacks
+	//			while ( !gc->isPendingDelete() && gc->poll(pack) ) 
+	//			{
+	//				// all possible packet types that can be processed by higher level systems than rudp handler
+	//				if ( (pack.type == EHeaderPacketType::Reliable_Ordered) || (pack.type == EHeaderPacketType::Unreliable_Sequenced) || 
+	//					 (pack.type == EHeaderPacketType::Reliable_Newest) )
+	//				{
+	//					// returns false if packet is not handled.
+	//					if ( (pack.type == EHeaderPacketType::Reliable_Newest) || !recvPacket( pack, gc ) )
+	//					{
+	//						// pass unhandled packets through to other Node systems
+	//						unhandledCb( pack, gc );
+	//					}
+	//				}
+	//				else
+	//				{
+	//					Platform::log("ERROR: invalid packet forwared to higher level packet processors");
+	//					assert( false && "invalid packet forward to higher level packet processors" );
+	//				}
+	//				delete [] pack.data;
+	//			}
+	//			gc->endPoll();
+	//			updateConnecting( gc );				// implicitely checks if connection is not a pendingDelete, no callbacks called then
+	//			updateKeepAlive( gc );				// same
+	//			updateDisconnecting( gc );			// same
+	//		}
+	//	}
+	//}
+
+	void ConnectionNode::update()
 	{
-		// Called from game thread
-		m_TempConnections.clear();
-		copyConnectionsTo( m_TempConnections );
-		for ( auto* conn : m_TempConnections )
+		if (m_CriticalErrors != (ECriticalError)0) // TODO need to go to centralized node
+			return;
+		for ( auto& kvp : m_Connections )
 		{
-			// Connection* gc = dynamic_cast<Connection*>(conn);
-			Connection* gc = static_cast<Connection*>(conn); // TODO change to dynamic when more Connection types are there
-			if ( gc )
-			{
-				gc->beginPoll();
-				Packet pack;
-				// connection can have become pending delete after it has processed the packet, in that case do no longer update states or call callbacks
-				while ( !gc->isPendingDelete() && gc->poll(pack) ) 
-				{
-					// all possible packet types that can be processed by higher level systems than rudp handler
-					if ( (pack.type == EHeaderPacketType::Reliable_Ordered) || (pack.type == EHeaderPacketType::Unreliable_Sequenced) || 
-						 (pack.type == EHeaderPacketType::Reliable_Newest) )
-					{
-						// returns false if packet is not handled.
-						if ( (pack.type == EHeaderPacketType::Reliable_Newest) || !recvPacket( pack, gc ) )
-						{
-							// pass unhandled packets through to other Node systems
-							unhandledCb( pack, gc );
-						}
-					}
-					else
-					{
-						Platform::log("ERROR: invalid packet forwared to higher level packet processors");
-						assert( false && "invalid packet forward to higher level packet processors" );
-					}
-					delete [] pack.data;
-				}
-				gc->endPoll();
-				updateConnecting( gc );				// implicitely checks if connection is not a pendingDelete, no callbacks called then
-				updateKeepAlive( gc );				// same
-				updateDisconnecting( gc );			// same
-			}
+			Connection* c = kvp.second;
+			if (!c) continue;
+			updateConnecting( c );
+			updateKeepAlive( c );	
+			updateDisconnecting( c );
 		}
+	}
+
+	bool ConnectionNode::beginProcessPacketsFor(const EndPoint& endPoint)
+	{
+		assert(!m_ProcessingConnection);
+		auto it = m_Connections.find(endPoint);
+		if ( it != m_Connections.end() )
+		{
+			m_ProcessingConnection = it->second;
+			return true;
+		}
+		return false;
+	}
+
+	bool ConnectionNode::processPacket(const Packet& pack)
+	{
+		assert(m_ProcessingConnection);
+		if (!m_ProcessingConnection) 
+			return false;
+		if ( pack.type == EHeaderPacketType::Reliable_Ordered )  // all connection node packets are reliable ordered
+		{
+			// returns false if packet was not consumed (handled)
+			return recvPacket( pack, m_ProcessingConnection );
+		}
+		else
+		{
+			Platform::log("WARNING: invalid packet forwarded to higher level packet processors");
+			assert( false && "invalid packet forward to higher level packet processors" );
+		}
+		return false;
+	}
+
+	void ConnectionNode::endProcessPackets()
+	{
+		m_ProcessingConnection = nullptr;
 	}
 
 	void ConnectionNode::setPassword(const std::string& pw)
@@ -210,31 +220,26 @@ namespace Zerodelay
 
 	void ConnectionNode::getConnectionListCopy(std::vector<ZEndpoint>& endpoints)
 	{
-		// Called from game thread
-		m_TempConnections.clear();
-		copyConnectionsTo( m_TempConnections );
-		for ( auto& tc : m_TempConnections )
+		for ( auto& kvp : m_Connections )
 		{
-			endpoints.emplace_back( toZpt( tc->getEndPoint() ) );
+			Connection* c = kvp.second;
+			if ( c && c->isConnected() )
+			{
+				endpoints.emplace_back( toZpt(c->getEndPoint()) );
+			}
 		}
 	}
 
 	ERoutingMethod ConnectionNode::getRoutingMethod() const
 	{
+		// TODO move to main Znode
 		return m_RoutingMethod;
 	}
 
-	class IConnection* ConnectionNode::createNewConnection(const EndPoint& endPoint) const
+	void ConnectionNode::prepareConnectionForDelete(Connection* g, const i8_t* fmt, ...)
 	{
-		return new Connection( false, endPoint, m_KeepAliveIntervalSeconds );
-	}
-
-	void ConnectionNode::removeConnection(const class Connection* g, const i8_t* fmt, ...)
-	{
-		assert( g );
-		auto* gg = const_cast<Connection*>(g);
-		gg->blockAllUpcomingSends(true);
-		gg->setIsPendingDelete();
+		if (!g) return;
+		prepareConnectionForDelete(g);
 		if ( fmt )
 		{
 			i8_t buff[2048];
@@ -250,6 +255,13 @@ namespace Zerodelay
 		}
 	}
 
+	void ConnectionNode::prepareConnectionForDelete(Connection* g)
+	{
+		assert( g );
+		if (!g) return;
+		g->disconnect(false);
+	}
+
 	void ConnectionNode::sendRemoteConnected(const Connection* g)
 	{
 		if ( m_RoutingMethod != ERoutingMethod::ClientServer || !isServer() )
@@ -259,11 +271,11 @@ namespace Zerodelay
 		i32_t offs = etp.write( buff, 128 );
 		if ( offs < 0 )
 		{
-			removeConnection( g, "removing conn, serialization error %s", __FUNCTION__ );
+			setCriticalSerializationError(ECriticalError::SerializationError, ZERODELAY_FUNCTION);
 			return;
 		}
 		// to all except
-		send( (u8_t)EDataPacketType::RemoteConnected, buff, offs, &etp, true );
+		m_DispatchNode->send( (u8_t)EDataPacketType::RemoteConnected, buff, offs, &etp, true );
 	}
 
 	void ConnectionNode::sendRemoteDisconnected(const Connection* g, EDisconnectReason reason)
@@ -279,24 +291,24 @@ namespace Zerodelay
 		}
 		else
 		{
-			removeConnection( g, "removing conn, serialization error %s", __FUNCTION__ );
+			setCriticalSerializationError(ECriticalError::SerializationError, ZERODELAY_FUNCTION);
 			return;
 		}
 		// to all except
-		send( (u8_t)EDataPacketType::RemoteDisconnected, buff, offs+1, &etp, true );
+		m_DispatchNode->send( (u8_t)EDataPacketType::RemoteDisconnected, buff, offs+1, &etp, true );
 	}
 
-	bool ConnectionNode::recvPacket(struct Packet& pack, class Connection* g)
+	bool ConnectionNode::recvPacket(const Packet& pack, class Connection* g)
 	{
-		// Other packet types than these will not be considered in connection node, return immediately in such case
-		if (!(pack.type == EHeaderPacketType::Reliable_Ordered || pack.type == EHeaderPacketType::Unreliable_Sequenced))
+		assert(pack.type == EHeaderPacketType::Reliable_Ordered);
+		if (!(pack.type == EHeaderPacketType::Reliable_Ordered))
 		{
-			// unhandled packet
-			return false;
+			Platform::log("WARNING: Unexpected packet type (%d) in %s", (i32_t)pack.type, __FUNCTION__);
+			return false; // all connect node packets are reliable ordered
 		}
 		EDataPacketType packType = (EDataPacketType)pack.data[0];
-		const i8_t* payload  = pack.data+1; // first byte is PacketType
-		i32_t payloadLen = pack.len-1;  // len includes the packetType byte
+		const i8_t* payload  = pack.data+1;		// first byte is PacketType
+		i32_t payloadLen	 = pack.len-1;		// len includes the packetType byte
 		switch (packType)
 		{
 		case EDataPacketType::ConnectRequest:
@@ -326,170 +338,176 @@ namespace Zerodelay
 		case EDataPacketType::MaxConnectionsReached:
 			recvMaxConnectionsReached(g, payload, payloadLen);
 			break;
+		case EDataPacketType::AlreadyConnected:
+			recvAlreadyConnected(g, payload, payloadLen);
+			break;
 		case EDataPacketType::Rpc:
 			recvRpcPacket(payload, payloadLen, g);
 			break;
 		default:
-			if ( (u8_t)packType >= USER_ID_OFFSET )
-			{
-				// TODO should not be in connection node
-				recvUserPacket(g, pack );
-			}
-			else
-			{
-				// unhandled packet
-				return false;
-			}
-			break;
+			// unandled packet
+			return false; 
 		}
 		return true;
 	}
 
 	void ConnectionNode::recvConnectPacket(const i8_t* payload, i32_t payloadLen, class Connection* g)
 	{
+		// If already in list
+		auto it = m_Connections.find(g->getEndPoint());
+		if (it != m_Connections.end())
+		{
+			g->sendAlreadyConnected();
+			return;
+		}
+		// Check password
 		static const i32_t kBuffSize=1024;
 		i8_t pw[kBuffSize];
 		if ( !Util::readString( pw, kBuffSize, payload, payloadLen ))
 		{
-			removeConnection( g, "removing conn, serialization error %s", __FUNCTION__ );
+			setCriticalSerializationError(ECriticalError::SerializationError, ZERODELAY_FUNCTION);
 			return; // invalid serialization
 		}
 		if ( strcmp( m_Password.c_str(), pw ) != 0 )
 		{
 			g->sendIncorrectPassword();
-			removeConnection( g, "removing conn, invalid pw %s", g->getEndPoint().asString().c_str() );
+			return;
 		}
-		else
+		// Check if not exceeding max connections
+		if ( (i32_t)m_Connections.size() >= m_MaxIncomingConnections )
 		{
-			i32_t numConnections;
+			g->sendMaxConnectionsReached();
+			return;
+		}
+		// All fine..
+		if (g->sendConnectAccept())
+		{
+			Util::forEachCallback(m_NewConnectionCallbacks, [&](auto& fcb)
 			{
-				std::lock_guard<std::mutex> lock(m_ConnectionListMutex);
-				numConnections = (i32_t)m_Connections.size();
-			}
-			// +1 because connection is already added to list when here, that is every data packet's sender address is added to the connection list,
-			// whether the connection will establish depends on further negotiations
-			if ( numConnections >= m_MaxIncomingConnections+1 )
-			{
-				g->sendMaxConnectionsReached();
-				removeConnection( g, "removing conn, max number of connections reached %s", g->getEndPoint().asString().c_str() );
-				return;
-			}
-			// All fine..
-			if (g->sendConnectAccept())
-			{
-				forEachCallback(m_NewConnectionCallbacks, [&](auto& fcb)
-				{
-					(fcb)(g->getEndPoint());
-				});
-				sendRemoteConnected( g );
-				Platform::log( "%s connected", g->getEndPoint().asString().c_str() );
-			}
-			else
-			{
-				removeConnection( g, "removing conn, unexpected state %s", __FUNCTION__ );
-			}
+				(fcb)(g->getEndPoint());
+			});
+			sendRemoteConnected( g );
+			Platform::log( "%s connected", g->getEndPoint().asString().c_str() );
 		}
 	}
 
 	void ConnectionNode::recvConnectAccept(class Connection* g)
 	{
-		if (g->onReceiveConnectAccept())
+		if (g->onReceiveConnectAccept()) // returns true if state was successfully handled
 		{
-			forEachCallback(m_ConnectResultCallbacks, [&](auto& fcb)
+			Util::forEachCallback(m_ConnectResultCallbacks, [&](auto& fcb)
 			{
 				(fcb)(g->getEndPoint(), EConnectResult::Succes);
 			});
-			Platform::log( "accepted connection %s", g->getEndPoint().asString().c_str() );
+			Platform::log( "Connection accepted to %s", g->getEndPoint().asString().c_str() );
 		}
 		else
 		{
-			removeConnection ( g, "removing conn, unexpected state %s", __FUNCTION__ );
+			prepareConnectionForDelete( g );
 		}
 	}
 
 	void ConnectionNode::recvDisconnectPacket(const i8_t* payload, i32_t len, class Connection* g)
 	{
-		if ( g->acceptDisconnect() )
+		if ( g->acceptDisconnect() ) // returns true if state was successfully handled
 		{
 			sendRemoteDisconnected( g, EDisconnectReason::Closed );
-			forEachCallback(m_DisconnectCallbacks, [&](auto& fcb)
+			Util::forEachCallback(m_DisconnectCallbacks, [&](auto& fcb)
 			{
 				(fcb)(true, g->getEndPoint(), EDisconnectReason::Closed);
 			});
-			removeConnection(g, "disconnect received, removing connecting..%s", g->getEndPoint().asString().c_str());
+			prepareConnectionForDelete(g, "Disconnect received, removing connection %s", g->getEndPoint().asString().c_str());
 		}
 		else
 		{
-			removeConnection( g, "removing conn, unexpected state %s", __FUNCTION__ );
+			prepareConnectionForDelete( g );
 		}
 	}
 
-	void ConnectionNode::recvRemoteConnected(class Connection* g, const i8_t* payload, i32_t payloadLen)
+	void ConnectionNode::recvRemoteConnected(class Connection* g, const i8_t* data, i32_t len)
 	{
 		EndPoint etp;
-		if (g->onReceiveRemoteConnected(payload, payloadLen, etp))
+		if (etp.read( data, len ) < 0)
 		{
-			forEachCallback(m_NewConnectionCallbacks, [&](auto& fcb)
-			{
-				(fcb)(etp);
-			});
-			Platform::log( "remote %s connected", etp.asString().c_str() );
+			setCriticalSerializationError(ECriticalError::SerializationError, ZERODELAY_FUNCTION);
+			return;
 		}
-		else
+		Util::forEachCallback(m_NewConnectionCallbacks, [&](auto& fcb)
 		{
-			removeConnection( g, "removing conn, serialization fail %s", __FUNCTION__ );
-		}
+			(fcb)(etp);
+		});
+		Platform::log( "Remote %s connected", etp.asString().c_str() );
 	}
 
-	void ConnectionNode::recvRemoteDisconnected(class Connection* g, const i8_t* payload, i32_t payloadLen)
+	void ConnectionNode::recvRemoteDisconnected(class Connection* g, const i8_t* data, i32_t len)
 	{
 		EndPoint etp;
 		EDisconnectReason reason;
-		if (g->onReceiveRemoteDisconnected(payload, payloadLen, etp, reason))
+		i32_t offs = etp.read(data, len);
+		if ( offs >= 0 )
 		{
-			forEachCallback(m_DisconnectCallbacks, [&](auto& fcb)
+			assert(g->getEndPoint() != etp); // should not remote disconnect for a direct connection
+			if (g->getEndPoint() == etp)
+			{
+				setCriticalSerializationError(ECriticalError::SerializationError, ZERODELAY_FUNCTION);
+				return;
+			}
+			reason = (EDisconnectReason)data[offs];
+			Util::forEachCallback(m_DisconnectCallbacks, [&](auto& fcb)
 			{
 				assert ( etp != g->getEndPoint() && "received remote disc for ourselves..");
 				(fcb)(false, etp, reason);
 			});
-			Platform::log( "remote %s disconnected", etp.asString().c_str() );
+			Platform::log( "Remote %s disconnected", etp.asString().c_str() );
+			prepareConnectionForDelete( g );
 		}
 		else
 		{
-			removeConnection( g, "removing conn, serialization fail or unexpected state %s", __FUNCTION__ );
+			setCriticalSerializationError(ECriticalError::SerializationError, ZERODELAY_FUNCTION);
 		}
 	}
 
 	void ConnectionNode::recvInvalidPassword(class Connection* g, const i8_t* payload, i32_t payloadLen)
 	{
-		if ( g->setInvalidPassword() )
+		if ( g->setInvalidPassword() ) // returns true if state change ocurred
 		{
-			forEachCallback(m_ConnectResultCallbacks, [&](auto& fcb)
+			Util::forEachCallback(m_ConnectResultCallbacks, [&](auto& fcb)
 			{
 				(fcb)(g->getEndPoint(), EConnectResult::InvalidPassword);
 			});
-			removeConnection( g, "removing conn %s, invalid pw", g->getEndPoint().asString().c_str() );
+			Platform::log("Received invalid password for connection %s", g->getEndPoint().asString().c_str());
 		}
 		else
 		{
-			removeConnection( g, "removing conn, unexpected state %s", __FUNCTION__ );
+			prepareConnectionForDelete( g );
 		}
 	}
 
 	void ConnectionNode::recvMaxConnectionsReached(class Connection* g, const i8_t* payload, i32_t payloadLen)
 	{
-		if ( g->setMaxConnectionsReached() )
+		if ( g->setMaxConnectionsReached() ) // returns true if state change occurred
 		{
-			forEachCallback(m_ConnectResultCallbacks, [&](auto& fcb)
+			Util::forEachCallback(m_ConnectResultCallbacks, [&](auto& fcb)
 			{
 				(fcb)(g->getEndPoint(), EConnectResult::MaxConnectionsReached);
 			});
-			removeConnection( g, "removing conn %s, max connections reached", g->getEndPoint().asString().c_str() );
+			Platform::log("Received max connections reached for connection %s", g->getEndPoint().asString().c_str());
 		}
 		else
 		{
-			removeConnection( g, "removing conn, unexpected state %s", __FUNCTION__ );
+			prepareConnectionForDelete( g );
 		}
+	}
+
+	void ConnectionNode::recvAlreadyConnected(class Connection* g, const i8_t* payload, i32_t payloadLen)
+	{
+		// No state change on the connection in this case, could already be successfully connected before.
+		Util::forEachCallback(m_ConnectResultCallbacks, [&](auto& fcb)
+		{
+			(fcb)(g->getEndPoint(), EConnectResult::AlreadyConnected);
+		});
+		// Consider this a warning
+		Platform::log("WARNING: Received already connected for %s", g->getEndPoint().asString().c_str());
 	}
 
 	void ConnectionNode::recvRpcPacket(const i8_t* payload, i32_t len, class Connection* g)
@@ -497,7 +515,7 @@ namespace Zerodelay
 		i8_t name[RPC_NAME_MAX_LENGTH];
 		if ( !Util::readFixed( name, RPC_NAME_MAX_LENGTH, payload, (RPC_NAME_MAX_LENGTH<len?RPC_NAME_MAX_LENGTH:len)) )
 		{
-			removeConnection( g, "rpc serialiation error %s", __FUNCTION__ );
+			setCriticalSerializationError(ECriticalError::SerializationError, ZERODELAY_FUNCTION);
 			return;
 		}
 		i8_t fname[RPC_NAME_MAX_LENGTH*2];
@@ -513,56 +531,53 @@ namespace Zerodelay
 		}
 		else
 		{
-			removeConnection( g, "removing conn, rpc function %s not found %s", fname, __FUNCTION__ );
+			setCriticalSerializationError(ECriticalError::CannotFindExternalCFunction, ZERODELAY_FUNCTION);
+			Platform::log("CRITICAL: Cannot find external C function %s", fname);
 		}
 	}
 
-	void ConnectionNode::recvUserPacket(class Connection* g, const Packet& pack)
-	{
-		if ( pack.relay && m_RoutingMethod == ERoutingMethod::ClientServer && isServer() ) // send through to others
-		{
-			// except self
-			send( pack.data[0], pack.data+1, pack.len-1, &g->getEndPoint(), true, pack.type, pack.channel, false /* relay only once */ );
-		}
-		forEachCallback(m_CustomDataCallbacks, [&](auto& fcb)
-		{
-			(fcb)(g->getEndPoint(), pack.data[0], pack.data+1, pack.len-1, pack.channel);
-		});
-	}
+	//void ConnectionNode::recvUserPacket(class Connection* g, const Packet& pack)
+	//{
+	//	if ( pack.relay && m_RoutingMethod == ERoutingMethod::ClientServer && isServer() ) // send through to others
+	//	{
+	//		// except self
+	//		send( pack.data[0], pack.data+1, pack.len-1, &g->getEndPoint(), true, pack.type, pack.channel, false /* relay only once */ );
+	//	}
+	//	forEachCallback(m_CustomDataCallbacks, [&](auto& fcb)
+	//	{
+	//		(fcb)(g->getEndPoint(), pack.data[0], pack.data+1, pack.len-1, pack.channel);
+	//	});
+	//}
 
 	void ConnectionNode::updateConnecting(class Connection* g)
 	{
-		if ( g->updateConnecting() ) // Else, already connected or timed out
+		if ( g->updateConnecting() ) // Returns true if there is a state change! Else, already connected or timed out
 		{
 			if ( g->getState() == EConnectionState::InitiateTimedOut )
 			{
-				if ( !g->isPendingDelete() ) // other updates such as updateKeepAlive or updateDisconnecting may set it to pendingDelete, no longer invoke callbacks then
+				Util::forEachCallback( m_ConnectResultCallbacks, [g] (auto& fcb)
 				{
-					forEachCallback( m_ConnectResultCallbacks, [g] (auto& fcb)
-					{
-						(fcb)( g->getEndPoint(), EConnectResult::Timedout );
-					});
-				}
-				removeConnection( g, "removing conn, connecting timed out %s", g->getEndPoint().asString().c_str() );
+					(fcb)( g->getEndPoint(), EConnectResult::Timedout );
+				});
+				// By calling this, the state will be set to 'Disconnected', so callbacks are not called multiple times.
+				prepareConnectionForDelete( g, "Removing connection %s, timed out", g->getEndPoint().asString().c_str() );
 			}
 		}
 	}
 
 	void ConnectionNode::updateKeepAlive(class Connection* g)
 	{
-		if ( g->updateKeepAlive() ) // Else arleady timed out, just not timed out, or no keep alive is managed
+		if ( g->updateKeepAlive() ) // Returns true if there is a state change! Else arleady timed out, just not timed out, or no keep alive is managed
 		{
 			if ( g->getState() == EConnectionState::ConnectionTimedOut )
 			{
 				sendRemoteDisconnected( g, EDisconnectReason::Lost );
-				if ( !g->isPendingDelete() ) // other updates such as updateConnecting or updateDisconnecting may set it to pendingDelete, no longer invoke callbacks then
+				Util::forEachCallback( m_DisconnectCallbacks, [g] (auto& fcb)
 				{
-					forEachCallback( m_DisconnectCallbacks, [g] (auto& fcb)
-					{
-						(fcb)( true, g->getEndPoint(), EDisconnectReason::Lost );
-					});
-				}
-				removeConnection( g, "removing conn, connection was lost %s", g->getEndPoint().asString().c_str() );
+					(fcb)( true, g->getEndPoint(), EDisconnectReason::Lost );
+				});
+				// By calling this, state is set to disconnected, so callbacks are called multiple times.
+				prepareConnectionForDelete( g, "Removing connection %s, was lost", g->getEndPoint().asString().c_str() );
 			}
 		}
 	}
@@ -573,32 +588,20 @@ namespace Zerodelay
 		{
 			if ( g->getState() == EConnectionState::Disconnected ) // if linger state is passed, state is set to disconnected
 			{
-				if ( !g->isPendingDelete() ) // other updates such as updateConnecting or updateKeepAlive may set it to pendingDelete, no longer invoke callbacks then
+				Util::forEachCallback( m_DisconnectCallbacks, [g] (auto& fcb)
 				{
-					forEachCallback( m_DisconnectCallbacks, [g] (auto& fcb)
-					{
-						(fcb)( true, g->getEndPoint(), EDisconnectReason::Closed );
-					});
-				}
-				removeConnection( g, "removing conn %s, disonnected gracefully", g->getEndPoint().asString().c_str() );
+					(fcb)( true, g->getEndPoint(), EDisconnectReason::Closed );
+				});
+				// By calling this, state is set to disconnected, so callbacks are called multiple times.
+				prepareConnectionForDelete( g, "Removing connection %s, disonnected gracefully", g->getEndPoint().asString().c_str() );
 			}
 		}
 	}
 
-	bool ConnectionNode::openSocket()
+	void ConnectionNode::setCriticalSerializationError(ECriticalError error, const char* fn)
 	{
-		if ( m_SocketIsOpened )
-			return true;
-		// A node can connect to multiple addresses, but the socket should only open once
-		m_SocketIsOpened = m_ListenSocket->open();
-		return m_SocketIsOpened;
+		Platform::log("CRITICAL: Error (%d) in function %s", (i32_t)error, fn);
+		m_CriticalErrors = (ECriticalError)((uint32_t)m_CriticalErrors | (uint32_t)error);
 	}
 
-	bool ConnectionNode::bindSocket(u16_t port)
-	{
-		if ( m_SocketIsBound )
-			return true;
-		m_SocketIsBound = m_ListenSocket->bind(port);
-		return m_SocketIsBound;
-	}
 }

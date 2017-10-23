@@ -1,10 +1,10 @@
 
 #include "../vld/include/vld.h"
 
-#include "RUDPConnection.h"
+#include "RUDPLink.h"
 #include "Socket.h"
 #include "EndPoint.h"
-#include "RecvPoint.h"
+#include "RecvNode.h"
 #include "ConnectionNode.h"
 #include "Connection.h"
 #include "Platform.h"

@@ -11,7 +11,7 @@ namespace Zerodelay
 	{
 	public:
 		NetVariable(i32_t nBytes, void* data, void* prevData);
-		virtual ~NetVariable();
+		~NetVariable();
 
 		enum class EVarControl getVarControl() const;
 		i32_t getGroupId() const;

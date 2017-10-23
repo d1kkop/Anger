@@ -17,6 +17,11 @@ Zerodelay is a network gaming library that is aimed to be lightweight, cross pla
 		* Cluster Unreliable data (more efficient sending)
 
 
+	NOTES:
+		* Avoid calling api calls from callback functions.
+		* Mixing ERoutingMethods results in undefined behaviour.
+
+
 	Zerodelay includes tests on Performance, memory leaks and reliability.
 
 

@@ -2,6 +2,7 @@
 
 #include "Zerodelay.h"
 #include "EndPoint.h"
+#include "Util.h"
 
 #include <deque>
 #include <map>
@@ -10,6 +11,9 @@
 
 namespace Zerodelay
 {
+	typedef std::function<void (const EndPoint*, u32_t)>							GroupCallback;
+
+
 	/** ---------------------------------------------------------------------------------------------------------------------------------
 		A VariableGroup becomes a pending group when there are no more network ID's available.
 		In such case, first new ID's have to be obtained, until then, the creation of the 
@@ -42,11 +46,11 @@ namespace Zerodelay
 
 	public:
 		VariableGroupNode();
-		virtual ~VariableGroupNode();
-		void postInitialize(); // called when all ptrs to others managers are set
+		~VariableGroupNode();
+		void postInitialize(class ZNode* zNode, class ConnectionNode* connNode); // called when all ptrs to others managers are set
 
 		void update();
-		bool recvPacket(const struct Packet& pack, const class IConnection* conn);
+		bool processPacket(const struct Packet& pack, const EndPoint& etp);
 
 		void deferredCreateGroup(const i8_t* paramData, i32_t paramDataLen, i8_t channel);
 		void beginNewGroup(u32_t nid, const ZEndpoint* ztp);
@@ -72,16 +76,21 @@ namespace Zerodelay
 		void callCreateVariableGroup(i8_t* data, i32_t len, bool remote, const ZEndpoint* ztp);
 		bool deserializeGroup(const i8_t*& data, int32_t& buffLen);
 		class VariableGroup* findOrRemoveBrokenGroup( u32_t networkId, const EndPoint* etp = nullptr );
+		// group callbacks
+		void bindOnGroupUpdated(const GroupCallback& cb)				{ Util::bindCallback(m_GroupUpdateCallbacks, cb); }
+		void bindOnGroupDestroyed(const GroupCallback& cb)				{ Util::bindCallback(m_GroupDestroyCallbacks, cb); }
 
 		bool m_IsNetworkIdProvider; // Only 1 node is the owner of all id's, it provides id's on request.
 		std::deque<u32_t> m_UniqueIds;
 		std::deque<PendingVariableGroup> m_PendingGroups;
 		std::map<u32_t, class VariableGroup*> m_VariableGroups; // variable groups on this machine
 		std::map<EndPoint, std::map<u32_t, class VariableGroup*>, EndPoint::STLCompare> m_RemoteVariableGroups; // variable groups per connection of remote machines
-		class IConnection* m_ConnOwner;
 		clock_t m_LastIdPackRequestTS;
 		u32_t   m_UniqueIdCounter;
+		std::vector<GroupCallback> m_GroupUpdateCallbacks;
+		std::vector<GroupCallback> m_GroupDestroyCallbacks;
 		// --- ptrs to other managers
 		class ZNode* m_ZNode;
+		class ConnectionNode* m_ConnectionNode;
 	};
 }

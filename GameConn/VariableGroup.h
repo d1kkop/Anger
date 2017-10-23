@@ -12,7 +12,7 @@ namespace Zerodelay
 	{
 	public:
 		VariableGroup();
-		virtual ~VariableGroup();
+		~VariableGroup();
 
 		bool read( const i8_t*& data, i32_t& buffLen, u16_t groupBits );
 		void addVariable( NetVariable* nv ) { m_Variables.emplace_back( nv ); }

@@ -1,6 +1,7 @@
 #include "Connection.h"
 #include "ConnectionNode.h"
 #include "Platform.h"
+#include "RUDPLink.h"
 
 
 namespace Zerodelay
@@ -19,34 +20,29 @@ namespace Zerodelay
 	}
 
 
-	Connection::Connection(bool wasConnector, const EndPoint& endPoint, i32_t timeoutSeconds, i32_t keepAliveIntervalSeconds, i32_t lingerTimeMs):
-		RUDPConnection(endPoint),
+	Connection::Connection(ConnectionNode* connectionNode, bool wasConnector, RUDPLink* link, i32_t timeoutSeconds, i32_t keepAliveIntervalSeconds):
+		m_ConnectionNode(connectionNode),
+		m_Link(link),
+		m_WasConnector(wasConnector),
 		m_ConnectTimeoutSeconMs(timeoutSeconds*1000),
 		m_KeepAliveIntervalMs(keepAliveIntervalSeconds*1000),
-		m_LingerTimeMs(lingerTimeMs),
 		m_StartConnectingTS(-1),
 		m_KeepAliveTS(-1),
 		m_IsWaitingForKeepAlive(false),
 		m_State(EConnectionState::Idle)
 	{
-		if ( m_LingerTimeMs > sm_MaxLingerTimeMs )
-		{
-			m_LingerTimeMs = sm_MaxLingerTimeMs;
-		}
 	}
 
 	Connection::~Connection()
 	{
 	}
 
-	bool Connection::disconnect()
+	bool Connection::disconnect(bool sendDisconnect)
 	{
 		Ensure_State( Connected )
 		m_State = EConnectionState::Disconnecting;
 		m_DisconnectTS = ::clock();
-		sendSystemMessage( EDataPacketType::Disconnect );
-		setIsPendingDelete();
-		blockAllUpcomingSends(true);
+		if ( sendDisconnect ) sendSystemMessage( EDataPacketType::Disconnect );
 		return true;
 	}
 
@@ -117,40 +113,19 @@ namespace Zerodelay
 		return true;
 	}
 
+	bool Connection::sendAlreadyConnected()
+	{
+		Ensure_State( Idle );
+		sendSystemMessage( EDataPacketType::AlreadyConnected );
+		return true;
+	}
+
 	bool Connection::onReceiveConnectAccept()
 	{
 		Ensure_State( Connecting );
 		m_State = EConnectionState::Connected;
 		m_KeepAliveTS = ::clock();
 		return true;
-	}
-
-	bool Connection::onReceiveRemoteConnected(const i8_t* data, i32_t len, EndPoint& ept)
-	{
-		// Deliberately no state ensurance
-		if (ept.read( data, len ) < 0)
-		{
-			Platform::log("serialization fail in: %s\n", (__FUNCTION__));
-			return false;
-		}
-		return true;
-	}
-
-	bool Connection::onReceiveRemoteDisconnected(const i8_t* data, i32_t len, EndPoint& etp, EDisconnectReason& reason)
-	{
-		// Deliberately no state ensurance
-		i32_t offs = etp.read(data, len);
-		if ( offs >= 0 )
-		{
-			if ( etp == this->getEndPoint() ) // Remote endpoint can only disconnect once
-			{
-				Ensure_State( Connected );
-			}
-			reason = (EDisconnectReason)data[offs];
-			return true;
-		}
-		Platform::log("serialization fail in: %s\n", (__FUNCTION__));
-		return false;
 	}
 
 	bool Connection::onReceiveKeepAliveRequest()
@@ -175,7 +150,7 @@ namespace Zerodelay
 	bool Connection::updateConnecting()
 	{
 		Check_State( Connecting );
-		if ( getTimeSince( m_StartConnectingTS ) >= m_ConnectTimeoutSeconMs )
+		if ( Util::getTimeSince( m_StartConnectingTS ) >= m_ConnectTimeoutSeconMs )
 		{
 			m_State = EConnectionState::InitiateTimedOut;
 			return true;
@@ -190,14 +165,14 @@ namespace Zerodelay
 			return false; // discard update
 		if ( !m_IsWaitingForKeepAlive )
 		{
-			if ( getTimeSince( m_KeepAliveTS ) > m_KeepAliveIntervalMs )
+			if ( Util::getTimeSince( m_KeepAliveTS ) > m_KeepAliveIntervalMs )
 			{
 				sendKeepAliveRequest();
 				m_IsWaitingForKeepAlive = true;
 				// printf("alive request..\n"); // dbg
 			}
 		}
-		else if ( getTimeSince( m_KeepAliveTS ) > 3000 ) // 3 seconds is rediculous ping, so consider it lost
+		else if ( Util::getTimeSince( m_KeepAliveTS ) > 3000 ) // 3 seconds is rediculous ping, so consider it lost
 		{
 			m_State = EConnectionState::ConnectionTimedOut;
 			return true;
@@ -208,7 +183,7 @@ namespace Zerodelay
 	bool Connection::updateDisconnecting()
 	{
 		Check_State( Disconnecting );
-		if ( getTimeSince(m_DisconnectTS) > m_LingerTimeMs )
+		if ( Util::getTimeSince(m_DisconnectTS) > RUDPLink::sm_MaxLingerTimeMs )
 		{
 			// assume afrer this time, that the message was received, otherwise just unlucky
 			m_State = EConnectionState::Disconnected;
@@ -217,16 +192,26 @@ namespace Zerodelay
 		return false;
 	}
 
-	i32_t Connection::getTimeSince(i32_t timestamp) const
+	const EndPoint& Connection::getEndPoint() const
 	{
-		clock_t now = ::clock();
-		float elapsedSeconds = float(now - timestamp) / (float)CLOCKS_PER_SEC;
-		return i32_t(elapsedSeconds * 1000.f);
+		assert(m_Link);
+		return m_Link->getEndPoint();
 	}
 
-	void Connection::sendSystemMessage( EDataPacketType packType, const i8_t* payload, i32_t payloadLen )
+	EConnectionState Connection::getState() const
 	{
-		//	static_assert( sizeof(EGameNodePacketType)==1 );
-		addToSendQueue( (u8_t)packType, payload, payloadLen, EHeaderPacketType::Reliable_Ordered );
+		return m_State;
+	}
+
+	bool Connection::isConnected() const
+	{
+		return getState() == EConnectionState::Connected;
+	}
+
+	void Connection::sendSystemMessage(EDataPacketType packType, const i8_t* payload, i32_t payloadLen)
+	{
+		assert(m_Link);
+		if (!m_Link) return;
+		m_Link->addToSendQueue( (u8_t)packType, payload, payloadLen, EHeaderPacketType::Reliable_Ordered );
 	}
 }

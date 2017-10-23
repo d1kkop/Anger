@@ -37,6 +37,7 @@ namespace Zerodelay
 		KeepAliveAnswer,
 		IncorrectPassword,
 		MaxConnectionsReached,
+		AlreadyConnected,
 		Rpc,
 		IdPackRequest,
 		IdPackProvide,
@@ -48,11 +49,11 @@ namespace Zerodelay
 
 	#define  USER_ID_OFFSET (u8_t)(EDataPacketType::UserOffset)
 
+
 	enum class EConnectCallResult
 	{
 		Succes,
 		CannotResolveHost,
-		CannotBind,
 		AlreadyExists,
 		SocketError
 	};
@@ -60,9 +61,8 @@ namespace Zerodelay
 	enum class EListenCallResult
 	{
 		Succes,
-		CannotBind,
-		SocketError,
-		AlreadyStartedServer
+		AlreadyStartedServer,
+		SocketError
 	};
 
 	enum class EDisconnectCallResult
@@ -77,7 +77,8 @@ namespace Zerodelay
 		Succes,
 		Timedout,
 		InvalidPassword,
-		MaxConnectionsReached
+		MaxConnectionsReached,
+		AlreadyConnected
 	};
 
 	enum class EDisconnectReason : u8_t
@@ -117,7 +118,7 @@ namespace Zerodelay
 		bool resolve( const std::string& name, u16_t port );
 
 
-		/*	Returns canonical form of endpoint, eg: 73.123.24,18. */
+		/*	Returns canonical form of endpoint, eg: 73.123.24.18. */
 		std::string asString() const;
 
 
@@ -292,11 +293,6 @@ namespace Zerodelay
 		void* getUserDataPtr() const;
 
 
-		/*	Custom handle to provide a way to get from a 'global' variable group or rpc functions to application code. */
-		void setUserDataIdx( i32_t idx );
-		i32_t  gtUserDataIdx() const;
-
-
 		/*	Deferred create variable group from serialized data.
 			Causes 'createGroup_xxx' to be called when a network Id is available.
 			Usually this function is only used by the system internally. 
@@ -305,9 +301,8 @@ namespace Zerodelay
 
 
 	private:
-		class ConnectionNode* p;
+		class RecvNode* rn;
+		class ConnectionNode* cn;
 		class VariableGroupNode* vgn;
-
-		friend class VariableGroupNode;
 	};
 }

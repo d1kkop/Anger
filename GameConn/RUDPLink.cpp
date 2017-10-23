@@ -1,6 +1,6 @@
-#include "RUDPConnection.h"
+#include "RUDPLink.h"
 #include "Socket.h"
-#include "RecvPoint.h"
+#include "RecvNode.h"
 
 #include <algorithm>
 #include <cassert>
@@ -8,10 +8,11 @@
 
 namespace Zerodelay
 {
-	RUDPConnection::RUDPConnection(const EndPoint& endPoint):
+	RUDPLink::RUDPLink(const EndPoint& endPoint):
 		m_BlockNewSends(false),
-		/* packet loss */
-		m_PacketLossPercentage(0)
+		m_PacketLossPercentage(0),
+		m_IsPendingDelete(false),
+		m_MarkDeleteTS(0)
 	{
 		m_EndPoint = endPoint;
 		m_SendSeq_reliable_newest = 0;
@@ -28,7 +29,7 @@ namespace Zerodelay
 		}
 	}
 
-	RUDPConnection::~RUDPConnection()
+	RUDPLink::~RUDPLink()
 	{
 		for ( auto& it : m_SendQueue_unreliable ) delete [] it.data;
 		for ( i32_t i=0; i<sm_NumChannels; ++i ) for (auto& it : m_SendQueue_reliable[i] ) delete [] it.data;
@@ -37,7 +38,7 @@ namespace Zerodelay
 		for ( auto& kvp : m_SendQueue_reliable_newest ) for (auto i = 0; i < 16 ; i++) delete [] kvp.second.groupItems[i].data;
 	}
 
-	void RUDPConnection::addToSendQueue(u8_t id, const i8_t* data, i32_t len, EHeaderPacketType packetType, u8_t channel, bool relay)
+	void RUDPLink::addToSendQueue(u8_t id, const i8_t* data, i32_t len, EHeaderPacketType packetType, u8_t channel, bool relay)
 	{
 		if ( m_BlockNewSends ) // discard new packetes
 			return; 
@@ -51,24 +52,24 @@ namespace Zerodelay
 		assembleNormalPacket( pack, packetType, id, data, len, off_Norm_Data, channel, relay );
 		if ( packetType == EHeaderPacketType::Reliable_Ordered )
 		{
-			std::lock_guard<std::mutex> lock(m_SendMutex);
+			std::lock_guard<std::mutex> lock(m_SendQueuesMutex);
 			*(u32_t*)&pack.data[off_Norm_Seq] = m_SendSeq_reliable[channel]++;
 			m_SendQueue_reliable[channel].emplace_back( pack );
 		}
 		else
 		{
-			std::lock_guard<std::mutex> lock(m_SendMutex);
+			std::lock_guard<std::mutex> lock(m_SendQueuesMutex);
 			*(u32_t*)&pack.data[off_Norm_Seq] = m_SendSeq_unreliable[channel]++;
 			m_SendQueue_unreliable.emplace_back( pack );
 		}
 	}
 
-	void RUDPConnection::addReliableNewest(u8_t id, const i8_t* data, i32_t len, u32_t groupId, i8_t groupBit)
+	void RUDPLink::addReliableNewest(u8_t id, const i8_t* data, i32_t len, u32_t groupId, i8_t groupBit)
 	{
 		if ( m_BlockNewSends ) // discard new packets
 			return; 
 		assert( groupBit >= 0 && groupBit < 16 );
-		std::lock_guard<std::mutex> lock(m_SendMutex);
+		std::lock_guard<std::mutex> lock(m_SendQueuesMutex);
 		auto it = m_SendQueue_reliable_newest.find( groupId );
 		if ( it == m_SendQueue_reliable_newest.end() )
 		{
@@ -112,17 +113,17 @@ namespace Zerodelay
 		}
 	}
 
-	void RUDPConnection::blockAllUpcomingSends(bool block)
+	void RUDPLink::blockAllUpcomingSends(bool block)
 	{
 		m_BlockNewSends = block;
 	}
 
-	void RUDPConnection::beginPoll()
+	void RUDPLink::beginPoll()
 	{
-		return m_RecvMutex.lock();
+		return m_RecvQueuesMutex.lock();
 	}
 
-	bool RUDPConnection::poll(Packet& pack)
+	bool RUDPLink::poll(Packet& pack)
 	{
 		// try reliable ordered packets
 		for (i32_t i=0; i<sm_NumChannels; ++i)
@@ -162,14 +163,14 @@ namespace Zerodelay
 		return false;
 	}
 
-	void RUDPConnection::endPoll()
+	void RUDPLink::endPoll()
 	{
-		m_RecvMutex.unlock();
+		m_RecvQueuesMutex.unlock();
 	}
 
-	bool RUDPConnection::areAllReliableSendQueuesEmpty() const
+	bool RUDPLink::areAllReliableSendQueuesEmpty() const
 	{
-		std::unique_lock<std::mutex> lock(m_SendMutex);
+		std::unique_lock<std::mutex> lock(m_SendQueuesMutex);
 		for ( i32_t i=0; i<sm_NumChannels; ++i )
 		{
 			if ( !m_SendQueue_reliable[i].empty() )
@@ -180,19 +181,25 @@ namespace Zerodelay
 		return true;
 	}
 
-	void RUDPConnection::simulatePacketLoss(u8_t percentage)
+	void RUDPLink::simulatePacketLoss(u8_t percentage)
 	{
 		m_PacketLossPercentage = percentage;
 	}
 
-	void RUDPConnection::flushSendQueue(ISocket* socket)
+	i32_t RUDPLink::getTimeSincePendingDelete() const
+	{
+		auto now = ::clock();
+		return i32_t((float(now - m_MarkDeleteTS) / (float)CLOCKS_PER_SEC) * 1000.f); // to ms
+	}
+
+	void RUDPLink::flushSendQueue(ISocket* socket)
 	{
 		dispatchSendQueue(socket);
 		dispatchAckQueue(socket);
 		dispatchRelNewestAckQueue(socket);
 	}
 
-	void RUDPConnection::recvData(const i8_t* buff, i32_t rawSize)
+	void RUDPLink::recvData(const i8_t* buff, i32_t rawSize)
 	{
 		if ( m_PacketLossPercentage > 0 && (u8_t)(rand() % 100) < m_PacketLossPercentage )
 			return; // discard
@@ -224,7 +231,31 @@ namespace Zerodelay
 		}
 	}
 
-	void RUDPConnection::addAckToAckQueue(i8_t channel, u32_t seq)
+	void RUDPLink::setIsPendingDelete()
+	{
+		std::lock_guard<std::mutex> lock(m_PendingDeleteMutex);
+		if ( m_IsPendingDelete )
+			return;
+		m_IsPendingDelete = true; 
+		m_MarkDeleteTS = ::clock();
+	}
+
+	void RUDPLink::pin()
+	{
+		m_PinnedCount++;
+	}
+
+	bool RUDPLink::isPinned() const
+	{
+		return m_PinnedCount > 0;
+	}
+
+	void RUDPLink::unpin()
+	{
+		m_PinnedCount--;
+	}
+
+	void RUDPLink::addAckToAckQueue(i8_t channel, u32_t seq)
 	{
 		std::lock_guard<std::mutex> lock(m_AckMutex);
 		auto it = std::find( m_AckQueue[channel].begin(), m_AckQueue[channel].end(), seq );
@@ -234,15 +265,15 @@ namespace Zerodelay
 		}
 	}
 
-	void RUDPConnection::dispatchSendQueue(ISocket* socket)
+	void RUDPLink::dispatchSendQueue(ISocket* socket)
 	{
-		std::unique_lock<std::mutex> lock(m_SendMutex);
+		std::unique_lock<std::mutex> lock(m_SendQueuesMutex);
 		dispatchReliableQueue(socket);
 		dispatchUnreliableQueue(socket);
 		dispatchReliableNewestQueue(socket);
 	}
 
-	void RUDPConnection::dispatchReliableQueue(ISocket* socket)
+	void RUDPLink::dispatchReliableQueue(ISocket* socket)
 	{
 		for (i32_t i = 0; i < sm_NumChannels; ++i)
 		{
@@ -255,7 +286,7 @@ namespace Zerodelay
 		}
 	}
 
-	void RUDPConnection::dispatchUnreliableQueue(ISocket* socket)
+	void RUDPLink::dispatchUnreliableQueue(ISocket* socket)
 	{
 		for (auto& it : m_SendQueue_unreliable)
 		{
@@ -266,7 +297,7 @@ namespace Zerodelay
 		m_SendQueue_unreliable.clear(); // clear unreliable queue immediately
 	}
 
-	void RUDPConnection::dispatchReliableNewestQueue(ISocket* socket)
+	void RUDPLink::dispatchReliableNewestQueue(ISocket* socket)
 	{
 		// format per entry: groupId(4bytes) | groupBits( (items.size()+7)/8 bytes ) | n x groupData (sum( item_data_size, n ) bytes )
 		i8_t dataBuffer[ISocket::sm_MaxRecvBuffSize]; // decl buffer
@@ -334,7 +365,7 @@ namespace Zerodelay
 		}
 	}
 
-	void RUDPConnection::dispatchAckQueue(ISocket* socket)
+	void RUDPLink::dispatchAckQueue(ISocket* socket)
 	{
 		std::lock_guard<std::mutex> lock(m_AckMutex);
 		for (i32_t i=0; i<sm_NumChannels; ++i)
@@ -360,14 +391,12 @@ namespace Zerodelay
 		}
 	}
 
-	void RUDPConnection::dispatchRelNewestAckQueue(ISocket* socket)
+	void RUDPLink::dispatchRelNewestAckQueue(ISocket* socket)
 	{
 		// get value from receive thread, if value is changed after load, it will simply send again the next update, 
 		// do however not update the send_thread_value to a send load of the recv_thread value
 		uint32_t recvThreadAckValue = m_RecvSeq_reliable_newest_recvThread;
-		// stop acking if either, remote disconnected, or we disconnected ourselves
-		if ( isPendingDelete() || !isConnected() ||
-			 !isSequenceNewer(recvThreadAckValue, m_RecvSeq_reliable_newest_sendThread) )
+		if ( isPendingDelete() || !isSequenceNewer(recvThreadAckValue, m_RecvSeq_reliable_newest_sendThread) )
 		{
 			return;
 		}
@@ -378,7 +407,7 @@ namespace Zerodelay
 		m_RecvSeq_reliable_newest_sendThread = recvThreadAckValue+1;
 	}
 
-	void RUDPConnection::receiveReliableOrdered(const i8_t * buff, i32_t rawSize)
+	void RUDPLink::receiveReliableOrdered(const i8_t * buff, i32_t rawSize)
 	{
 		i8_t channel;
 		bool relay;
@@ -389,7 +418,7 @@ namespace Zerodelay
 		if ( !isSequenceNewer(seq, recvSeq) )
 			return;
 
-		std::lock_guard<std::mutex> lock(m_RecvMutex);
+		std::lock_guard<std::mutex> lock(m_RecvQueuesMutex);
 		// only insert if received data is not already stored, but waiting to be processed as is out of order
 		auto& queue = m_RecvQueue_reliable_order[channel];
 		if ( queue.count( seq ) == 0 )
@@ -405,7 +434,7 @@ namespace Zerodelay
 		}
 	}
 
-	void RUDPConnection::receiveUnreliableSequenced(const i8_t * buff, i32_t rawSize)
+	void RUDPLink::receiveUnreliableSequenced(const i8_t * buff, i32_t rawSize)
 	{
 		i8_t channel;
 		bool relay;
@@ -422,11 +451,11 @@ namespace Zerodelay
 		Packet pack;  // Id offset of Norm_ID is correct as id is enclosed in payload/data
 		createNormalPacket( pack, buff + off_Norm_Id, rawSize-off_Norm_Id, channel, relay, EHeaderPacketType::Unreliable_Sequenced );
 
-		std::lock_guard<std::mutex> lock(m_RecvMutex);
+		std::lock_guard<std::mutex> lock(m_RecvQueuesMutex);
 		m_RecvQueue_unreliable_sequenced[channel].emplace_back( pack );
 	}
 
-	void RUDPConnection::receiveReliableNewest(const i8_t* buff, i32_t rawSize)
+	void RUDPLink::receiveReliableNewest(const i8_t* buff, i32_t rawSize)
 	{
 		if ( rawSize < off_RelNew_Data ) // weak check to see if at least hdr size is available
 		{
@@ -446,15 +475,15 @@ namespace Zerodelay
 		Packet pack;
 		createNormalPacket( pack, buff + off_RelNew_Num, rawSize - off_RelNew_Num, 0, false, EHeaderPacketType::Reliable_Newest );
 
-		std::lock_guard<std::mutex> lock(m_RecvMutex);
+		std::lock_guard<std::mutex> lock(m_RecvQueuesMutex);
 		m_RecvQueue_reliable_newest.emplace_back( pack );
 	}
 
-	void RUDPConnection::receiveAck(const i8_t * buff, i32_t rawSize)
+	void RUDPLink::receiveAck(const i8_t * buff, i32_t rawSize)
 	{
 		i8_t channel = buff[off_Ack_Chan];
 		i32_t num = *(i32_t*)(buff + off_Ack_Num); // num of acks
-		std::lock_guard<std::mutex> lock(m_SendMutex);
+		std::lock_guard<std::mutex> lock(m_SendQueuesMutex);
 		auto& queue = m_SendQueue_reliable[channel];
 		for (i32_t i = 0; i < num; ++i) // for each ack, try to find it, and remove as was succesfully transmitted
 		{
@@ -473,7 +502,7 @@ namespace Zerodelay
 		}
 	}
 
-	void RUDPConnection::receiveAckRelNewest(const i8_t* buff, i32_t rawSize)
+	void RUDPLink::receiveAckRelNewest(const i8_t* buff, i32_t rawSize)
 	{
 		u32_t ackSeq = *(i32_t*) (buff + off_Ack_RelNew_Seq);
 		if ( !isSequenceNewer( ackSeq, m_RecvSeq_reliable_newest_ack ) )
@@ -482,7 +511,7 @@ namespace Zerodelay
 		// update to newer ack + 1;
 		m_RecvSeq_reliable_newest_ack = ackSeq+1;
 
-		std::lock_guard<std::mutex> lock(m_SendMutex);
+		std::lock_guard<std::mutex> lock(m_SendQueuesMutex);
 		auto& queue = m_SendQueue_reliable_newest;
 		// For all groups in queue, update all items per group to received ack.
 		// If not a single localRevision is newer than the Remote, remote the group from the list.
@@ -510,7 +539,7 @@ namespace Zerodelay
 		}
 	}
 
-	void RUDPConnection::assembleNormalPacket(Packet& pack, EHeaderPacketType packetType, u8_t dataId, const i8_t* data, i32_t len, i32_t hdrSize, i8_t channel, bool relay)
+	void RUDPLink::assembleNormalPacket(Packet& pack, EHeaderPacketType packetType, u8_t dataId, const i8_t* data, i32_t len, i32_t hdrSize, i8_t channel, bool relay)
 	{
 		pack.data = new i8_t[len+hdrSize];
 		pack.data[off_Type] = (i8_t)packetType;
@@ -521,14 +550,14 @@ namespace Zerodelay
 		pack.len = len + off_Norm_Data;
 	}
 
-	void RUDPConnection::extractChannelRelayAndSeq(const i8_t* buff, i32_t rawSize, i8_t& channel, bool& relay, u32_t& seq)
+	void RUDPLink::extractChannelRelayAndSeq(const i8_t* buff, i32_t rawSize, i8_t& channel, bool& relay, u32_t& seq)
 	{
 		channel = (buff[off_Norm_Chan] & 7);
 		relay   = (buff[off_Norm_Chan] & 8) != 0;
 		seq		= *(u32_t*)(buff + off_Norm_Seq);
 	}
 
-	void RUDPConnection::createNormalPacket(Packet& pack, const i8_t* buff, i32_t dataSize, i8_t channel, bool relay, EHeaderPacketType type) const
+	void RUDPLink::createNormalPacket(Packet& pack, const i8_t* buff, i32_t dataSize, i8_t channel, bool relay, EHeaderPacketType type) const
 	{
 		pack.len  = dataSize;
 		pack.data = new i8_t[pack.len];
@@ -538,16 +567,15 @@ namespace Zerodelay
 		Platform::memCpy(pack.data, pack.len, buff, pack.len); 
 	}
 
-	bool RUDPConnection::isSequenceNewer(u32_t incoming, u32_t having) const
+	bool RUDPLink::isSequenceNewer(u32_t incoming, u32_t having) const
 	{
 		return (incoming >= having && (incoming - having) <= (UINT_MAX>>1)) || 
 			   (incoming < having && (having - incoming) > (UINT_MAX>>1));
 	}
 
-	bool RUDPConnection::isSequenceNewerGroupItem(u32_t incoming, u32_t having) const
+	bool RUDPLink::isSequenceNewerGroupItem(u32_t incoming, u32_t having) const
 	{
 		return (incoming > having && (incoming - having) <= (UINT_MAX>>1)) || 
 			   (incoming < having && (having - incoming) > (UINT_MAX>>1));
 	}
-
 }

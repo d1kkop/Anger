@@ -1,11 +1,9 @@
-#pragma once
-
 #include "VariableGroupNode.h"
 #include "Zerodelay.h"
 #include "VariableGroup.h"
 #include "Socket.h"
 #include "SyncGroups.h"
-#include "RUDPConnection.h"
+#include "RUDPLink.h"
 #include "ConnectionNode.h"
 #include "Util.h"
 
@@ -20,7 +18,6 @@ namespace Zerodelay
 
 	VariableGroupNode::VariableGroupNode():
 		m_ZNode(nullptr),
-		m_ConnOwner(nullptr),
 		m_UniqueIdCounter(1), // Zero is initially not used, it means no valid ID for now.
 		m_IsNetworkIdProvider(false)
 	{
@@ -42,9 +39,11 @@ namespace Zerodelay
 		}
 	}
 
-	void VariableGroupNode::postInitialize()
+	void VariableGroupNode::postInitialize(ZNode* zNode, ConnectionNode* connNode)
 	{
-		assert( m_ZNode );
+		assert( !m_ZNode || !m_ConnectionNode );
+		m_ZNode = zNode;
+		m_ConnectionNode = connNode;
 
 		// on new connect, put variable group map (with empty set of groups) in list so that we know the set of known EndPoints
 		m_ZNode->bindOnNewConnection( [this] (auto& ztp)
@@ -57,7 +56,7 @@ namespace Zerodelay
 			}
 			else
 			{
-				Platform::log("WARNING: received on new connection multiple times from %s\n", etp.asString().c_str());
+				Platform::log("WARNING: received on new connection multiple times from %s", etp.asString().c_str());
 			}
 		});
 
@@ -80,7 +79,7 @@ namespace Zerodelay
 			}
 			else
 			{
-				Platform::log("WARNING: received disconnect multiple times from: %s\n", etp.asString().c_str());
+				Platform::log("WARNING: received disconnect multiple times from: %s", etp.asString().c_str());
 			}
 		});
 	}
@@ -92,11 +91,8 @@ namespace Zerodelay
 		sendVariableGroups();	// syncs variables in the groups
 	}
 
-	bool VariableGroupNode::recvPacket(const Packet& pack, const IConnection* conn)
+	bool VariableGroupNode::processPacket(const Packet& pack, const EndPoint& etp)
 	{
-		assert( conn && "invalid ptr" );
-		auto etp = conn->getEndPoint();
-
 		if ( pack.type == EHeaderPacketType::Reliable_Ordered || pack.type == EHeaderPacketType::Unreliable_Sequenced )
 		{
 			EDataPacketType packType = (EDataPacketType)pack.data[0];
@@ -238,11 +234,14 @@ namespace Zerodelay
 			assert( vg == nullptr && "vg still available" );
 		#endif
 			// call callbacks after all is done
-			m_ZNode->p->doGroupDestroyCallbackss(&etp, id);
+			Util::forEachCallback(m_GroupUpdateCallbacks, [&] (const GroupCallback& gc)
+			{
+				(gc)(&etp, id);
+			});
 		}
 		else
 		{
-			Platform::log( "WARNING: tried to remove variable group (id = %d) which was already destroyed or never created.", id );
+			Platform::log( "WARNING: tried to remove variable group (id = %d) which was already destroyed or never created", id );
 		}
 	}
 
@@ -261,17 +260,22 @@ namespace Zerodelay
 			u32_t groupId = *(u32_t*)data;
 			if (!deserializeGroup(data, buffLen))
 			{
-				Platform::log( "ERROR deserialization of variable group failed dataLen %d.", buffLen );
+				Platform::log( "ERROR deserialization of variable group failed dataLen %d", buffLen );
 				break;
 			}
 			else
 			{
 				// call callbacks after all is done
-				m_ZNode->p->doGroupUpdateCallbacks(&etp, groupId);
+				for ( auto& cb : m_GroupUpdateCallbacks )
+				{
+					if ( cb ) cb(&etp, groupId);
+				}
 			}
 		}
 		// If all data is exactly read, then buffLen should be zero, if groups are skipped, then this is subtracted from BuffLen, so should still be zero.
 		assert( buffLen == 0 );
+		// if ( buffLen != 0 ) // TODO set critical error
+						
 	}
 
 	void VariableGroupNode::sendCreateVariableGroup(u32_t networkId, const i8_t* paramData, i32_t paramDataLen, i8_t channel)
@@ -280,7 +284,7 @@ namespace Zerodelay
 		*(u32_t*)(paramData + RPC_NAME_MAX_LENGTH) = networkId;
 		if ( !m_ZNode->sendReliableOrdered( (u8_t)EDataPacketType::VariableGroupCreate, paramData, paramDataLen, nullptr, false, channel, true )) 
 		{
-			Platform::log("FAILED: to dispatch create variable group with network id %d..", networkId);
+			Platform::log("FAILED: to dispatch create variable group with network id %d", networkId);
 		}
 	}
 
@@ -370,7 +374,10 @@ namespace Zerodelay
 			if ( vg->isDirty() && !vg->isBroken() )
 			{
 				vg->sendGroup(m_ZNode);
-				m_ZNode->p->doGroupUpdateCallbacks(nullptr, vg->getNetworkId());
+				Util::forEachCallback(m_GroupUpdateCallbacks, [&] (const GroupCallback& gc)
+				{
+					(gc)(nullptr, vg->getNetworkId());
+				});
 				vgIt++;
 			}
 			// if broken but this info is not yet transmitted, do so now
@@ -378,7 +385,10 @@ namespace Zerodelay
 			{
 				vg->markDestroySent();
 				sendDestroyVariableGroup( vg->getNetworkId() );
-				m_ZNode->p->doGroupDestroyCallbackss(nullptr, vg->getNetworkId());
+				Util::forEachCallback(m_GroupDestroyCallbacks, [&] (const GroupCallback& gc)
+				{
+					(gc)(nullptr, vg->getNetworkId());
+				});
 				delete vg;
 				vgIt = m_VariableGroups.erase(vgIt);
 			}

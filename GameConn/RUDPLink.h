@@ -2,7 +2,7 @@
 
 #include "Zerodelay.h"
 #include "EndPoint.h"
-#include "RecvPoint.h"
+#include "RecvNode.h"
 
 #include <atomic>
 #include <vector>
@@ -10,57 +10,10 @@
 #include <thread>
 #include <mutex>
 #include <map>
-#include <set>
-#include <unordered_map>
-#include <unordered_set>
 
 
 namespace Zerodelay
 {
-	class IConnection
-	{
-	public:
-		static const i32_t sm_MaxLingerTimeMs = 1000;
-
-		virtual ~IConnection() = default;
-
-		// --- All functions thread safe ---
-		virtual void addToSendQueue(u8_t id, const i8_t* data, i32_t len, EHeaderPacketType packetType, u8_t channel=0, bool relay=true) = 0;
-		virtual void addReliableNewest( u8_t id, const i8_t* data, i32_t len, u32_t groupId, i8_t groupBit ) = 0;
-		virtual void beginPoll() = 0;
-		virtual bool poll(Packet& packet) = 0;
-		virtual void endPoll() = 0;
-		virtual void flushSendQueue( class ISocket* socket ) = 0;
-		virtual void recvData( const i8_t* buff, i32_t len ) = 0;
-		virtual void simulatePacketLoss(u8_t percentage) = 0;
-		virtual bool isConnected() const = 0;
-		virtual i32_t getLingerTimeMs() const = 0;
-
-		const EndPoint& getEndPoint() const { return m_EndPoint; }
-
-		// -- Only to be accessed by network recv-thread --
-		bool  isPendingDelete() const { return m_IsPendingDelete; }
-		void  setIsPendingDelete()
-		{ 
-			std::lock_guard<std::mutex> lock(m_PendingDeleteMutex);
-			if ( m_IsPendingDelete )
-				return;
-			m_IsPendingDelete = true; 
-			m_MarkDeleteTS = ::clock();
-		}
-		i32_t getTimeSincePendingDelete() const
-		{
-			auto now = ::clock();
-			return i32_t((float(now - m_MarkDeleteTS) / (float)CLOCKS_PER_SEC) * 1000.f); // to ms
-		}
-
-	protected:
-		std::mutex m_PendingDeleteMutex;
-		std::atomic_bool m_IsPendingDelete; // Set from main thread, queried by recv thread
-		EndPoint m_EndPoint;
-		clock_t m_MarkDeleteTS;
-	};
-
 	// Represents an item in a group of newest reliable data.
 	// If a at least a single item in a group changes, the group with the new item is transmitted.
 	struct reliableNewestItem 
@@ -78,9 +31,19 @@ namespace Zerodelay
 		u8_t  dataId;
 	};
 
-	class RUDPConnection: public IConnection
+
+	typedef std::deque<Packet> sendQueueType;
+	typedef std::deque<Packet> recvQueueType;
+	typedef std::deque<u32_t> ackQueueType;
+	typedef std::map<u32_t, Packet> recvReliableOrderedQueueType;
+	typedef std::map<u32_t, reliableNewestDataGroup> sendReliableNewestQueueType; 
+
+
+	class RUDPLink
 	{
 	public:
+		static const i32_t sm_MaxLingerTimeMs = 500;
+
 		// TODO Packet layout offsets should not be completely here because it contains higher level data layout information
 		static const i32_t off_Type = 0;	// Reliable, Unreliable or Ack
 		static const i32_t off_Ack_Chan = 1; // In case of ack, the channel
@@ -101,35 +64,42 @@ namespace Zerodelay
 
 		static const i32_t sm_NumChannels  = 8;
 
-		typedef std::deque<Packet> sendQueueType;
-		typedef std::deque<Packet> recvQueueType;
-		typedef std::deque<u32_t> ackQueueType;
-		typedef std::map<u32_t, Packet> recvReliableOrderedQueueType;
-		typedef std::map<u32_t, reliableNewestDataGroup> sendReliableNewestQueueType; 
 
 	public:
-		RUDPConnection(const struct EndPoint& endPoint);
-		virtual ~RUDPConnection();
+		RUDPLink(const EndPoint& endPoint);
+		~RUDPLink();
 
 		// Thread safe
 		//------------------------------
-			virtual void addToSendQueue( u8_t id, const i8_t* data, i32_t len, EHeaderPacketType packetType, u8_t channel=0, bool relay=true ) override;
-			virtual void addReliableNewest( u8_t id, const i8_t* data, i32_t len, u32_t groupId, i8_t groupBit ) override;
+			void addToSendQueue( u8_t id, const i8_t* data, i32_t len, EHeaderPacketType packetType, u8_t channel=0, bool relay=true );
+			void addReliableNewest( u8_t id, const i8_t* data, i32_t len, u32_t groupId, i8_t groupBit );
 			void blockAllUpcomingSends(bool block);
 		
 			// Always first call beginPoll, then repeatedly poll until no more packets, then endPoll
-			virtual void beginPoll() override;
-			virtual bool poll(Packet& pack) override;
-			virtual void endPoll() override;
+			void beginPoll();
+			bool poll(Packet& pack);
+			void endPoll();
 
-			virtual void flushSendQueue( ISocket* socket ) override;
-			virtual void recvData( const i8_t* buff, i32_t len ) override;
+			void flushSendQueue( ISocket* socket );
+			void recvData( const i8_t* buff, i32_t len );
+
+			void setIsPendingDelete();
+			bool isPendingDelete() const { return m_IsPendingDelete; }
+
+			// If pinned, link will not be deleted from memory
+			// Should only be called when having RecvNode lock
+			void pin();
+			bool isPinned() const;
+			void unpin();
 
 			bool areAllReliableSendQueuesEmpty() const;
 		//------------------------------
 
 		// Set to 0, to turn off. Default is off.
-		virtual void simulatePacketLoss( u8_t percentage = 10 ) override;
+		void simulatePacketLoss( u8_t percentage = 10 );						// Not thread safe, but only for debugging purposes so deliberately no atomic_int.
+		const EndPoint& getEndPoint() const { return m_EndPoint; }				// Set at beginning, can be queried by multiple threads.
+		i32_t getTimeSincePendingDelete() const;								// Is set when becomes pending delete which is thread safe, so this can be queried thread safe.
+
 
 	private:
 		void addAckToAckQueue( i8_t channel, u32_t seq );
@@ -151,6 +121,7 @@ namespace Zerodelay
 		bool isSequenceNewerGroupItem( u32_t incoming, u32_t having ) const; // This one is newer only when having is incoming-UINT_MAX/2
 
 		// state
+		EndPoint m_EndPoint;
 		std::atomic_bool m_BlockNewSends;
 		// send queues
 		sendQueueType m_SendQueue_reliable[sm_NumChannels];
@@ -173,11 +144,17 @@ namespace Zerodelay
 		u32_t m_RecvSeq_reliable_newest_sendThread;								// checked against the 'm_RecvSeq_reliable_newest_sendThread' and will dispatch if necessary
 		u32_t m_RecvSeq_reliable_newest_ack;
 		// threading
-		mutable std::mutex m_SendMutex;
-		mutable std::mutex m_RecvMutex;
+		mutable std::mutex m_SendQueuesMutex;
+		mutable std::mutex m_RecvQueuesMutex;
 		mutable std::mutex m_AckMutex;
 		mutable std::mutex m_AckRelNewestMutex;
 		// statistics
 		u8_t m_PacketLossPercentage;
+		// pinned
+		uint32_t m_PinnedCount;
+		// on delete
+		std::mutex m_PendingDeleteMutex;
+		std::atomic_bool m_IsPendingDelete; // Set from main thread, queried by recv thread
+		clock_t m_MarkDeleteTS;
 	};
 }

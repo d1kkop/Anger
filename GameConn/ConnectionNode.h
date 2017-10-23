@@ -1,7 +1,8 @@
 #pragma once
 
 #include "Zerodelay.h"
-#include "RecvPoint.h"
+#include "EndPoint.h"
+#include "Util.h"
 
 #include <cassert>
 #include <algorithm>
@@ -12,28 +13,38 @@
 
 namespace Zerodelay
 {
-	class ConnectionNode: public RecvPoint
+	enum class ECriticalError	// bitfield
+	{
+		None = 0,
+		SerializationError = 1,
+		CannotFindExternalCFunction = 2
+	};
+
+	class ConnectionNode
 	{
 		typedef std::function<void (const EndPoint&, EConnectResult)>					ConnectResultCallback;
 		typedef std::function<void (bool, const EndPoint&, EDisconnectReason)>			DisconnectCallback;
 		typedef std::function<void (const EndPoint&)>									NewConnectionCallback;
 		typedef std::function<void (const EndPoint&, u8_t, const i8_t*, i32_t, u8_t)>	CustomDataCallback;
-		typedef std::function<void (const EndPoint*, u32_t)>							GroupCallback;
 
 	public:
-		ConnectionNode(ERoutingMethod routingMethod, i32_t sendThreadSleepTimeMs=10, i32_t keepAliveIntervalSeconds=8, bool captureSocketErrors=true);
-		virtual ~ConnectionNode();
+		ConnectionNode(ERoutingMethod routingMethod, i32_t keepAliveIntervalSeconds=8);
+		~ConnectionNode();
+		void postInitialize(RecvNode* recvNode);
 
-	public:
 		// state
 		EConnectCallResult connect( const EndPoint& endPoint, const std::string& pw="", i32_t timeoutSeconds=8 );
 		EConnectCallResult connect( const std::string& name, i32_t port, const std::string& pw="", i32_t timeoutSeconds=8 );
 		EListenCallResult listenOn( i32_t port, const std::string& pw="" );
-		EDisconnectCallResult disconnect( const EndPoint& endPoint );
-		void disconnectAll();
+		EDisconnectCallResult disconnect( const EndPoint& endPoint, bool sendDisconnect);
+		void disconnectAll(bool sendDisconnect);
 		i32_t getNumOpenConnections();
 		// flow
-		void update( std::function<void (const Packet&, IConnection*)> unhandledPacketCb );
+		void update();
+		bool beginProcessPacketsFor(const EndPoint& endPoint);	// returns true if is known connection
+		bool processPacket(const struct Packet& pack);					// returns false if packet was not processed (consumed)
+		void endProcessPackets();
+		//void update( std::function<void (const Packet&, IConnection*)> unhandledPacketCb );
 		// setters
 		void setPassword( const std::string& pw );
 		void setMaxIncomingConnections(i32_t maxNumConnections);
@@ -42,33 +53,19 @@ namespace Zerodelay
 		ERoutingMethod getRoutingMethod() const;
 		bool isServer() const { return m_IsServer; }
 		// callbacks
-		void bindOnConnectResult(const ConnectResultCallback& cb)		{ bindCallback(m_ConnectResultCallbacks, cb); }
-		void bindOnNewConnection(const NewConnectionCallback& cb)		{ bindCallback(m_NewConnectionCallbacks, cb); }
-		void bindOnDisconnect(const DisconnectCallback& cb)				{ bindCallback(m_DisconnectCallbacks, cb); }
-		void bindOnCustomData(const CustomDataCallback& cb)				{ bindCallback(m_CustomDataCallbacks, cb); }
-		// group callbacks
-		void bindOnGroupUpdated(const GroupCallback& cb)				{ bindCallback(m_GroupUpdateCallbacks, cb); }
-		void bindOnGroupDestroyed(const GroupCallback& cb)				{ bindCallback(m_GroupDestroyCallbacks, cb); }
-		// do callbacks
-		void doGroupUpdateCallbacks(const EndPoint* ept, u32_t id)
-		{
-			for (auto& cb : m_GroupUpdateCallbacks) 
-				cb(ept, id);
-		}
-		void doGroupDestroyCallbackss(const EndPoint* ept, u32_t id)
-		{
-			for (auto& cb : m_GroupDestroyCallbacks) 
-				cb(ept, id);
-		}
+		void bindOnConnectResult(const ConnectResultCallback& cb)		{ Util::bindCallback(m_ConnectResultCallbacks, cb); }
+		void bindOnNewConnection(const NewConnectionCallback& cb)		{ Util::bindCallback(m_NewConnectionCallbacks, cb); }
+		void bindOnDisconnect(const DisconnectCallback& cb)				{ Util::bindCallback(m_DisconnectCallbacks, cb); }
+		void bindOnCustomData(const CustomDataCallback& cb)				{ Util::bindCallback(m_CustomDataCallbacks, cb); }
 
 	private:
-		virtual class IConnection* createNewConnection( const EndPoint& endPoint ) const override; // called by recv thread
-		void removeConnection( const class Connection* g, const i8_t* frmtReason, ... );
+		void prepareConnectionForDelete(class Connection* g, const i8_t* fmt, ...);
+		void prepareConnectionForDelete(class Connection* g );
 		// sends (relay)
 		void sendRemoteConnected( const class Connection* g );
 		void sendRemoteDisconnected( const class Connection* g, EDisconnectReason reason );
 		// recvs (Game thread)
-		bool recvPacket( struct Packet& pack, class Connection* g );
+		bool recvPacket( const struct Packet& pack, class Connection* g );
 		void recvConnectPacket(const i8_t* payload, i32_t len, class Connection* g);
 		void recvConnectAccept(class Connection* g);
 		void recvDisconnectPacket( const i8_t* payload, i32_t len, class Connection* g );
@@ -76,53 +73,29 @@ namespace Zerodelay
 		void recvRemoteDisconnected(class Connection* g, const i8_t* payload, i32_t payloadLen);
 		void recvInvalidPassword(class Connection* g, const i8_t* payload, i32_t payloadLen);
 		void recvMaxConnectionsReached(class Connection* g, const i8_t* payload, i32_t payloadLen);
+		void recvAlreadyConnected(class Connection* g, const i8_t* payload, i32_t payloadLen);
 		void recvRpcPacket( const i8_t* payload, i32_t len, class Connection* g);
 		void recvUserPacket(class Connection* g, const Packet& pack);
 		// updating
 		void updateConnecting( class Connection* g );
 		void updateKeepAlive( class Connection* g );
 		void updateDisconnecting( class Connection* g );
-		// socket
-		bool openSocket();
-		bool bindSocket(u16_t port);
-
-		template <typename List, typename Callback>
-		void bindCallback( List& list, Callback cb );
-		template <typename List, typename Callback>
-		void forEachCallback( const List& list, const Callback& cb );
-
+		// error
+		void setCriticalSerializationError(ECriticalError error, const char* fn);
+		
 		bool m_IsServer;
-		bool m_SocketIsOpened;
-		bool m_SocketIsBound;
 		i32_t m_KeepAliveIntervalSeconds;
 		i32_t m_MaxIncomingConnections;
 		std::string m_Password;
 		ERoutingMethod m_RoutingMethod;
+		class Connection* m_ProcessingConnection;
+		ECriticalError m_CriticalErrors;
+		std::map<EndPoint, class Connection*, EndPoint::STLCompare> m_Connections;
 		std::vector<ConnectResultCallback>	m_ConnectResultCallbacks;
 		std::vector<DisconnectCallback>		m_DisconnectCallbacks;
 		std::vector<NewConnectionCallback>	m_NewConnectionCallbacks;
 		std::vector<CustomDataCallback>		m_CustomDataCallbacks;
-		std::vector<GroupCallback> m_GroupUpdateCallbacks;
-		std::vector<GroupCallback> m_GroupDestroyCallbacks;
-		std::vector<IConnection*> m_TempConnections;  // Copy of current connection list when doing callback functions
-		std::vector<IConnection*> m_TempConnections2; // For when calling disconnectAll from within a callback function
+		// --- ptrs to other managers
+		class RecvNode* m_DispatchNode;
 	};
-
-
-	template <typename List, typename Callback>
-	void ConnectionNode::bindCallback(List& list, Callback cb)
-	{
-		list.emplace_back( cb );
-	}
-
-	template <typename List, typename Callback>
-	void ConnectionNode::forEachCallback(const List& list, const Callback& cb)
-	{
-		for (auto it = list.begin(); it != list.end(); ++it)
-		{
-			cb( *it );
-		}
-	}
-
-
 }

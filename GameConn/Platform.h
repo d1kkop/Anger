@@ -9,6 +9,13 @@
 #define ZERODELAY_LIL_ENDIAN							(1)		// TODO to be automated
 
 
+#if _WIN32
+#define ZERODELAY_FUNCTION __FUNCTION__
+#else
+#define ZERODELAY_FUNCTION "UKNOWN"
+#endif
+
+
 #ifdef _WIN32
 	
 	#include <ws2tcpip.h>

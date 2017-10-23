@@ -124,8 +124,8 @@
     <ClCompile Include="Connection.cpp" />
     <ClCompile Include="NetVariable.cpp" />
     <ClCompile Include="Platform.cpp" />
-    <ClCompile Include="RecvPoint.cpp" />
-    <ClCompile Include="RUDPConnection.cpp" />
+    <ClCompile Include="RecvNode.cpp" />
+    <ClCompile Include="RUDPLink.cpp" />
     <ClCompile Include="EndPoint.cpp" />
     <ClCompile Include="Socket.cpp" />
     <ClCompile Include="main.cpp">
@@ -144,8 +144,8 @@
     <ClInclude Include="RpcMacros.h" />
     <ClInclude Include="Connection.h" />
     <ClInclude Include="Platform.h" />
-    <ClInclude Include="RecvPoint.h" />
-    <ClInclude Include="RUDPConnection.h" />
+    <ClInclude Include="RecvNode.h" />
+    <ClInclude Include="RUDPLink.h" />
     <ClInclude Include="EndPoint.h" />
     <ClInclude Include="Socket.h" />
     <ClInclude Include="Netvar.h" />
