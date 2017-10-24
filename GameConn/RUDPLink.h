@@ -42,7 +42,8 @@ namespace Zerodelay
 	class RUDPLink
 	{
 	public:
-		static const i32_t sm_MaxLingerTimeMs = 500;
+		static const i32_t sm_MaxLingerTimeMs  = 500;
+		static const i32_t sm_MaxItemsPerGroup = 16;
 
 		// TODO Packet layout offsets should not be completely here because it contains higher level data layout information
 		static const i32_t off_Type = 0;	// Reliable, Unreliable or Ack
@@ -73,7 +74,7 @@ namespace Zerodelay
 		//------------------------------
 			void addToSendQueue( u8_t id, const i8_t* data, i32_t len, EHeaderPacketType packetType, u8_t channel=0, bool relay=true );
 			void addReliableNewest( u8_t id, const i8_t* data, i32_t len, u32_t groupId, i8_t groupBit );
-			void blockAllUpcomingSends(bool block);
+			void blockAllUpcomingSends();
 		
 			// Always first call beginPoll, then repeatedly poll until no more packets, then endPoll
 			void beginPoll();
@@ -83,7 +84,7 @@ namespace Zerodelay
 			void flushSendQueue( ISocket* socket );
 			void recvData( const i8_t* buff, i32_t len );
 
-			void setIsPendingDelete();
+			void prepareLinkForDelete();
 			bool isPendingDelete() const { return m_IsPendingDelete; }
 
 			// If pinned, link will not be deleted from memory

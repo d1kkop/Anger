@@ -3,6 +3,7 @@
 #include "Socket.h"
 #include "EndPoint.h"
 #include "RpcMacros.h"
+#include "CoreNode.h"
 #include "RecvNode.h"
 #include "Util.h"
 
@@ -12,14 +13,12 @@ namespace Zerodelay
 	extern ZEndpoint toZpt( const EndPoint& r );
 
 
-	ConnectionNode::ConnectionNode(ERoutingMethod routingMethod, i32_t keepAliveIntervalSeconds):
+	ConnectionNode::ConnectionNode(i32_t keepAliveIntervalSeconds):
 		m_DispatchNode(nullptr),
 		m_ProcessingConnection(nullptr),
-		m_RoutingMethod(routingMethod),
 		m_IsServer(false),
 		m_KeepAliveIntervalSeconds(keepAliveIntervalSeconds),
-		m_MaxIncomingConnections(32),
-		m_CriticalErrors(ECriticalError::None)
+		m_MaxIncomingConnections(32)
 	{
 	}
 
@@ -27,10 +26,11 @@ namespace Zerodelay
 	{
 	}
 
-	void ConnectionNode::postInitialize(RecvNode* recvNode)
+	void ConnectionNode::postInitialize(CoreNode* coreNode)
 	{
-		assert(!m_DispatchNode);
-		m_DispatchNode = recvNode;
+		assert(!m_CoreNode && !m_DispatchNode);
+		m_CoreNode = coreNode;
+		m_DispatchNode = coreNode->rn();
 	}
 
 	EConnectCallResult ConnectionNode::connect(const std::string& name, i32_t port, const std::string& pw, i32_t timeoutSeconds)
@@ -62,7 +62,7 @@ namespace Zerodelay
 
 	EListenCallResult ConnectionNode::listenOn(i32_t port, const std::string& pw)
 	{
-		if ( m_RoutingMethod == ERoutingMethod::ClientServer && m_IsServer )
+		if ( m_CoreNode->getRoutingMethod() == ERoutingMethod::ClientServer && m_IsServer )
 		{
 			return EListenCallResult::AlreadyStartedServer;
 		}
@@ -99,7 +99,9 @@ namespace Zerodelay
 		{
 			assert( it.second );
 			if ( it.second ) 
+			{
 				it.second->disconnect(sendDisconnect);
+			}
 		}
 	}
 
@@ -161,8 +163,6 @@ namespace Zerodelay
 
 	void ConnectionNode::update()
 	{
-		if (m_CriticalErrors != (ECriticalError)0) // TODO need to go to centralized node
-			return;
 		for ( auto& kvp : m_Connections )
 		{
 			Connection* c = kvp.second;
@@ -230,12 +230,6 @@ namespace Zerodelay
 		}
 	}
 
-	ERoutingMethod ConnectionNode::getRoutingMethod() const
-	{
-		// TODO move to main Znode
-		return m_RoutingMethod;
-	}
-
 	void ConnectionNode::prepareConnectionForDelete(Connection* g, const i8_t* fmt, ...)
 	{
 		if (!g) return;
@@ -264,14 +258,14 @@ namespace Zerodelay
 
 	void ConnectionNode::sendRemoteConnected(const Connection* g)
 	{
-		if ( m_RoutingMethod != ERoutingMethod::ClientServer || !isServer() )
+		if ( m_CoreNode->getRoutingMethod() != ERoutingMethod::ClientServer || !isServer() )
 			return; 
 		auto& etp = g->getEndPoint();
 		i8_t buff[128];
 		i32_t offs = etp.write( buff, 128 );
 		if ( offs < 0 )
 		{
-			setCriticalSerializationError(ECriticalError::SerializationError, ZERODELAY_FUNCTION);
+			m_CoreNode->setCriticalError(ECriticalError::SerializationError, ZERODELAY_FUNCTION);
 			return;
 		}
 		// to all except
@@ -280,7 +274,7 @@ namespace Zerodelay
 
 	void ConnectionNode::sendRemoteDisconnected(const Connection* g, EDisconnectReason reason)
 	{
-		if ( m_RoutingMethod != ERoutingMethod::ClientServer || !isServer() )
+		if ( m_CoreNode->getRoutingMethod() != ERoutingMethod::ClientServer || !isServer() )
 			return; // relay message if wanted
 		auto& etp = g->getEndPoint();
 		i8_t buff[128];
@@ -291,7 +285,7 @@ namespace Zerodelay
 		}
 		else
 		{
-			setCriticalSerializationError(ECriticalError::SerializationError, ZERODELAY_FUNCTION);
+			m_CoreNode->setCriticalError(ECriticalError::SerializationError, ZERODELAY_FUNCTION);
 			return;
 		}
 		// to all except
@@ -365,7 +359,7 @@ namespace Zerodelay
 		i8_t pw[kBuffSize];
 		if ( !Util::readString( pw, kBuffSize, payload, payloadLen ))
 		{
-			setCriticalSerializationError(ECriticalError::SerializationError, ZERODELAY_FUNCTION);
+			m_CoreNode->setCriticalError(ECriticalError::SerializationError, ZERODELAY_FUNCTION);
 			return; // invalid serialization
 		}
 		if ( strcmp( m_Password.c_str(), pw ) != 0 )
@@ -429,7 +423,7 @@ namespace Zerodelay
 		EndPoint etp;
 		if (etp.read( data, len ) < 0)
 		{
-			setCriticalSerializationError(ECriticalError::SerializationError, ZERODELAY_FUNCTION);
+			m_CoreNode->setCriticalError(ECriticalError::SerializationError, ZERODELAY_FUNCTION);
 			return;
 		}
 		Util::forEachCallback(m_NewConnectionCallbacks, [&](auto& fcb)
@@ -449,7 +443,7 @@ namespace Zerodelay
 			assert(g->getEndPoint() != etp); // should not remote disconnect for a direct connection
 			if (g->getEndPoint() == etp)
 			{
-				setCriticalSerializationError(ECriticalError::SerializationError, ZERODELAY_FUNCTION);
+				m_CoreNode->setCriticalError(ECriticalError::SerializationError, ZERODELAY_FUNCTION);
 				return;
 			}
 			reason = (EDisconnectReason)data[offs];
@@ -463,7 +457,7 @@ namespace Zerodelay
 		}
 		else
 		{
-			setCriticalSerializationError(ECriticalError::SerializationError, ZERODELAY_FUNCTION);
+			m_CoreNode->setCriticalError(ECriticalError::SerializationError, ZERODELAY_FUNCTION);
 		}
 	}
 
@@ -515,7 +509,7 @@ namespace Zerodelay
 		i8_t name[RPC_NAME_MAX_LENGTH];
 		if ( !Util::readFixed( name, RPC_NAME_MAX_LENGTH, payload, (RPC_NAME_MAX_LENGTH<len?RPC_NAME_MAX_LENGTH:len)) )
 		{
-			setCriticalSerializationError(ECriticalError::SerializationError, ZERODELAY_FUNCTION);
+			m_CoreNode->setCriticalError(ECriticalError::SerializationError, ZERODELAY_FUNCTION);
 			return;
 		}
 		i8_t fname[RPC_NAME_MAX_LENGTH*2];
@@ -531,7 +525,7 @@ namespace Zerodelay
 		}
 		else
 		{
-			setCriticalSerializationError(ECriticalError::CannotFindExternalCFunction, ZERODELAY_FUNCTION);
+			m_CoreNode->setCriticalError(ECriticalError::CannotFindExternalCFunction, ZERODELAY_FUNCTION);
 			Platform::log("CRITICAL: Cannot find external C function %s", fname);
 		}
 	}
@@ -597,11 +591,4 @@ namespace Zerodelay
 			}
 		}
 	}
-
-	void ConnectionNode::setCriticalSerializationError(ECriticalError error, const char* fn)
-	{
-		Platform::log("CRITICAL: Error (%d) in function %s", (i32_t)error, fn);
-		m_CriticalErrors = (ECriticalError)((uint32_t)m_CriticalErrors | (uint32_t)error);
-	}
-
 }

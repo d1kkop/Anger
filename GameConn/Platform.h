@@ -57,6 +57,7 @@ namespace Zerodelay
 		// Do thread safe logging
 		static void log(const i8_t* format, ...);
 
+		// Time now in milliseconds from start of app.
 		static bool memCpy( void* dst, i32_t dstSize, const void* src, i32_t srcSize );
 		static bool formatPrint( i8_t* dst, i32_t dstSize, const i8_t* frmt, ... );
 

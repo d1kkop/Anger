@@ -301,8 +301,6 @@ namespace Zerodelay
 
 
 	private:
-		class RecvNode* rn;
-		class ConnectionNode* cn;
-		class VariableGroupNode* vgn;
+		class CoreNode* C;
 	};
 }

@@ -43,6 +43,7 @@ namespace Zerodelay
 		m_State = EConnectionState::Disconnecting;
 		m_DisconnectTS = ::clock();
 		if ( sendDisconnect ) sendSystemMessage( EDataPacketType::Disconnect );
+		if ( m_Link ) m_Link->blockAllUpcomingSends();
 		return true;
 	}
 

@@ -2,6 +2,7 @@
 #include "Socket.h"
 #include "EndPoint.h"
 #include "RUDPLink.h"
+#include "CoreNode.h"
 #include "Platform.h"
 
 #include <cassert>
@@ -17,9 +18,7 @@ namespace Zerodelay
 		m_SendThreadSleepTimeMs(sendThreadSleepTimeMs),
 		m_Socket(ISocket::create()),
 		m_RecvThread(nullptr),
-		m_SendThread(nullptr),
-		m_UserPtr(nullptr),
-		m_UserIndex(0)
+		m_SendThread(nullptr)
 	{
 	}
 
@@ -48,10 +47,11 @@ namespace Zerodelay
 		delete m_Socket;
 	}
 
-	void RecvNode::postInitialize(ConnectionNode* connectionNode)
+	void RecvNode::postInitialize(CoreNode* coreNode)
 	{
-		assert(!m_ConnectionNode);
-		m_ConnectionNode = connectionNode;
+		assert(!m_CoreNode && !m_ConnectionNode);
+		m_CoreNode = coreNode;
+		m_ConnectionNode = coreNode->cn();
 	}
 
 	bool RecvNode::openSocketOnPort(u16_t port)

@@ -4,34 +4,34 @@
     <Filter Include="User">
       <UniqueIdentifier>{d7583bd1-b17e-4a8a-9ad9-4aaf803bddf0}</UniqueIdentifier>
     </Filter>
-    <Filter Include="3rdParty">
-      <UniqueIdentifier>{bfbe2779-c521-4bb3-a091-114decb166af}</UniqueIdentifier>
+    <Filter Include="Nodes">
+      <UniqueIdentifier>{415b80d8-4d7f-4692-9a53-0c72334c0b2b}</UniqueIdentifier>
     </Filter>
-    <Filter Include="ConnectionNode">
+    <Filter Include="Nodes\ConnectionNode">
       <UniqueIdentifier>{06205fc6-a340-4a2d-ad4a-327afa4979e1}</UniqueIdentifier>
     </Filter>
-    <Filter Include="RecvNode">
-      <UniqueIdentifier>{ccb84b75-8808-478e-9eb7-484ef405862a}</UniqueIdentifier>
+    <Filter Include="Nodes\VariableGroupNode">
+      <UniqueIdentifier>{b43bdc28-9d91-4936-87c9-ff92d1626019}</UniqueIdentifier>
     </Filter>
-    <Filter Include="PlatformSpecific">
+    <Filter Include="CoreAndPlatform">
       <UniqueIdentifier>{3566f683-5bf3-49f3-9a6c-9e4f2314dd50}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Support">
+    <Filter Include="Assist">
       <UniqueIdentifier>{bd5540a7-6552-46d5-8f5f-6b9e51573b73}</UniqueIdentifier>
     </Filter>
-    <Filter Include="VariableGroupNode">
-      <UniqueIdentifier>{b43bdc28-9d91-4936-87c9-ff92d1626019}</UniqueIdentifier>
+    <Filter Include="Nodes\RecvNode">
+      <UniqueIdentifier>{ccb84b75-8808-478e-9eb7-484ef405862a}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Socket.cpp">
-      <Filter>PlatformSpecific</Filter>
+      <Filter>CoreAndPlatform</Filter>
     </ClCompile>
     <ClCompile Include="EndPoint.cpp">
-      <Filter>PlatformSpecific</Filter>
+      <Filter>CoreAndPlatform</Filter>
     </ClCompile>
     <ClCompile Include="Platform.cpp">
-      <Filter>PlatformSpecific</Filter>
+      <Filter>CoreAndPlatform</Filter>
     </ClCompile>
     <ClCompile Include="Zerodelay.cpp">
       <Filter>User</Filter>
@@ -41,39 +41,42 @@
     </ClCompile>
     <ClCompile Include="main.cpp" />
     <ClCompile Include="ConnectionNode.cpp">
-      <Filter>ConnectionNode</Filter>
+      <Filter>Nodes\ConnectionNode</Filter>
     </ClCompile>
     <ClCompile Include="Connection.cpp">
-      <Filter>ConnectionNode</Filter>
+      <Filter>Nodes\ConnectionNode</Filter>
     </ClCompile>
     <ClCompile Include="NetVariable.cpp">
-      <Filter>VariableGroupNode</Filter>
+      <Filter>Nodes\VariableGroupNode</Filter>
     </ClCompile>
     <ClCompile Include="VariableGroup.cpp">
-      <Filter>VariableGroupNode</Filter>
+      <Filter>Nodes\VariableGroupNode</Filter>
     </ClCompile>
     <ClCompile Include="VariableGroupNode.cpp">
-      <Filter>VariableGroupNode</Filter>
+      <Filter>Nodes\VariableGroupNode</Filter>
     </ClCompile>
     <ClCompile Include="RecvNode.cpp">
-      <Filter>RecvNode</Filter>
+      <Filter>Nodes\RecvNode</Filter>
     </ClCompile>
     <ClCompile Include="Util.cpp">
-      <Filter>Support</Filter>
+      <Filter>Assist</Filter>
     </ClCompile>
     <ClCompile Include="RUDPLink.cpp">
-      <Filter>RecvNode</Filter>
+      <Filter>Nodes\RecvNode</Filter>
+    </ClCompile>
+    <ClCompile Include="CoreNode.cpp">
+      <Filter>Nodes</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Socket.h">
-      <Filter>PlatformSpecific</Filter>
+      <Filter>CoreAndPlatform</Filter>
     </ClInclude>
     <ClInclude Include="EndPoint.h">
-      <Filter>PlatformSpecific</Filter>
+      <Filter>CoreAndPlatform</Filter>
     </ClInclude>
     <ClInclude Include="Platform.h">
-      <Filter>PlatformSpecific</Filter>
+      <Filter>CoreAndPlatform</Filter>
     </ClInclude>
     <ClInclude Include="Zerodelay.h">
       <Filter>User</Filter>
@@ -85,31 +88,34 @@
       <Filter>User</Filter>
     </ClInclude>
     <ClInclude Include="ConnectionNode.h">
-      <Filter>ConnectionNode</Filter>
+      <Filter>Nodes\ConnectionNode</Filter>
     </ClInclude>
     <ClInclude Include="Connection.h">
-      <Filter>ConnectionNode</Filter>
+      <Filter>Nodes\ConnectionNode</Filter>
     </ClInclude>
     <ClInclude Include="NetVariable.h">
-      <Filter>VariableGroupNode</Filter>
+      <Filter>Nodes\VariableGroupNode</Filter>
     </ClInclude>
     <ClInclude Include="VariableGroup.h">
-      <Filter>VariableGroupNode</Filter>
+      <Filter>Nodes\VariableGroupNode</Filter>
     </ClInclude>
     <ClInclude Include="VariableGroupNode.h">
-      <Filter>VariableGroupNode</Filter>
+      <Filter>Nodes\VariableGroupNode</Filter>
     </ClInclude>
     <ClInclude Include="SyncGroups.h">
       <Filter>User</Filter>
     </ClInclude>
     <ClInclude Include="RecvNode.h">
-      <Filter>RecvNode</Filter>
+      <Filter>Nodes\RecvNode</Filter>
     </ClInclude>
     <ClInclude Include="Util.h">
-      <Filter>Support</Filter>
+      <Filter>Assist</Filter>
     </ClInclude>
     <ClInclude Include="RUDPLink.h">
-      <Filter>RecvNode</Filter>
+      <Filter>Nodes\RecvNode</Filter>
+    </ClInclude>
+    <ClInclude Include="CoreNode.h">
+      <Filter>Nodes</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

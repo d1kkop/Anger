@@ -1,10 +1,10 @@
 #include "Zerodelay.h"
-#include "ConnectionNode.h"
 #include "RUDPLink.h"
 #include "Socket.h"
-#include "VariableGroup.h"
+#include "CoreNode.h"
+#include "RecvNode.h"
+#include "ConnectionNode.h"
 #include "VariableGroupNode.h"
-
 
 namespace Zerodelay
 {
@@ -80,173 +80,180 @@ namespace Zerodelay
 
 
 	ZNode::ZNode(ERoutingMethod routingMethod, i32_t sendThreadSleepTimeMs, i32_t keepAliveIntervalSeconds, bool captureSocketErrors) :
-		rn(new RecvNode(captureSocketErrors, sendThreadSleepTimeMs)),
-		cn(new ConnectionNode(routingMethod, keepAliveIntervalSeconds)),
-		vgn(new VariableGroupNode())
+		C(new CoreNode
+		(
+			routingMethod,
+			this,
+			(new RecvNode(captureSocketErrors, sendThreadSleepTimeMs)),
+			(new ConnectionNode(keepAliveIntervalSeconds)),
+			(new VariableGroupNode())
+		))
 	{
-		cn->postInitialize(rn);
-		rn->postInitialize(cn);
-		vgn->postInitialize(this, cn);
 	}
 
 	ZNode::~ZNode()
 	{
-		delete vgn;
-		delete cn;
-		delete rn;
+		delete C;
 	}
 
 	EConnectCallResult ZNode::connect(const ZEndpoint& endPoint, const std::string& pw, i32_t timeoutSeconds)
 	{
-		return cn->connect( toEtp(endPoint), pw, timeoutSeconds );
+		return C->cn()->connect( toEtp(endPoint), pw, timeoutSeconds );
 	}
 
 	EConnectCallResult ZNode::connect(const std::string& name, i32_t port, const std::string& pw, i32_t timeoutSeconds)
 	{
-		return cn->connect( name, port, pw, timeoutSeconds );
+		return C->cn()->connect( name, port, pw, timeoutSeconds );
 	}
 
 	EListenCallResult ZNode::listenOn(i32_t port, const std::string& pw, i32_t maxConnections, bool relayEvents)
 	{
-		cn->setMaxIncomingConnections( maxConnections );
-		return cn->listenOn( port, pw );
+		C->cn()->setMaxIncomingConnections( maxConnections );
+		return C->cn()->listenOn( port, pw );
 	}
 
 	EDisconnectCallResult ZNode::disconnect(const ZEndpoint& endPoint)
 	{
-		return cn->disconnect( toEtp( endPoint ), true );
+		return C->cn()->disconnect( toEtp( endPoint ), true );
 	}
 
 	void ZNode::disconnectAll()
 	{
-		return cn->disconnectAll(true);
+		return C->cn()->disconnectAll(true);
 	}
 
 	i32_t ZNode::getNumOpenConnections() const
 	{
-		return cn->getNumOpenConnections();
+		return C->cn()->getNumOpenConnections();
 	}
 
 	void ZNode::update()
 	{
+		if (C->hasCriticalErrors())
+			return;
+
 		u32_t linkIdx = 0;
 		// When pinned, the link will not be destroyed from memory
-		RUDPLink* link = rn->getLinkAndPinIt(linkIdx);
+		RUDPLink* link = C->rn()->getLinkAndPinIt(linkIdx);
 		while (link)
 		{
-			if (cn->beginProcessPacketsFor(link->getEndPoint()))
+			if (C->cn()->beginProcessPacketsFor(link->getEndPoint()))
 			{
 				link->beginPoll();
 				Packet pack;
 				while (link->poll(pack))
 				{
 					// try at all nodes, returns false if packet is not processed
-					if (!cn->processPacket(pack))
-						if (!vgn->processPacket(pack, link->getEndPoint()))
+					if (!C->cn()->processPacket(pack))
+						if (!C->vgn()->processPacket(pack, link->getEndPoint()))
 						{
 						}
 				}
 				link->endPoll();
-				cn->endProcessPackets();
+				C->cn()->endProcessPackets();
 			}
-			rn->unpinLink(link);
+			C->rn()->unpinLink(link);
 			linkIdx++;
 		}
 
-		cn->update();
-		vgn->update();
+		C->cn()->update();
+		C->vgn()->update();
 	}
 
 	void ZNode::setPassword(const std::string& pw)
 	{
-		cn->setPassword( pw );
+		C->cn()->setPassword( pw );
 	}
 
 	void ZNode::setMaxIncomingConnections(i32_t maxNumConnections)
 	{
-		cn->setMaxIncomingConnections( maxNumConnections );
+		C->cn()->setMaxIncomingConnections( maxNumConnections );
 	}
 
 	void ZNode::getConnectionListCopy(std::vector<ZEndpoint>& listOut)
 	{
-		cn->getConnectionListCopy(listOut);
+		C->cn()->getConnectionListCopy(listOut);
 	}
 
 	Zerodelay::ERoutingMethod ZNode::getRoutingMethod() const
 	{
-		return cn->getRoutingMethod();
+		return C->getRoutingMethod();
 	}
 
 	void ZNode::simulatePacketLoss(i32_t percentage)
 	{
-		rn->simulatePacketLoss( percentage );
+		C->rn()->simulatePacketLoss( percentage );
 	}
 
 	bool ZNode::sendReliableOrdered(u8_t id, const i8_t* data, i32_t len, const ZEndpoint* specific, bool exclude, u8_t channel, bool relay)
 	{
-		ISocket* sock = rn->getSocket();
+		ISocket* sock = C->rn()->getSocket();
 		bool bAdded = false;
 		if ( sock )
-			bAdded = rn->send( id, data, len, asEpt(specific), exclude, EHeaderPacketType::Reliable_Ordered, channel );
+			bAdded = C->rn()->send( id, data, len, asEpt(specific), exclude, EHeaderPacketType::Reliable_Ordered, channel );
 		else
-			Platform::log( "socket was not created, possibly a platform issue" );
+			C->setCriticalError(ECriticalError::SocketIsNull, ZERODELAY_FUNCTION);
 		return bAdded;
 	}
 
 	void ZNode::sendReliableNewest(u8_t packId, u32_t groupId, i8_t groupBit, const i8_t* data, i32_t len, const ZEndpoint* specific, bool exclude)
 	{
-		ISocket* sock = rn->getSocket();
+		ISocket* sock = C->rn()->getSocket();
 		if ( sock )
-			rn->sendReliableNewest( packId, groupId, groupBit, data, len, asEpt(specific), exclude );
+			C->rn()->sendReliableNewest( packId, groupId, groupBit, data, len, asEpt(specific), exclude );
 		else
-			Platform::log( "socket was not created, possibly a platform issue" );
+			C->setCriticalError(ECriticalError::SocketIsNull, ZERODELAY_FUNCTION);
 	}
 
 	void ZNode::sendUnreliableSequenced(u8_t packId, const i8_t* data, i32_t len, const ZEndpoint* specific, bool exclude, u8_t channel, bool relay, bool discardSendIfNotConnected)
 	{
-		ISocket* sock = rn->getSocket();
+		ISocket* sock = C->rn()->getSocket();
 		if ( sock )
-			rn->send( packId, data, len, asEpt(specific), exclude, EHeaderPacketType::Unreliable_Sequenced, channel, discardSendIfNotConnected );
+			C->rn()->send( packId, data, len, asEpt(specific), exclude, EHeaderPacketType::Unreliable_Sequenced, channel, discardSendIfNotConnected );
 		else
-			Platform::log( "socket was not created, possibly a platform issue" );
+			C->setCriticalError(ECriticalError::SocketIsNull, ZERODELAY_FUNCTION);
 	}
 
 	void ZNode::setIsNetworkIdProvider(bool isProvider)
 	{
-		vgn->setIsNetworkIdProvider( isProvider );
+		C->vgn()->setIsNetworkIdProvider( isProvider );
 	}
 
 	void ZNode::bindOnConnectResult(const std::function<void(const ZEndpoint&, EConnectResult)>& cb)
 	{
-		cn->bindOnConnectResult( [=] (auto etp, auto res) {
+		C->cn()->bindOnConnectResult( [=] (auto etp, auto res) 
+		{
 			cb( toZpt(etp), res );
 		});
 	}
 
 	void ZNode::bindOnNewConnection(const std::function<void (const ZEndpoint&)>& cb)
 	{
-		cn->bindOnNewConnection( [=] (auto etp) {
+		C->cn()->bindOnNewConnection( [=] (auto etp) 
+		{
 			cb( toZpt(etp) );
 		});
 	}
 
 	void ZNode::bindOnDisconnect(const std::function<void (bool isThisConnection, const ZEndpoint&, EDisconnectReason)>& cb)
 	{
-		cn->bindOnDisconnect( [=] (bool thisConn, auto etp, auto reason) {
+		C->cn()->bindOnDisconnect( [=] (bool thisConn, auto etp, auto reason) 
+		{
 			cb( thisConn, toZpt( etp ), reason );
 		});
 	}
 
 	void ZNode::bindOnCustomData(const std::function<void (const ZEndpoint&, u8_t id, const i8_t* data, i32_t length, u8_t channel)>& cb)
 	{
-		cn->bindOnCustomData( [=] ( auto etp, auto id, auto data, auto len, auto chan ) {
+		C->cn()->bindOnCustomData( [=] ( auto etp, auto id, auto data, auto len, auto chan ) 
+		{
 			cb( toZpt( etp ), id, data, len, chan );
 		});
 	}
 
 	void ZNode::bindOnGroupUpdated(const std::function<void(const ZEndpoint*, u8_t id)>& cb)
 	{
-		vgn->bindOnGroupUpdated( [=] ( auto etp, auto id ) 
+		C->vgn()->bindOnGroupUpdated( [=] ( auto etp, auto id ) 
 		{
 			ZEndpoint zept;
 			ZEndpoint* zeptr = nullptr;
@@ -261,7 +268,7 @@ namespace Zerodelay
 
 	void ZNode::bindOnGroupDestroyed(const std::function<void(const ZEndpoint*, u8_t id)>& cb)
 	{
-		vgn->bindOnGroupDestroyed( [=] ( auto etp, auto id ) 
+		C->vgn()->bindOnGroupDestroyed( [=] ( auto etp, auto id ) 
 		{
 			ZEndpoint zept;
 			ZEndpoint* zeptr = nullptr;
@@ -276,18 +283,17 @@ namespace Zerodelay
 
 	void ZNode::setUserDataPtr(void* ptr)
 	{
-		//cn->setUserDataPtr( ptr ); // TODO centralize
+		C->setUserDataPtr( ptr );
 	}
 
 	void* ZNode::getUserDataPtr() const
 	{
-		// TODO centralize
-		return nullptr;
+		return C->getUserDataPtr();
 	}
 
 	void ZNode::deferredCreateVariableGroup(const i8_t* paramData, i32_t paramDataLen, i8_t channel)
 	{
-		vgn->deferredCreateGroup( paramData, paramDataLen, channel );
+		C->vgn()->deferredCreateGroup( paramData, paramDataLen, channel );
 	}
 
 }

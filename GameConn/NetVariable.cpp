@@ -4,6 +4,8 @@
 #include "Netvar.h"
 #include "Platform.h"
 #include "VariableGroup.h"
+#include "RUDPLink.h"
+
 #include <cassert>
 
 
@@ -109,7 +111,11 @@ namespace Zerodelay
 
 	void NetVariable::sendNewest(ZNode* node, i32_t groupBit)
 	{
-		assert( groupBit >= 0 && groupBit < 16 );
+		assert( groupBit >= 0 && groupBit < RUDPLink::sm_MaxItemsPerGroup );
+		if ( !(groupBit >= 0 && groupBit < RUDPLink::sm_MaxItemsPerGroup) )
+		{
+			Platform::log("ERROR: groupBit must be >= 0 && less than %d.", RUDPLink::sm_MaxItemsPerGroup);
+		}
 		node->sendReliableNewest( (u8_t)EDataPacketType::VariableGroupUpdate, getGroupId(), groupBit, m_Data, m_Length, nullptr, false );
 	}
 

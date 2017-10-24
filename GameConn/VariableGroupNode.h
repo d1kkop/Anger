@@ -47,7 +47,7 @@ namespace Zerodelay
 	public:
 		VariableGroupNode();
 		~VariableGroupNode();
-		void postInitialize(class ZNode* zNode, class ConnectionNode* connNode); // called when all ptrs to others managers are set
+		void postInitialize(class CoreNode* coreNode);
 
 		void update();
 		bool processPacket(const struct Packet& pack, const EndPoint& etp);
@@ -90,6 +90,7 @@ namespace Zerodelay
 		std::vector<GroupCallback> m_GroupUpdateCallbacks;
 		std::vector<GroupCallback> m_GroupDestroyCallbacks;
 		// --- ptrs to other managers
+		class CoreNode* m_CoreNode;
 		class ZNode* m_ZNode;
 		class ConnectionNode* m_ConnectionNode;
 	};

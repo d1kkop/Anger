@@ -1,6 +1,7 @@
 #include "RUDPLink.h"
 #include "Socket.h"
 #include "RecvNode.h"
+#include "Util.h"
 
 #include <algorithm>
 #include <cassert>
@@ -35,13 +36,16 @@ namespace Zerodelay
 		for ( i32_t i=0; i<sm_NumChannels; ++i ) for (auto& it : m_SendQueue_reliable[i] ) delete [] it.data;
 		for ( i32_t i=0; i<sm_NumChannels; ++i ) for (auto& it : m_RecvQueue_reliable_order[i] ) delete [] it.second.data;
 		for ( i32_t i=0; i<sm_NumChannels; ++i ) for (auto& it : m_RecvQueue_unreliable_sequenced[i] ) delete [] it.data;
-		for ( auto& kvp : m_SendQueue_reliable_newest ) for (auto i = 0; i < 16 ; i++) delete [] kvp.second.groupItems[i].data;
+		for ( auto& kvp : m_SendQueue_reliable_newest ) for (auto i = 0; i < sm_MaxItemsPerGroup ; i++) delete [] kvp.second.groupItems[i].data;
 	}
 
 	void RUDPLink::addToSendQueue(u8_t id, const i8_t* data, i32_t len, EHeaderPacketType packetType, u8_t channel, bool relay)
 	{
-		if ( m_BlockNewSends ) // discard new packetes
+		if ( m_BlockNewSends ) // discard new packets in this case
+		{
+			Platform::log("WARNING: Trying to send %d while send is blocked.", (u32_t)packetType);
 			return; 
+		}
 		// user not allowed to send acks
 		if ( packetType == EHeaderPacketType::Ack || packetType == EHeaderPacketType::Reliable_Newest )
 		{
@@ -67,8 +71,16 @@ namespace Zerodelay
 	void RUDPLink::addReliableNewest(u8_t id, const i8_t* data, i32_t len, u32_t groupId, i8_t groupBit)
 	{
 		if ( m_BlockNewSends ) // discard new packets
+		{
+			Platform::log("WARNING: Trying to add Reliable Newest while send is blocked.");
 			return; 
-		assert( groupBit >= 0 && groupBit < 16 );
+		}
+		assert( groupBit >= 0 && groupBit < sm_MaxItemsPerGroup );
+		if ( !( groupBit >= 0 && groupBit < sm_MaxItemsPerGroup ) )
+		{
+			Platform::log("ERROR: GroupBit must be >= 0 and less than %d.", sm_MaxItemsPerGroup);
+			return;
+		}
 		std::lock_guard<std::mutex> lock(m_SendQueuesMutex);
 		auto it = m_SendQueue_reliable_newest.find( groupId );
 		if ( it == m_SendQueue_reliable_newest.end() )
@@ -84,7 +96,7 @@ namespace Zerodelay
 			// for the other items, set the correct local/remote revision, so that the group can be popped when an item acked (even for not used items)
 			reliableNewestDataGroup rd;
 			rd.dataId = id;
-			for ( auto i=0; i<16; i++ )
+			for ( auto i=0; i<sm_MaxItemsPerGroup; i++ )
 			{
 				// initialize items in group
 				rd.groupItems[i].data = nullptr;
@@ -113,9 +125,9 @@ namespace Zerodelay
 		}
 	}
 
-	void RUDPLink::blockAllUpcomingSends(bool block)
+	void RUDPLink::blockAllUpcomingSends()
 	{
-		m_BlockNewSends = block;
+		m_BlockNewSends = true;
 	}
 
 	void RUDPLink::beginPoll()
@@ -188,8 +200,7 @@ namespace Zerodelay
 
 	i32_t RUDPLink::getTimeSincePendingDelete() const
 	{
-		auto now = ::clock();
-		return i32_t((float(now - m_MarkDeleteTS) / (float)CLOCKS_PER_SEC) * 1000.f); // to ms
+		return Util::getTimeSince(m_MarkDeleteTS);
 	}
 
 	void RUDPLink::flushSendQueue(ISocket* socket)
@@ -231,7 +242,7 @@ namespace Zerodelay
 		}
 	}
 
-	void RUDPLink::setIsPendingDelete()
+	void RUDPLink::prepareLinkForDelete()
 	{
 		std::lock_guard<std::mutex> lock(m_PendingDeleteMutex);
 		if ( m_IsPendingDelete )
@@ -519,7 +530,7 @@ namespace Zerodelay
 		{
 			auto& group = it->second;
 			bool removeGroup = true;
-			for (auto k=0; k<16; ++k)
+			for (auto k=0; k<sm_MaxItemsPerGroup; ++k)
 			{
 				auto& item = group.groupItems[k];
 				item.remoteRevision = ackSeq;
@@ -528,7 +539,7 @@ namespace Zerodelay
 			}
 			if ( removeGroup )
 			{
-				for(auto k=0; k<16; ++k) // cleanup data
+				for(auto k=0; k<sm_MaxItemsPerGroup; ++k) // cleanup data
 					delete [] group.groupItems[k].data;
 				it = queue.erase(it);
 			}

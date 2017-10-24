@@ -4,6 +4,7 @@
 #include "Socket.h"
 #include "SyncGroups.h"
 #include "RUDPLink.h"
+#include "CoreNode.h"
 #include "ConnectionNode.h"
 #include "Util.h"
 
@@ -39,11 +40,12 @@ namespace Zerodelay
 		}
 	}
 
-	void VariableGroupNode::postInitialize(ZNode* zNode, ConnectionNode* connNode)
+	void VariableGroupNode::postInitialize(CoreNode* coreNode)
 	{
-		assert( !m_ZNode || !m_ConnectionNode );
-		m_ZNode = zNode;
-		m_ConnectionNode = connNode;
+		assert( !m_CoreNode && !m_ZNode || !m_ConnectionNode );
+		m_CoreNode = coreNode;
+		m_ZNode = coreNode->zn();
+		m_ConnectionNode = coreNode->cn();
 
 		// on new connect, put variable group map (with empty set of groups) in list so that we know the set of known EndPoints
 		m_ZNode->bindOnNewConnection( [this] (auto& ztp)

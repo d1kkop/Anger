@@ -27,19 +27,13 @@ namespace Zerodelay
 	public:
 		RecvNode(bool captureSocketErrors=true, i32_t sendThreadSleepTimeMs=6);
 		virtual ~RecvNode();
-		void postInitialize(class ConnectionNode* connectionNode);
+		void postInitialize(class CoreNode* coreNode);
 		bool openSocketOnPort(u16_t port);
 
 	public:
 		bool send( u8_t id, const i8_t* data, i32_t len, const EndPoint* specific=nullptr, bool exclude=false, 
 				   EHeaderPacketType type=EHeaderPacketType::Reliable_Ordered, u8_t channel=0, bool relay=true );
 		bool sendReliableNewest( u8_t id, u32_t groupId, i8_t groupBit, const i8_t* data, i32_t len, const EndPoint* specific=nullptr, bool exclude=false );
-
-		// TODO needs to go to ZNode main
-		void  setUserDataPtr( void* ptr) { m_UserPtr = ptr; }
-		void* getUserDataPtr() const { return m_UserPtr; }
-		void setUserDataIdx( i32_t idx ) { m_UserIndex = idx; }
-		i32_t  getUserDataIdx() const { return m_UserIndex; }
 
 		class RUDPLink* getLinkAndPinIt(u32_t idx);
 		void unpinLink(RUDPLink* link);
@@ -70,9 +64,8 @@ namespace Zerodelay
 		// Currently opened links are put in a list so that reopend links on same address can not depend on a previously opened session
 		std::map<EndPoint, class RUDPLink*, EndPoint::STLCompare> m_OpenLinksMap;
 		std::vector<class RUDPLink*> m_OpenLinksList;
-		void* m_UserPtr;
-		i32_t m_UserIndex;
 		// -- Ptrs of other managers
+		class CoreNode* m_CoreNode;
 		class ConnectionNode* m_ConnectionNode;
 	};
 

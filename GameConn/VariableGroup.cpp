@@ -3,6 +3,7 @@
 #include "VariableGroup.h"
 #include "NetVariable.h"
 #include "Platform.h"
+#include "RUDPLink.h"
 
 #include <cassert>
 
@@ -24,7 +25,12 @@ namespace Zerodelay
 
 	bool VariableGroup::read(const i8_t*& data, i32_t& buffLen, u16_t groupBits )
 	{
-		assert ( (i32_t)m_Variables.size() <= 16 );
+		assert ( (i32_t)m_Variables.size() <= RUDPLink::sm_MaxItemsPerGroup );
+		if ( !((i32_t)m_Variables.size() <= RUDPLink::sm_MaxItemsPerGroup) )
+		{
+			Platform::log("ERROR: m_Variables.size() cannot exceed %d.", RUDPLink::sm_MaxItemsPerGroup-1);
+			return false;
+		}
 		for (i32_t i = 0; i < (i32_t)m_Variables.size() ; i++)
 		{
 			auto* v = m_Variables[i];

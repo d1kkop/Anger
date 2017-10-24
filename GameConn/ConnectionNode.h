@@ -13,13 +13,6 @@
 
 namespace Zerodelay
 {
-	enum class ECriticalError	// bitfield
-	{
-		None = 0,
-		SerializationError = 1,
-		CannotFindExternalCFunction = 2
-	};
-
 	class ConnectionNode
 	{
 		typedef std::function<void (const EndPoint&, EConnectResult)>					ConnectResultCallback;
@@ -28,9 +21,9 @@ namespace Zerodelay
 		typedef std::function<void (const EndPoint&, u8_t, const i8_t*, i32_t, u8_t)>	CustomDataCallback;
 
 	public:
-		ConnectionNode(ERoutingMethod routingMethod, i32_t keepAliveIntervalSeconds=8);
+		ConnectionNode(i32_t keepAliveIntervalSeconds=8);
 		~ConnectionNode();
-		void postInitialize(RecvNode* recvNode);
+		void postInitialize(class CoreNode* coreNode);
 
 		// state
 		EConnectCallResult connect( const EndPoint& endPoint, const std::string& pw="", i32_t timeoutSeconds=8 );
@@ -42,7 +35,7 @@ namespace Zerodelay
 		// flow
 		void update();
 		bool beginProcessPacketsFor(const EndPoint& endPoint);	// returns true if is known connection
-		bool processPacket(const struct Packet& pack);					// returns false if packet was not processed (consumed)
+		bool processPacket(const struct Packet& pack);			// returns false if packet was not processed (consumed)
 		void endProcessPackets();
 		//void update( std::function<void (const Packet&, IConnection*)> unhandledPacketCb );
 		// setters
@@ -50,8 +43,7 @@ namespace Zerodelay
 		void setMaxIncomingConnections(i32_t maxNumConnections);
 		void getConnectionListCopy(std::vector<ZEndpoint>& endpoints);
 		// getters
-		ERoutingMethod getRoutingMethod() const;
-		bool isServer() const { return m_IsServer; }
+		bool isServer() const { return m_IsServer; } // TODO must be here?
 		// callbacks
 		void bindOnConnectResult(const ConnectResultCallback& cb)		{ Util::bindCallback(m_ConnectResultCallbacks, cb); }
 		void bindOnNewConnection(const NewConnectionCallback& cb)		{ Util::bindCallback(m_NewConnectionCallbacks, cb); }
@@ -80,22 +72,19 @@ namespace Zerodelay
 		void updateConnecting( class Connection* g );
 		void updateKeepAlive( class Connection* g );
 		void updateDisconnecting( class Connection* g );
-		// error
-		void setCriticalSerializationError(ECriticalError error, const char* fn);
 		
-		bool m_IsServer;
+		bool m_IsServer; // TODO must be here?
 		i32_t m_KeepAliveIntervalSeconds;
 		i32_t m_MaxIncomingConnections;
 		std::string m_Password;
-		ERoutingMethod m_RoutingMethod;
 		class Connection* m_ProcessingConnection;
-		ECriticalError m_CriticalErrors;
 		std::map<EndPoint, class Connection*, EndPoint::STLCompare> m_Connections;
 		std::vector<ConnectResultCallback>	m_ConnectResultCallbacks;
 		std::vector<DisconnectCallback>		m_DisconnectCallbacks;
 		std::vector<NewConnectionCallback>	m_NewConnectionCallbacks;
 		std::vector<CustomDataCallback>		m_CustomDataCallbacks;
 		// --- ptrs to other managers
+		class CoreNode* m_CoreNode;
 		class RecvNode* m_DispatchNode;
 	};
 }
