@@ -34,8 +34,8 @@ namespace UnitTests
 		bool connected = false;
 		bool timedOut  = false;
 		bool foundNewConn = false;
-		ZNode* g1 = new ZNode(ERoutingMethod::ClientServer, 8, 2, true);
-		ZNode* g2 = new ZNode(ERoutingMethod::ClientServer, 8, 2, true);
+		ZNode* g1 = new ZNode(8, 2);
+		ZNode* g2 = new ZNode(8, 2);
 		g1->bindOnConnectResult( [&] (auto etp, auto res) 
 		{
 			std::string resStr;

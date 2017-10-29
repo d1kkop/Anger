@@ -20,6 +20,7 @@ namespace Zerodelay
 	VariableGroupNode::VariableGroupNode():
 		m_ZNode(nullptr),
 		m_UniqueIdCounter(1), // Zero is initially not used, it means no valid ID for now.
+		m_RelayVariableGroupEvents(false),
 		m_IsNetworkIdProvider(false)
 	{
 		m_LastIdPackRequestTS = -1;
@@ -149,7 +150,7 @@ namespace Zerodelay
 		assert( VariableGroup::Last == nullptr && "should be NULL" );
 		VariableGroup::Last = new VariableGroup();
 		VariableGroup::Last->setNetworkId( networkId );
-		VariableGroup::Last->setControl( ztp ? EVarControl::Remote : (m_ZNode->getRoutingMethod() == ERoutingMethod::ClientServer ? EVarControl::Semi : EVarControl::Full) );
+		VariableGroup::Last->setControl( ztp ? EVarControl::Remote : (m_ZNode->isSuperPeer() ? EVarControl::Full : EVarControl::Semi) );
 		// ----------------------------
 		if (ztp) // is remote group
 		{
@@ -181,6 +182,16 @@ namespace Zerodelay
 	void VariableGroupNode::setIsNetworkIdProvider(bool isProvider)
 	{
 		m_IsNetworkIdProvider = isProvider;
+	}
+
+	void VariableGroupNode::setRelayVariableGroupEvents(bool doIt)
+	{
+		if ( !m_ZNode->isSuperPeer() )
+		{
+			Platform::log( "WARNING: Can only set relay variable group events on a 'true' server." );
+			return;
+		}
+		m_RelayVariableGroupEvents = true;
 	}
 
 	void VariableGroupNode::recvIdRequest(const EndPoint& etp)
@@ -215,8 +226,8 @@ namespace Zerodelay
 		i32_t len = pack.len-1; // minus hdr type byte
 		ZEndpoint ztp = toZpt( etp );
 
-		// If is client server, relay the message to other clients
-		if ( m_ZNode->getRoutingMethod() == ERoutingMethod::ClientServer )
+		// if 'true' server in client-server arch, dispatch to all
+		if ( m_RelayVariableGroupEvents )
 		{
 			m_ZNode->sendReliableOrdered( (u8_t)pack.type, payload, len, &ztp, true, pack.channel, false );
 		}
@@ -226,7 +237,15 @@ namespace Zerodelay
 
 	void VariableGroupNode::recvVariableGroupDestroy(const Packet& pack, const EndPoint& etp)
 	{
-		u32_t id = *(u32_t*)(pack.data+1);		
+		u32_t id = *(u32_t*)(pack.data+1);
+
+		// if 'true' server in client-server arch, dispatch to all
+		if ( m_RelayVariableGroupEvents )
+		{
+			ZEndpoint ztp = toZpt( etp );
+			m_ZNode->sendReliableOrdered( (u8_t)pack.type, (const i8_t*)&id, 4, &ztp, true, pack.channel, false );
+		}
+
 		VariableGroup* vg = findOrRemoveBrokenGroup( id, nullptr );
 		if ( vg )
 		{

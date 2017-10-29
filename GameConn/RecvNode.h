@@ -25,7 +25,7 @@ namespace Zerodelay
 	class RecvNode
 	{
 	public:
-		RecvNode(bool captureSocketErrors=true, i32_t sendThreadSleepTimeMs=6);
+		RecvNode(i32_t sendThreadSleepTimeMs=20);
 		virtual ~RecvNode();
 		void postInitialize(class CoreNode* coreNode);
 		bool openSocketOnPort(u16_t port);

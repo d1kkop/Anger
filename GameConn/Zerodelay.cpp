@@ -79,12 +79,11 @@ namespace Zerodelay
 	// -------- ZNode ----------------------------------------------------------------------------------------------
 
 
-	ZNode::ZNode(ERoutingMethod routingMethod, i32_t sendThreadSleepTimeMs, i32_t keepAliveIntervalSeconds, bool captureSocketErrors) :
+	ZNode::ZNode(i32_t sendThreadSleepTimeMs, i32_t keepAliveIntervalSeconds) :
 		C(new CoreNode
 		(
-			routingMethod,
 			this,
-			(new RecvNode(captureSocketErrors, sendThreadSleepTimeMs)),
+			(new RecvNode(sendThreadSleepTimeMs)),
 			(new ConnectionNode(keepAliveIntervalSeconds)),
 			(new VariableGroupNode())
 		))
@@ -175,9 +174,9 @@ namespace Zerodelay
 		C->cn()->getConnectionListCopy(listOut);
 	}
 
-	Zerodelay::ERoutingMethod ZNode::getRoutingMethod() const
+	bool ZNode::isSuperPeer() const
 	{
-		return C->getRoutingMethod();
+		return C->zn()->isSuperPeer();
 	}
 
 	void ZNode::simulatePacketLoss(i32_t percentage)
@@ -217,6 +216,16 @@ namespace Zerodelay
 	void ZNode::setIsNetworkIdProvider(bool isProvider)
 	{
 		C->vgn()->setIsNetworkIdProvider( isProvider );
+	}
+
+	void ZNode::setRelayConnectAndDisconnectEvents()
+	{
+		C->cn()->setRelayConnectAndDisconnectEvents(true);
+	}
+
+	void ZNode::setRelayVariableGroupEvents()
+	{
+		C->vgn()->setRelayVariableGroupEvents(true);
 	}
 
 	void ZNode::bindOnConnectResult(const std::function<void(const ZEndpoint&, EConnectResult)>& cb)

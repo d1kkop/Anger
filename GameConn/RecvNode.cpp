@@ -11,10 +11,9 @@
 
 namespace Zerodelay
 {
-	RecvNode::RecvNode(bool captureSocketErrors, i32_t sendThreadSleepTimeMs):
+	RecvNode::RecvNode(i32_t sendThreadSleepTimeMs):
 		m_SocketOpened(false),
 		m_IsClosing(false),
-		m_CaptureSocketErrors(captureSocketErrors),
 		m_SendThreadSleepTimeMs(sendThreadSleepTimeMs),
 		m_Socket(ISocket::create()),
 		m_RecvThread(nullptr),

@@ -98,13 +98,6 @@ namespace Zerodelay
 	};
 
 
-	enum class ERoutingMethod 
-	{
-		ClientServer,
-		Peer2Peer
-	};
-
-
 	/** ---------------------------------------------------------------------------------------------------------------------------------
 		Endpoint is analogical to an address. It is either an Ipv4 or Ipv6 address.
 		Do not keep a pointer to the endpoint but copy the structure instead.
@@ -138,11 +131,10 @@ namespace Zerodelay
 	class ZDLL_DECLSPEC ZNode
 	{
 	public:
-		/*	If routingMethod is set to ClientServer, only one ZNode should call 'listenOn', all clients should call: 'connect'.
-			In case of Peer2Peer, clients first connect to a server (channel) from which the server will set up the 
-			peer to peer connections. */
-		ZNode(ERoutingMethod routingMethod = ERoutingMethod::ClientServer,
-			  i32_t sendThreadSleepTimeMs=20, i32_t keepAliveIntervalSeconds=8, bool captureSocketErrors=true);
+		/*[sendSleepTimeMs]				Is the time to wait before retransmitting existing packets in the send queue.
+										If new packets are added within this timeout, they are sent immeidately.
+		  [keepAliveIntervalSeconds]	Is the time between consequative requests to keep the connection alive. */
+		ZNode( i32_t sendThreadSleepTimeMs=50, i32_t keepAliveIntervalSeconds=8 );
 		virtual ~ZNode();
 
 
@@ -181,12 +173,13 @@ namespace Zerodelay
 		i32_t getNumOpenConnections() const;
 
 
-		/*	This will invoke the bound callback functions when new data is available. */
+		/*	This will invoke the bound callback functions when new data is available. 
+			Usually called every frame update in a game. */
 		void update();
 
 
 		/*	The password that is required to connect to this node. 
-			Default is none. */
+			Default is empty string. */
 		void setPassword( const std::string& pw );
 
 
@@ -201,8 +194,8 @@ namespace Zerodelay
 		void getConnectionListCopy( std::vector<ZEndpoint>& listOut );
 
 
-		/*	Returns initially specified routing method. */
-		ERoutingMethod getRoutingMethod() const;
+		/*	Returns ture if is server in client-server architecture or if is the authorative peer in a p2p network. */
+		bool isSuperPeer() const;
 
 
 		/*	Simulate packet loss to test Quality of Service in game. 
@@ -247,9 +240,20 @@ namespace Zerodelay
 		void sendUnreliableSequenced( u8_t packId, const i8_t* data, i32_t len, const ZEndpoint* specific=nullptr, bool exclude=false, u8_t channel=0, bool relay=true, bool discardSendIfNotConnected=true );
 
 
-		/*	Only one node in the network provides new network id's on request.
+		/*	Only one node in the network must provide new network id's on request.
 			Typically, this is the Server in a client-server model or the 'Super-Peer' in a p2p network. */
 		void setIsNetworkIdProvider( bool isProvider );
+
+
+		/*	Call this for a 'true' server in a client-server model. 
+			For all incoming connections and dropped connections on the server, the messages
+			are relayed to all connected clients. */
+		void setRelayConnectAndDisconnectEvents();
+
+
+		/*	Call ths for a 'true' server in a client-server model.
+			For new variable groups, deleting of variable groups and updating, they are relayed to all connected clients. */
+		void setRelayVariableGroupEvents();
 
 
 		/*	----- Callbacks ----------------------------------------------------------------------------------------------- */

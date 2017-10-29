@@ -56,6 +56,7 @@ namespace Zerodelay
 		void beginNewGroup(u32_t nid, const ZEndpoint* ztp);
 		void endNewGroup();
 		void setIsNetworkIdProvider( bool isProvider );
+		void setRelayVariableGroupEvents( bool doIt );
 
 	private:
 		/* recvs */
@@ -81,6 +82,7 @@ namespace Zerodelay
 		void bindOnGroupDestroyed(const GroupCallback& cb)				{ Util::bindCallback(m_GroupDestroyCallbacks, cb); }
 
 		bool m_IsNetworkIdProvider; // Only 1 node is the owner of all id's, it provides id's on request.
+		bool m_RelayVariableGroupEvents;
 		std::deque<u32_t> m_UniqueIds;
 		std::deque<PendingVariableGroup> m_PendingGroups;
 		std::map<u32_t, class VariableGroup*> m_VariableGroups; // variable groups on this machine

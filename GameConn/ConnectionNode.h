@@ -37,13 +37,13 @@ namespace Zerodelay
 		bool beginProcessPacketsFor(const EndPoint& endPoint);	// returns true if is known connection
 		bool processPacket(const struct Packet& pack);			// returns false if packet was not processed (consumed)
 		void endProcessPackets();
-		//void update( std::function<void (const Packet&, IConnection*)> unhandledPacketCb );
 		// setters
 		void setPassword( const std::string& pw );
 		void setMaxIncomingConnections(i32_t maxNumConnections);
-		void getConnectionListCopy(std::vector<ZEndpoint>& endpoints);
+		void setRelayConnectAndDisconnectEvents(bool relay);
 		// getters
-		bool isServer() const { return m_IsServer; } // TODO must be here?
+		bool getRelayConnectAndDisconnect() const { return m_RelayConnectAndDisconnect; }
+		void getConnectionListCopy(std::vector<ZEndpoint>& endpoints);
 		// callbacks
 		void bindOnConnectResult(const ConnectResultCallback& cb)		{ Util::bindCallback(m_ConnectResultCallbacks, cb); }
 		void bindOnNewConnection(const NewConnectionCallback& cb)		{ Util::bindCallback(m_NewConnectionCallbacks, cb); }
@@ -73,7 +73,7 @@ namespace Zerodelay
 		void updateKeepAlive( class Connection* g );
 		void updateDisconnecting( class Connection* g );
 		
-		bool m_IsServer; // TODO must be here?
+		bool m_RelayConnectAndDisconnect;
 		i32_t m_KeepAliveIntervalSeconds;
 		i32_t m_MaxIncomingConnections;
 		std::string m_Password;

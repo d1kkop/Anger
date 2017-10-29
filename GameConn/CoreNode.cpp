@@ -6,9 +6,9 @@
 
 namespace Zerodelay
 {
-	CoreNode::CoreNode(ERoutingMethod routingMethod, class ZNode* zn, class RecvNode* rn, class ConnectionNode* cn, class VariableGroupNode* vgn):
+	CoreNode::CoreNode(class ZNode* zn, class RecvNode* rn, class ConnectionNode* cn, class VariableGroupNode* vgn):
 		m_UserPtr(nullptr),
-		m_RoutingMethod(routingMethod),
+		m_IsSuperPeer(false),
 		m_ZNode(zn),
 		m_RecvNode(rn), 
 		m_ConnectionNode(cn),

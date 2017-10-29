@@ -1,6 +1,5 @@
 #include "ConnectionNode.h"
 #include "Connection.h"
-#include "Socket.h"
 #include "EndPoint.h"
 #include "RpcMacros.h"
 #include "CoreNode.h"
@@ -16,7 +15,7 @@ namespace Zerodelay
 	ConnectionNode::ConnectionNode(i32_t keepAliveIntervalSeconds):
 		m_DispatchNode(nullptr),
 		m_ProcessingConnection(nullptr),
-		m_IsServer(false),
+		m_RelayConnectAndDisconnect(false),
 		m_KeepAliveIntervalSeconds(keepAliveIntervalSeconds),
 		m_MaxIncomingConnections(32)
 	{
@@ -49,7 +48,6 @@ namespace Zerodelay
 		{
 			return EConnectCallResult::SocketError; 
 		}
-
 		if ( m_Connections.find( endPoint ) != m_Connections.end() )
 		{
 			return EConnectCallResult::AlreadyExists;
@@ -62,18 +60,11 @@ namespace Zerodelay
 
 	EListenCallResult ConnectionNode::listenOn(i32_t port, const std::string& pw)
 	{
-		if ( m_CoreNode->getRoutingMethod() == ERoutingMethod::ClientServer && m_IsServer )
-		{
-			return EListenCallResult::AlreadyStartedServer;
-		}
-
 		if ( !m_DispatchNode->openSocketOnPort(port) )
 		{
 			return EListenCallResult::SocketError;
 		}
-
 		setPassword( pw );
-		m_IsServer = true;
 		return EListenCallResult::Succes;
 	}
 
@@ -118,48 +109,6 @@ namespace Zerodelay
 		}
 		return num;
 	}
-
-	//void ConnectionNode::update(std::function<void(const Packet&, IConnection*)> unhandledCb)
-	//{
-	//	// Called from game thread
-	//	m_TempConnections.clear();
-	//	copyConnectionsTo( m_TempConnections );
-	//	for ( auto* conn : m_TempConnections )
-	//	{
-	//		// Connection* gc = dynamic_cast<Connection*>(conn);
-	//		Connection* gc = static_cast<Connection*>(conn); // TODO change to dynamic when more Connection types are there
-	//		if ( gc )
-	//		{
-	//			gc->beginPoll();
-	//			Packet pack;
-	//			// connection can have become pending delete after it has processed the packet, in that case do no longer update states or call callbacks
-	//			while ( !gc->isPendingDelete() && gc->poll(pack) ) 
-	//			{
-	//				// all possible packet types that can be processed by higher level systems than rudp handler
-	//				if ( (pack.type == EHeaderPacketType::Reliable_Ordered) || (pack.type == EHeaderPacketType::Unreliable_Sequenced) || 
-	//					 (pack.type == EHeaderPacketType::Reliable_Newest) )
-	//				{
-	//					// returns false if packet is not handled.
-	//					if ( (pack.type == EHeaderPacketType::Reliable_Newest) || !recvPacket( pack, gc ) )
-	//					{
-	//						// pass unhandled packets through to other Node systems
-	//						unhandledCb( pack, gc );
-	//					}
-	//				}
-	//				else
-	//				{
-	//					Platform::log("ERROR: invalid packet forwared to higher level packet processors");
-	//					assert( false && "invalid packet forward to higher level packet processors" );
-	//				}
-	//				delete [] pack.data;
-	//			}
-	//			gc->endPoll();
-	//			updateConnecting( gc );				// implicitely checks if connection is not a pendingDelete, no callbacks called then
-	//			updateKeepAlive( gc );				// same
-	//			updateDisconnecting( gc );			// same
-	//		}
-	//	}
-	//}
 
 	void ConnectionNode::update()
 	{
@@ -218,6 +167,11 @@ namespace Zerodelay
 		m_MaxIncomingConnections = maxNumConnections;
 	}
 
+	void ConnectionNode::setRelayConnectAndDisconnectEvents(bool relay)
+	{
+		m_RelayConnectAndDisconnect = relay;
+	}
+
 	void ConnectionNode::getConnectionListCopy(std::vector<ZEndpoint>& endpoints)
 	{
 		for ( auto& kvp : m_Connections )
@@ -258,7 +212,7 @@ namespace Zerodelay
 
 	void ConnectionNode::sendRemoteConnected(const Connection* g)
 	{
-		if ( m_CoreNode->getRoutingMethod() != ERoutingMethod::ClientServer || !isServer() )
+		if ( !getRelayConnectAndDisconnect() )
 			return; 
 		auto& etp = g->getEndPoint();
 		i8_t buff[128];
@@ -274,7 +228,7 @@ namespace Zerodelay
 
 	void ConnectionNode::sendRemoteDisconnected(const Connection* g, EDisconnectReason reason)
 	{
-		if ( m_CoreNode->getRoutingMethod() != ERoutingMethod::ClientServer || !isServer() )
+		if ( !getRelayConnectAndDisconnect() )
 			return; // relay message if wanted
 		auto& etp = g->getEndPoint();
 		i8_t buff[128];
@@ -529,19 +483,6 @@ namespace Zerodelay
 			Platform::log("CRITICAL: Cannot find external C function %s", fname);
 		}
 	}
-
-	//void ConnectionNode::recvUserPacket(class Connection* g, const Packet& pack)
-	//{
-	//	if ( pack.relay && m_RoutingMethod == ERoutingMethod::ClientServer && isServer() ) // send through to others
-	//	{
-	//		// except self
-	//		send( pack.data[0], pack.data+1, pack.len-1, &g->getEndPoint(), true, pack.type, pack.channel, false /* relay only once */ );
-	//	}
-	//	forEachCallback(m_CustomDataCallbacks, [&](auto& fcb)
-	//	{
-	//		(fcb)(g->getEndPoint(), pack.data[0], pack.data+1, pack.len-1, pack.channel);
-	//	});
-	//}
 
 	void ConnectionNode::updateConnecting(class Connection* g)
 	{
