@@ -47,7 +47,10 @@ namespace Zerodelay
 		m_CoreNode = coreNode;
 		m_ZNode = coreNode->zn();
 		m_ConnectionNode = coreNode->cn();
+	}
 
+	void VariableGroupNode::setupConnectionCallbacks()
+	{
 		// on new connect, put variable group map (with empty set of groups) in list so that we know the set of known EndPoints
 		m_ZNode->bindOnNewConnection( [this] (auto& ztp)
 		{
@@ -186,11 +189,6 @@ namespace Zerodelay
 
 	void VariableGroupNode::setRelayVariableGroupEvents(bool doIt)
 	{
-		if ( !m_ZNode->isSuperPeer() )
-		{
-			Platform::log( "WARNING: Can only set relay variable group events on a 'true' server." );
-			return;
-		}
 		m_RelayVariableGroupEvents = true;
 	}
 

@@ -19,6 +19,7 @@ namespace Zerodelay
 		m_RecvThread(nullptr),
 		m_SendThread(nullptr)
 	{
+		m_CaptureSocketErrors = true;
 	}
 
 	RecvNode::~RecvNode()
@@ -163,7 +164,7 @@ namespace Zerodelay
 					i32_t err = m_Socket->getUnderlayingSocketError();
 					if ( err != 0 )
 					{
-						Platform::log("Socket error in recvPoint %d\n", err);
+						Platform::log("WARNING: Socket error in recvPoint %d\n", err);
 					}
 				}
 				continue;

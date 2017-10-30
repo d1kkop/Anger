@@ -28,6 +28,11 @@ namespace Zerodelay
 		delete m_VariableGroupNode;
 	}
 
+	void CoreNode::processUnhandledPacket(Packet& pack, const EndPoint& etp)
+	{
+		Platform::log("Received unhandled packet from: %s", etp.asString());
+	}
+
 	void CoreNode::setCriticalError(ECriticalError error, const char* fn)
 	{
 		m_CriticalErrors |= (u32_t)error;

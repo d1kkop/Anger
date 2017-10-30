@@ -24,6 +24,7 @@ namespace Zerodelay
 		m_ConnectionNode(connectionNode),
 		m_Link(link),
 		m_WasConnector(wasConnector),
+		m_DisconnectCalled(false),
 		m_ConnectTimeoutSeconMs(timeoutSeconds*1000),
 		m_KeepAliveIntervalMs(keepAliveIntervalSeconds*1000),
 		m_StartConnectingTS(-1),
@@ -37,13 +38,18 @@ namespace Zerodelay
 	{
 	}
 
-	bool Connection::disconnect(bool sendDisconnect)
+	bool Connection::disconnect()
 	{
-		Ensure_State( Connected )
-		m_State = EConnectionState::Disconnecting;
-		m_DisconnectTS = ::clock();
-		if ( sendDisconnect ) sendSystemMessage( EDataPacketType::Disconnect );
-		if ( m_Link ) m_Link->blockAllUpcomingSends();
+		if (!m_DisconnectCalled)
+		{
+			m_DisconnectCalled = true;
+			m_DisconnectTS = ::clock();
+			if ( m_State == EConnectionState::Connected ) sendSystemMessage( EDataPacketType::Disconnect );
+			if ( m_Link ) m_Link->blockAllUpcomingSends();
+			auto oldState = m_State;
+			m_State = EConnectionState::Disconnecting;
+			return (oldState == EConnectionState::Connected);
+		}
 		return true;
 	}
 
@@ -97,27 +103,6 @@ namespace Zerodelay
 	{
 		Ensure_State( Connected );
 		sendSystemMessage( EDataPacketType::KeepAliveAnswer );
-		return true;
-	}
-
-	bool Connection::sendIncorrectPassword()
-	{
-		Ensure_State( Idle );
-		sendSystemMessage( EDataPacketType::IncorrectPassword );
-		return true;
-	}
-
-	bool Connection::sendMaxConnectionsReached()
-	{
-		Ensure_State( Idle );
-		sendSystemMessage( EDataPacketType::MaxConnectionsReached );
-		return true;
-	}
-
-	bool Connection::sendAlreadyConnected()
-	{
-		Ensure_State( Idle );
-		sendSystemMessage( EDataPacketType::AlreadyConnected );
 		return true;
 	}
 

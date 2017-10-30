@@ -22,6 +22,8 @@ namespace Zerodelay
 		CoreNode(class ZNode* zn, class RecvNode* rn, class ConnectionNode* cn, class VariableGroupNode* vgn);
 		~CoreNode();
 
+		void processUnhandledPacket(struct Packet& pack, const struct EndPoint& etp);
+
 		bool isSuperPeer() const { return m_IsSuperPeer; }
 
 		void setCriticalError(ECriticalError error, const char* fn);

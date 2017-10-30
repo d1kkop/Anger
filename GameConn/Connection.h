@@ -29,7 +29,7 @@ namespace Zerodelay
 	public:
 		Connection( class ConnectionNode* connectionNode, bool wasConnector, class RUDPLink* link, i32_t timeoutSeconds=8, i32_t keepAliveIntervalSeconds=8 );
 		~Connection();
-		bool disconnect(bool sendDisconnect);
+		bool disconnect(); // Returns true if was in 'Connected' and not called already state
 		bool acceptDisconnect();
 		bool setInvalidPassword();
 		bool setMaxConnectionsReached();
@@ -38,9 +38,6 @@ namespace Zerodelay
 		bool sendConnectAccept();
 		bool sendKeepAliveRequest();
 		bool sendKeepAliveAnswer();
-		bool sendIncorrectPassword();
-		bool sendMaxConnectionsReached();
-		bool sendAlreadyConnected();
 		// -- receives
 		bool onReceiveConnectAccept();
 		bool onReceiveKeepAliveRequest();
@@ -61,6 +58,7 @@ namespace Zerodelay
 		class RUDPLink* m_Link;
 		// how was initialized (from connect accept, or started connected)
 		bool m_WasConnector;
+		bool m_DisconnectCalled;
 		// timings
 		i32_t m_ConnectTimeoutSeconMs;
 		i32_t m_KeepAliveIntervalMs;

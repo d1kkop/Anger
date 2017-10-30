@@ -29,13 +29,13 @@ namespace Zerodelay
 		EConnectCallResult connect( const EndPoint& endPoint, const std::string& pw="", i32_t timeoutSeconds=8 );
 		EConnectCallResult connect( const std::string& name, i32_t port, const std::string& pw="", i32_t timeoutSeconds=8 );
 		EListenCallResult listenOn( i32_t port, const std::string& pw="" );
-		EDisconnectCallResult disconnect( const EndPoint& endPoint, bool sendDisconnect);
-		void disconnectAll(bool sendDisconnect);
+		EDisconnectCallResult disconnect( const EndPoint& endPoint );
+		void disconnectAll();
 		i32_t getNumOpenConnections();
 		// flow
 		void update();
-		bool beginProcessPacketsFor(const EndPoint& endPoint);	// returns true if is known connection
-		bool processPacket(const struct Packet& pack);			// returns false if packet was not processed (consumed)
+		void beginProcessPacketsFor(const EndPoint& endPoint);					// returns true if is known connection
+		bool processPacket(const struct Packet& pack, class RUDPLink& link);			// returns false if packet was not processed (consumed)
 		void endProcessPackets();
 		// setters
 		void setPassword( const std::string& pw );
@@ -51,14 +51,13 @@ namespace Zerodelay
 		void bindOnCustomData(const CustomDataCallback& cb)				{ Util::bindCallback(m_CustomDataCallbacks, cb); }
 
 	private:
-		void prepareConnectionForDelete(class Connection* g, const i8_t* fmt, ...);
-		void prepareConnectionForDelete(class Connection* g );
 		// sends (relay)
 		void sendRemoteConnected( const class Connection* g );
 		void sendRemoteDisconnected( const class Connection* g, EDisconnectReason reason );
+		void sendSystemMessage( class RUDPLink& link, EDataPacketType state, const i8_t* payLoad=nullptr, i32_t len=0 );
 		// recvs (Game thread)
-		bool recvPacket( const struct Packet& pack, class Connection* g );
-		void recvConnectPacket(const i8_t* payload, i32_t len, class Connection* g);
+		bool recvPacket( const struct Packet& pack, class Connection* g, class RUDPLink& link );
+		void recvConnectPacket(const i8_t* payload, i32_t len, class RUDPLink& link);
 		void recvConnectAccept(class Connection* g);
 		void recvDisconnectPacket( const i8_t* payload, i32_t len, class Connection* g );
 		void recvRemoteConnected(class Connection* g, const i8_t* payload, i32_t payloadLen);

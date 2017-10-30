@@ -149,8 +149,6 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 void InitNetwork(bool isServ)
 {
 	g_Node = new ZNode( 300, -1 );
-	if (isServ)
-		g_Node->setIsNetworkIdProvider(true);
 	g_Node->bindOnConnectResult([] (auto etp, EConnectResult res)
 	{
 		switch ( res )
@@ -238,7 +236,7 @@ void InitNetwork(bool isServ)
 	if ( isServ )
 	{
 		strcpy_s( g_lobby.name[0], 64, "server" );
-		g_Node->listenOn(27000, "auto", 9, true );
+		g_Node->host(27000, "auto", 9);
 		g_lines.emplace_back( "started as server..." );
 	}
 	else

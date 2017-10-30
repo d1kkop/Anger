@@ -146,13 +146,14 @@ namespace Zerodelay
 		EConnectCallResult connect( const std::string& name, i32_t port, const std::string& pw="", i32_t timeoutSeconds=8 );
 
 
-		/*	Listen on a specific port for incoming connections.
+		/*	Host a new session. For client-server, only one peer should call host while the others should connect.
+			For p2p, every peer should call host as well as connect.
 			Bind onNewConnection to do something with the new connections. 
 			[port]				The port in native machine order.
 			[pw]				Password string.
 			[maxConnections]	Maximum number of connections. 
 			[relayEvents]		If true, events such as ´disconnect´ will be relayed to other connections. If not client-server architecture, the parameter is ignored. */
-		EListenCallResult listenOn( i32_t port, const std::string& pw="", i32_t maxConnections=32, bool relayEvents=true );
+		EListenCallResult host( i32_t port, const std::string& pw="", i32_t maxConnections=32 );
 
 
 		/*	Disconnect a specific endpoint. */
@@ -238,23 +239,6 @@ namespace Zerodelay
 			[channel]	On what channel to sent the message. Packets are sequenced and ordered per channel. Max of 8 channels.
 			[relay]		Whether to relay the message to other connected clients when it arrives. */
 		void sendUnreliableSequenced( u8_t packId, const i8_t* data, i32_t len, const ZEndpoint* specific=nullptr, bool exclude=false, u8_t channel=0, bool relay=true, bool discardSendIfNotConnected=true );
-
-
-		/*	Only one node in the network must provide new network id's on request.
-			Typically, this is the Server in a client-server model or the 'Super-Peer' in a p2p network. */
-		void setIsNetworkIdProvider( bool isProvider );
-
-
-		/*	Call this for a 'true' server in a client-server model. 
-			For all incoming connections and dropped connections on the server, the messages
-			are relayed to all connected clients. */
-		void setRelayConnectAndDisconnectEvents();
-
-
-		/*	Call ths for a 'true' server in a client-server model.
-			For new variable groups, deleting of variable groups and updating, they are relayed to all connected clients. */
-		void setRelayVariableGroupEvents();
-
 
 		/*	----- Callbacks ----------------------------------------------------------------------------------------------- */
 

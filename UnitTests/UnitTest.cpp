@@ -72,14 +72,13 @@ namespace UnitTests
 		g2->bindOnDisconnect( discLamda );
 		g1->connect("localhost",27000,"lala");
 		g2->setMaxIncomingConnections(1);
-		g2->setIsNetworkIdProvider(true);
-		g2->listenOn(27000, "lala");
+		g2->host(27000, "lala");
 
 		volatile bool bClose = false;
 		std::thread t( [&] () {
 			while  ( !bClose )
 			{
-				g1->update();
+	//			g1->update();
 				g2->update();
 				std::this_thread::sleep_for(10ms);
 			}
@@ -171,8 +170,7 @@ namespace UnitTests
 		}
 
 		ZNode* listener = new ZNode();
-		listener->setIsNetworkIdProvider(true);
-		auto eRes = listener->listenOn(27001, pw);
+		auto eRes = listener->host(27001, pw);
 		if ( (int)eRes != 0 )
 		{
 			printf("listen call res error: %d\n", (int)eRes );
@@ -230,7 +228,7 @@ namespace UnitTests
 		g2->simulatePacketLoss(PackLoss);
 
 		g1->connect( "localhost", 27000 );
-		g2->listenOn( 27000 );
+		g2->host( 27000 );
 
 		int kTicks = 0;
 		while ( g1->getNumOpenConnections() == 0 )
@@ -412,8 +410,7 @@ namespace UnitTests
 		ZNode* g2 = new ZNode();
 
 		g1->connect( "localhost", 27000 );
-		g2->listenOn( 27000 );
-		g2->setIsNetworkIdProvider(true);
+		g2->host( 27000 );
 
 		volatile bool bThreadClose = false;
 		std::thread t( [&] () {
@@ -654,9 +651,7 @@ namespace UnitTests
 			clients[i]->bindOnGroupDestroyed( fnGroupDestroyed );
 			clients[i]->connect("localhost", 27000);
 		}
-		g1->listenOn( 27000 );
-		g1->setIsNetworkIdProvider( true );
-
+		g1->host( 27000 );
 		g1->bindOnGroupUpdated( fnGroupUpdated );
 		g1->bindOnGroupDestroyed( fnGroupDestroyed );
 
@@ -879,10 +874,10 @@ namespace UnitTests
 
 		// add tests
 		tests.emplace_back( new ConnectionLayerTest );
-		tests.emplace_back( new MassConnectTest );
+	/*	tests.emplace_back( new MassConnectTest );
 		tests.emplace_back( new ReliableOrderTest );
 		tests.emplace_back( new RpcTest );
-		tests.emplace_back( new SyncGroupTest );
+		tests.emplace_back( new SyncGroupTest );*/
 			
 		// run them
 		for ( auto* t : tests )

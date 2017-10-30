@@ -88,6 +88,7 @@ namespace Zerodelay
 			(new VariableGroupNode())
 		))
 	{
+		C->vgn()->setupConnectionCallbacks();
 	}
 
 	ZNode::~ZNode()
@@ -105,20 +106,23 @@ namespace Zerodelay
 		return C->cn()->connect( name, port, pw, timeoutSeconds );
 	}
 
-	EListenCallResult ZNode::listenOn(i32_t port, const std::string& pw, i32_t maxConnections, bool relayEvents)
+	EListenCallResult ZNode::host(i32_t port, const std::string& pw, i32_t maxConnections)
 	{
 		C->cn()->setMaxIncomingConnections( maxConnections );
+		C->cn()->setRelayConnectAndDisconnectEvents( true );
+		C->vgn()->setIsNetworkIdProvider( true );
+		C->vgn()->setRelayVariableGroupEvents( true );
 		return C->cn()->listenOn( port, pw );
 	}
 
 	EDisconnectCallResult ZNode::disconnect(const ZEndpoint& endPoint)
 	{
-		return C->cn()->disconnect( toEtp( endPoint ), true );
+		return C->cn()->disconnect( toEtp( endPoint ) );
 	}
 
 	void ZNode::disconnectAll()
 	{
-		return C->cn()->disconnectAll(true);
+		return C->cn()->disconnectAll();
 	}
 
 	i32_t ZNode::getNumOpenConnections() const
@@ -136,23 +140,24 @@ namespace Zerodelay
 		RUDPLink* link = C->rn()->getLinkAndPinIt(linkIdx);
 		while (link)
 		{
-			if (C->cn()->beginProcessPacketsFor(link->getEndPoint()))
+			C->cn()->beginProcessPacketsFor(link->getEndPoint());
+			link->beginPoll();
+			Packet pack;
+			while (link->poll(pack))
 			{
-				link->beginPoll();
-				Packet pack;
-				while (link->poll(pack))
+				// try at all nodes, returns false if packet is not processed
+				if (!C->cn()->processPacket(pack, *link))
 				{
-					// try at all nodes, returns false if packet is not processed
-					if (!C->cn()->processPacket(pack))
-						if (!C->vgn()->processPacket(pack, link->getEndPoint()))
-						{
-						}
+					if (!C->vgn()->processPacket(pack, link->getEndPoint()))
+					{
+						C->processUnhandledPacket(pack, link->getEndPoint());
+					}
 				}
-				link->endPoll();
-				C->cn()->endProcessPackets();
 			}
+			link->endPoll();
+			C->cn()->endProcessPackets();
 			C->rn()->unpinLink(link);
-			linkIdx++;
+			link = C->rn()->getLinkAndPinIt(++linkIdx);
 		}
 
 		C->cn()->update();
@@ -176,7 +181,7 @@ namespace Zerodelay
 
 	bool ZNode::isSuperPeer() const
 	{
-		return C->zn()->isSuperPeer();
+		return C->isSuperPeer();
 	}
 
 	void ZNode::simulatePacketLoss(i32_t percentage)
@@ -211,21 +216,6 @@ namespace Zerodelay
 			C->rn()->send( packId, data, len, asEpt(specific), exclude, EHeaderPacketType::Unreliable_Sequenced, channel, discardSendIfNotConnected );
 		else
 			C->setCriticalError(ECriticalError::SocketIsNull, ZERODELAY_FUNCTION);
-	}
-
-	void ZNode::setIsNetworkIdProvider(bool isProvider)
-	{
-		C->vgn()->setIsNetworkIdProvider( isProvider );
-	}
-
-	void ZNode::setRelayConnectAndDisconnectEvents()
-	{
-		C->cn()->setRelayConnectAndDisconnectEvents(true);
-	}
-
-	void ZNode::setRelayVariableGroupEvents()
-	{
-		C->vgn()->setRelayVariableGroupEvents(true);
 	}
 
 	void ZNode::bindOnConnectResult(const std::function<void(const ZEndpoint&, EConnectResult)>& cb)

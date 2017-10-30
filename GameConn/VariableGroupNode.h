@@ -48,6 +48,7 @@ namespace Zerodelay
 		VariableGroupNode();
 		~VariableGroupNode();
 		void postInitialize(class CoreNode* coreNode);
+		void setupConnectionCallbacks();
 
 		void update();
 		bool processPacket(const struct Packet& pack, const EndPoint& etp);

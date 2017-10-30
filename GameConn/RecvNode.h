@@ -41,12 +41,13 @@ namespace Zerodelay
 		void simulatePacketLoss( i32_t percentage );
 		class ISocket* getSocket() const { return m_Socket; }
 
-	private:
+		class RUDPLink* getOrAddLink( const EndPoint& endPoint );
 		void startThreads();
+
+	private:
 		void recvThread();
 		void sendThread();
 		void updatePendingDeletes();
-		class RUDPLink* getOrAddLink( const EndPoint& endPoint );
 
 		// for each link
 		template <typename Callback>
