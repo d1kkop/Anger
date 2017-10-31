@@ -84,7 +84,7 @@ namespace Zerodelay
 			void flushSendQueue( ISocket* socket );
 			void recvData( const i8_t* buff, i32_t len );
 
-			void prepareLinkForDelete();
+			void markPendingDelete();
 			bool isPendingDelete() const { return m_IsPendingDelete; }
 
 			// If pinned, link will not be deleted from memory

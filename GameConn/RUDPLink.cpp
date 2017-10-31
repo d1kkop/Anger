@@ -242,7 +242,7 @@ namespace Zerodelay
 		}
 	}
 
-	void RUDPLink::prepareLinkForDelete()
+	void RUDPLink::markPendingDelete()
 	{
 		std::lock_guard<std::mutex> lock(m_PendingDeleteMutex);
 		if ( m_IsPendingDelete )

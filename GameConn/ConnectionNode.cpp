@@ -11,6 +11,7 @@
 namespace Zerodelay
 {
 	extern ZEndpoint toZpt( const EndPoint& r );
+	extern EndPoint toEtp( const ZEndpoint& z );
 
 
 	ConnectionNode::ConnectionNode(i32_t keepAliveIntervalSeconds):
@@ -53,9 +54,12 @@ namespace Zerodelay
 		{
 			return EConnectCallResult::AlreadyExists;
 		}
+		RUDPLink* link = m_DispatchNode->getOrAddLink( endPoint, false );
+		if (!link) // is nullptr if is pending delete
+		{
+			return EConnectCallResult::AlreadyExists;
+		}
 		m_DispatchNode->startThreads(); // start after socket is opened
-		RUDPLink* link = m_DispatchNode->getOrAddLink( endPoint );
-		assert(link);
 		Connection* g = new Connection( this, true, link, timeoutSeconds, m_KeepAliveIntervalSeconds );
 		m_Connections.insert( std::make_pair( endPoint, g ) );
 		g->sendConnectRequest( pw );
@@ -101,7 +105,7 @@ namespace Zerodelay
 		}
 	}
 
-	i32_t ConnectionNode::getNumOpenConnections()
+	i32_t ConnectionNode::getNumOpenConnections() const
 	{
 		i32_t num = 0;
 		for ( auto& kvp : m_Connections )
@@ -113,6 +117,12 @@ namespace Zerodelay
 			}
 		}
 		return num;
+	}
+
+	bool ConnectionNode::isInConnectionList(const ZEndpoint& ztp) const
+	{
+		EndPoint etp = toEtp(ztp);
+		return m_Connections.count(etp) != 0;
 	}
 
 	void ConnectionNode::update()
@@ -130,7 +140,7 @@ namespace Zerodelay
 				// if connection is not one of the following states, remove it
 				auto s = c->getState();
 				assert(s != EConnectionState::Idle); // invalid state, should never be the case
-				if ( !(s == EConnectionState::Connecting || s == EConnectionState::Connecting || s == EConnectionState::Disconnecting) )
+				if ( !(s == EConnectionState::Connecting || s == EConnectionState::Connected || s == EConnectionState::Disconnecting) )
 				{
 					c->disconnect();
 					delete c;
@@ -141,6 +151,7 @@ namespace Zerodelay
 			updateConnecting( c );
 			updateKeepAlive( c );	
 			updateDisconnecting( c );
+			it++;
 		}
 	}
 
@@ -156,15 +167,11 @@ namespace Zerodelay
 
 	bool ConnectionNode::processPacket(const Packet& pack, RUDPLink& link)
 	{
-		if ( pack.type == EHeaderPacketType::Reliable_Ordered )  // all connection node packets are reliable ordered
+		// all connection node packets are reliable ordered
+		if ( pack.type == EHeaderPacketType::Reliable_Ordered )  
 		{
 			// returns false if packet was not consumed (handled)
 			return recvPacket( pack, m_ProcessingConnection, link );
-		}
-		else
-		{
-			Platform::log("WARNING: invalid packet forwarded to higher level packet processors");
-			assert( false && "invalid packet forward to higher level packet processors" );
 		}
 		return false;
 	}
@@ -309,13 +316,20 @@ namespace Zerodelay
 		return false;
 	}
 
+	void ConnectionNode::handleInvalidConnectAttempt(EDataPacketType responseType, RUDPLink& link)
+	{
+		sendSystemMessage( link, responseType );
+		link.markPendingDelete();
+		link.blockAllUpcomingSends();
+	}
+
 	void ConnectionNode::recvConnectPacket(const i8_t* payload, i32_t payloadLen, RUDPLink& link)
 	{
 		// If already in list
 		auto it = m_Connections.find(link.getEndPoint());
 		if (it != m_Connections.end())
 		{
-			sendSystemMessage( link, EDataPacketType::AlreadyConnected );
+			handleInvalidConnectAttempt( EDataPacketType::AlreadyConnected, link );
 			return;
 		}
 		// Check password
@@ -328,13 +342,13 @@ namespace Zerodelay
 		}
 		if ( strcmp( m_Password.c_str(), pw ) != 0 )
 		{
-			sendSystemMessage( link, EDataPacketType::IncorrectPassword );
+			handleInvalidConnectAttempt( EDataPacketType::IncorrectPassword, link );
 			return;
 		}
 		// Check if not exceeding max connections
 		if ( (i32_t)m_Connections.size() >= m_MaxIncomingConnections )
 		{
-			sendSystemMessage( link, EDataPacketType::MaxConnectionsReached );
+			handleInvalidConnectAttempt( EDataPacketType::MaxConnectionsReached, link );
 			return;
 		}
 		// All fine..
@@ -519,4 +533,5 @@ namespace Zerodelay
 			Platform::log( "Disconnected connection %s gracefully", g->getEndPoint().asString().c_str() );
 		}
 	}
+
 }

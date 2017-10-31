@@ -41,8 +41,11 @@ namespace Zerodelay
 		void simulatePacketLoss( i32_t percentage );
 		class ISocket* getSocket() const { return m_Socket; }
 
-		class RUDPLink* getOrAddLink( const EndPoint& endPoint );
+		class RUDPLink* getLink( const EndPoint& endPoint, bool getIfIsPendingDelete ) const;
+		class RUDPLink* getOrAddLink( const EndPoint& endPoint, bool getIfIsPendingDelete ); // returns nullptr if is pending delete
 		void startThreads();
+
+		i32_t getNumOpenLinks() const;
 
 	private:
 		void recvThread();
@@ -61,7 +64,7 @@ namespace Zerodelay
 		std::thread* m_RecvThread;
 		std::thread* m_SendThread;
 		std::condition_variable m_SendThreadCv;
-		std::mutex m_OpenLinksMutex;
+		mutable std::mutex m_OpenLinksMutex;
 		// Currently opened links are put in a list so that reopend links on same address can not depend on a previously opened session
 		std::map<EndPoint, class RUDPLink*, EndPoint::STLCompare> m_OpenLinksMap;
 		std::vector<class RUDPLink*> m_OpenLinksList;

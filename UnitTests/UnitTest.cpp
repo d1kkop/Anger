@@ -70,7 +70,15 @@ namespace UnitTests
 		};
 		g1->bindOnDisconnect( discLamda );
 		g2->bindOnDisconnect( discLamda );
-		g1->connect("localhost",27000,"lala");
+		printf("Sending invalid pw for connect..\n");
+		ZEndpoint ztp;
+		bool bResolve = ztp.resolve("localhost", 27000);
+		assert(bResolve);
+		auto res = g1->connect( ztp, "lala2" );
+		assert(res == EConnectCallResult::Succes);
+		res = g1->connect("localhost",27000,"lala");
+		assert(res == EConnectCallResult::AlreadyExists);
+		g2->setMaxIncomingConnections(-1);
 		g2->setMaxIncomingConnections(1);
 		g2->host(27000, "lala");
 
@@ -78,17 +86,35 @@ namespace UnitTests
 		std::thread t( [&] () {
 			while  ( !bClose )
 			{
-	//			g1->update();
+				g1->update();
 				g2->update();
 				std::this_thread::sleep_for(10ms);
+				if ( !g1->isConnectionKnown(ztp) )
+				{
+					printf("Trying connect with correct pw...\n");
+					res = g1->connect("127.0.0.1", 27000, "lala");
+					assert(res == EConnectCallResult::Succes);
+				}
 			}
 		});
 
-		std::this_thread::sleep_for(10000ms);
+		std::this_thread::sleep_for(5000ms);
 		bClose = true;
 		if ( t.joinable() )
 			t.join();
 		Result = (foundNewConn);
+
+		g1->disconnectAll();
+		g2->disconnectAll();
+
+
+		int k = 0;
+		while (++k < 20 && (g1->getNumOpenLinks() != 0 || g2->getNumOpenLinks() != 0))
+		{
+			g1->update();
+			g2->update();
+			std::this_thread::sleep_for(std::chrono::milliseconds(50));
+		}
 
 		delete g1;
 		delete g2;

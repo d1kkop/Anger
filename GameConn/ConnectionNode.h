@@ -31,7 +31,8 @@ namespace Zerodelay
 		EListenCallResult listenOn( i32_t port, const std::string& pw="" );
 		EDisconnectCallResult disconnect( const EndPoint& endPoint );
 		void disconnectAll();
-		i32_t getNumOpenConnections();
+		i32_t getNumOpenConnections() const;
+		bool isInConnectionList(const ZEndpoint& ztp) const;
 		// flow
 		void update();
 		void beginProcessPacketsFor(const EndPoint& endPoint);					// returns true if is known connection
@@ -57,6 +58,7 @@ namespace Zerodelay
 		void sendSystemMessage( class RUDPLink& link, EDataPacketType state, const i8_t* payLoad=nullptr, i32_t len=0 );
 		// recvs (Game thread)
 		bool recvPacket( const struct Packet& pack, class Connection* g, class RUDPLink& link );
+		void handleInvalidConnectAttempt( EDataPacketType responseType, class RUDPLink& link );
 		void recvConnectPacket(const i8_t* payload, i32_t len, class RUDPLink& link);
 		void recvConnectAccept(class Connection* g);
 		void recvDisconnectPacket( const i8_t* payload, i32_t len, class Connection* g );

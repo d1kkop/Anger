@@ -130,6 +130,16 @@ namespace Zerodelay
 		return C->cn()->getNumOpenConnections();
 	}
 
+	i32_t ZNode::getNumOpenLinks() const
+	{
+		return C->rn()->getNumOpenLinks();
+	}
+
+	bool ZNode::isConnectionKnown(const ZEndpoint& ztp) const
+	{
+		return C->cn()->isInConnectionList(ztp) || C->rn()->getLink(toEtp(ztp), true)!=nullptr;
+	}
+
 	void ZNode::update()
 	{
 		if (C->hasCriticalErrors())

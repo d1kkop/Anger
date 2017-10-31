@@ -174,6 +174,22 @@ namespace Zerodelay
 		i32_t getNumOpenConnections() const;
 
 
+		/*	Returns number of open links. A link is a connection in any state, not only 'Connected'.
+			To obtain the number of links that are actually 'Connected' use: 'getNumOpenConnections(..)'.
+			A link can be in many states such as a 'pending delete' or a 'timed out connection attempt'.  */
+		i32_t getNumOpenLinks() const;
+
+
+		/*	Returns true if a connection to this endpoint is known.
+			That is, the connection may be in any state.
+			For instance, the state could be 'Connecting, Connected, Disconnecting, etc.
+			A connection is automatically cleaned up when a connection attempt failed or
+			if the connection was closed (may it be ungraceful).
+			This method could be used to periodically check if a connection is no longer known
+			and reconnect as such when desired. */
+		bool isConnectionKnown(const ZEndpoint& ztp) const;
+
+
 		/*	This will invoke the bound callback functions when new data is available. 
 			Usually called every frame update in a game. */
 		void update();

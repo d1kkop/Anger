@@ -130,11 +130,16 @@ namespace Zerodelay
 
 	void RecvNode::startThreads()
 	{
-		assert(!m_RecvThread);
 		if ( m_RecvThread )
 			return;
 		m_RecvThread = new std::thread( [this] () { recvThread(); } );
 		m_SendThread = new std::thread( [this] () { sendThread(); } );
+	}
+
+	i32_t RecvNode::getNumOpenLinks() const
+	{
+		std::lock_guard<std::mutex> lock(m_OpenLinksMutex);
+		return (i32_t)m_OpenLinksList.size();
 	}
 
 	void RecvNode::recvThread()
@@ -170,9 +175,7 @@ namespace Zerodelay
 				continue;
 			}
 
-			updatePendingDeletes();
-			RUDPLink* link = getOrAddLink( endPoint );
-
+			RUDPLink* link = getOrAddLink( endPoint, true );
 			if ( !link )
 				continue;
 
@@ -180,7 +183,8 @@ namespace Zerodelay
 			{
 				// Only report messages after the link has stopped lingering, otherwise we may end up with many messages that were just send after disconnect
 				// or if disconnect is re-transmitted very often due to high retransmission rate in reliable ordered protocol.
-				if ( link->getTimeSincePendingDelete() >= RUDPLink::sm_MaxLingerTimeMs )
+				i32_t timeSincePenDelete = link->getTimeSincePendingDelete();
+				if ( timeSincePenDelete >= RUDPLink::sm_MaxLingerTimeMs )
 				{ 
 					buff[rawSize] = '\0';
 					i8_t norm_id = 0;
@@ -188,7 +192,7 @@ namespace Zerodelay
 					{
 						norm_id = buff[RUDPLink::off_Norm_Id];
 					}
-					Platform::log("Ignoring data for conn %s as is pending delete... hdrId %d, data %s, dataId %d", link->getEndPoint().asString().c_str(), buff[0], buff, norm_id);
+					Platform::log("Ignoring data for conn %s as is pending delete... hdrId: %d data: %s dataId: %d, deleted for time %d ms", link->getEndPoint().asString().c_str(), buff[0], buff, norm_id, timeSincePenDelete);
 				}
 				continue;
 			}
@@ -210,12 +214,13 @@ namespace Zerodelay
 			{
 				kvp.second->flushSendQueue( m_Socket );
 			}
+			updatePendingDeletes();
 		}
 	}
 
 	void RecvNode::updatePendingDeletes()
 	{
-		std::lock_guard<std::mutex> lock(m_OpenLinksMutex);
+		// std::lock_guard<std::mutex> lock(m_OpenLinksMutex); Already acquired by send thread
 
 		// Delete (memory wise) dead connections
 		for ( auto it = m_OpenLinksList.begin(); it != m_OpenLinksList.end(); )
@@ -245,23 +250,33 @@ namespace Zerodelay
 		}
 	}
 
-	RUDPLink* RecvNode::getOrAddLink( const EndPoint& endPoint )
+	RUDPLink* RecvNode::getLink(const EndPoint& endPoint, bool getIfIsPendingDelete) const
 	{
 		std::lock_guard<std::mutex> lock(m_OpenLinksMutex);
+		auto it = m_OpenLinksMap.find( endPoint );
+		if ( it != m_OpenLinksMap.end() && (getIfIsPendingDelete || !it->second->isPendingDelete()) )
+		{
+			return it->second;
+		}
+		return nullptr;
+	}
 
-		RUDPLink* link = nullptr;
+	RUDPLink* RecvNode::getOrAddLink(const EndPoint& endPoint, bool getIfIsPendingDelete)
+	{
+		std::lock_guard<std::mutex> lock(m_OpenLinksMutex);
 		auto it = m_OpenLinksMap.find( endPoint );
 		if ( it == m_OpenLinksMap.end() )
 		{
-			link = new RUDPLink( endPoint );
+			RUDPLink* link = new RUDPLink( endPoint );
 			m_OpenLinksMap.insert( std::make_pair( endPoint, link ) );
 			m_OpenLinksList.emplace_back( link );
+			return link;
 		}
-		else
+		else if ( getIfIsPendingDelete || !it->second->isPendingDelete() )
 		{
-			link = it->second;
+			return it->second;
 		}
-		return link;
+		return nullptr;
 	}
 
 }
