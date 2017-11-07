@@ -142,8 +142,8 @@ namespace Zerodelay
 			A succesful call does not mean a connection is established.
 			To know if a connection is established, bindOnConnectResult. 
 			Port must be in native machine order. No conversion to network order necessary. */
-		EConnectCallResult connect( const ZEndpoint& endPoint, const std::string& pw="", i32_t timeoutSeconds=8 );
-		EConnectCallResult connect( const std::string& name, i32_t port, const std::string& pw="", i32_t timeoutSeconds=8 );
+		EConnectCallResult connect( const ZEndpoint& endPoint, const std::string& pw="", i32_t timeoutSeconds=8, bool sendConnectRequest=true );
+		EConnectCallResult connect( const std::string& name, i32_t port, const std::string& pw="", i32_t timeoutSeconds=8, bool sendConnectRequest=true );
 
 
 		/*	Host a new session. For client-server, only one peer should call host while the others should connect.
@@ -188,6 +188,10 @@ namespace Zerodelay
 			This method could be used to periodically check if a connection is no longer known
 			and reconnect as such when desired. */
 		bool isConnectionKnown(const ZEndpoint& ztp) const;
+
+
+		/*	Returns true if there is not a single connection that has pending data to be processed. */
+		bool hasPendingData() const;
 
 
 		/*	This will invoke the bound callback functions when new data is available. 

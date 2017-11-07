@@ -116,6 +116,23 @@ namespace Zerodelay
 		link->unpin();
 	}
 
+	void RecvNode::pinList()
+	{
+		std::lock_guard<std::mutex> lock(m_OpenLinksMutex);
+		m_ListPinned = true;
+	}
+
+	bool RecvNode::isListPinned() const
+	{
+	//	std::lock_guard<std::mutex> lock(m_OpenLinksMutex);
+		return m_ListPinned;
+	}
+
+	void RecvNode::unpinList()
+	{
+		m_ListPinned = false;
+	}
+
 	void RecvNode::simulatePacketLoss(i32_t percentage)
 	{
 		std::lock_guard<std::mutex> lock(m_OpenLinksMutex);
@@ -221,6 +238,8 @@ namespace Zerodelay
 	void RecvNode::updatePendingDeletes()
 	{
 		// std::lock_guard<std::mutex> lock(m_OpenLinksMutex); Already acquired by send thread
+		if ( isListPinned() ) // if other thread is using the list
+			return;
 
 		// Delete (memory wise) dead connections
 		for ( auto it = m_OpenLinksList.begin(); it != m_OpenLinksList.end(); )
@@ -267,7 +286,7 @@ namespace Zerodelay
 		auto it = m_OpenLinksMap.find( endPoint );
 		if ( it == m_OpenLinksMap.end() )
 		{
-			RUDPLink* link = new RUDPLink( endPoint );
+			RUDPLink* link = new RUDPLink( this, endPoint );
 			m_OpenLinksMap.insert( std::make_pair( endPoint, link ) );
 			m_OpenLinksList.emplace_back( link );
 			return link;

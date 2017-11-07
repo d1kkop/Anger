@@ -96,14 +96,14 @@ namespace Zerodelay
 		delete C;
 	}
 
-	EConnectCallResult ZNode::connect(const ZEndpoint& endPoint, const std::string& pw, i32_t timeoutSeconds)
+	EConnectCallResult ZNode::connect(const ZEndpoint& endPoint, const std::string& pw, i32_t timeoutSeconds, bool sendRequest)
 	{
-		return C->cn()->connect( toEtp(endPoint), pw, timeoutSeconds );
+		return C->cn()->connect( toEtp(endPoint), pw, timeoutSeconds, sendRequest );
 	}
 
-	EConnectCallResult ZNode::connect(const std::string& name, i32_t port, const std::string& pw, i32_t timeoutSeconds)
+	EConnectCallResult ZNode::connect(const std::string& name, i32_t port, const std::string& pw, i32_t timeoutSeconds, bool sendRequest)
 	{
-		return C->cn()->connect( name, port, pw, timeoutSeconds );
+		return C->cn()->connect( name, port, pw, timeoutSeconds, sendRequest );
 	}
 
 	EListenCallResult ZNode::host(i32_t port, const std::string& pw, i32_t maxConnections)
@@ -138,6 +138,21 @@ namespace Zerodelay
 	bool ZNode::isConnectionKnown(const ZEndpoint& ztp) const
 	{
 		return C->cn()->isInConnectionList(ztp) || C->rn()->getLink(toEtp(ztp), true)!=nullptr;
+	}
+
+	bool ZNode::hasPendingData() const
+	{
+		u32_t linkIdx = 0;
+		// When pinned, the link will not be destroyed from memory
+		RUDPLink* link = C->rn()->getLinkAndPinIt(linkIdx);
+		while (link)
+		{
+			bool bQueuesEmpty = link->areAllQueuesEmpty();
+			C->rn()->unpinLink(link);
+			if ( !bQueuesEmpty ) return false;
+			link = C->rn()->getLinkAndPinIt(++linkIdx);
+		}
+		return true;
 	}
 
 	void ZNode::update()
@@ -254,7 +269,7 @@ namespace Zerodelay
 
 	void ZNode::bindOnCustomData(const std::function<void (const ZEndpoint&, u8_t id, const i8_t* data, i32_t length, u8_t channel)>& cb)
 	{
-		C->cn()->bindOnCustomData( [=] ( auto etp, auto id, auto data, auto len, auto chan ) 
+		C->bindOnCustomData( [=] ( auto etp, auto id, auto data, auto len, auto chan ) 
 		{
 			cb( toZpt( etp ), id, data, len, chan );
 		});

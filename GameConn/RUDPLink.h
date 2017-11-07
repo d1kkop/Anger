@@ -67,7 +67,7 @@ namespace Zerodelay
 
 
 	public:
-		RUDPLink(const EndPoint& endPoint);
+		RUDPLink(class RecvNode* recvNode, const EndPoint& endPoint);
 		~RUDPLink();
 
 		// Thread safe
@@ -93,7 +93,7 @@ namespace Zerodelay
 			bool isPinned() const;
 			void unpin();
 
-			bool areAllReliableSendQueuesEmpty() const;
+			bool areAllQueuesEmpty() const;
 		//------------------------------
 
 		// Set to 0, to turn off. Default is off.
@@ -121,6 +121,8 @@ namespace Zerodelay
 		bool isSequenceNewer( u32_t incoming, u32_t having ) const;
 		bool isSequenceNewerGroupItem( u32_t incoming, u32_t having ) const; // This one is newer only when having is incoming-UINT_MAX/2
 
+		// manager ptrs
+		RecvNode* m_RecvNode;
 		// state
 		EndPoint m_EndPoint;
 		std::atomic_bool m_BlockNewSends;

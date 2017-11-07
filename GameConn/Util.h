@@ -8,7 +8,7 @@ namespace Zerodelay
 	struct Util
 	{
 		static i8_t* appendString( i8_t* dst, i32_t dstSize, const i8_t* src );
-		static bool  readString( i8_t* dst, i32_t dstSize, const i8_t* buffIn, i32_t buffInSize );
+		static i32_t readString( i8_t* dst, i32_t dstSize, const i8_t* buffIn, i32_t buffInSize );
 		static bool  readFixed( i8_t* dst, i32_t dstSize, const i8_t* buffIn, i32_t buffInSize );
 		static u32_t swap32( u32_t val );
 		static u16_t swap16( u16_t val );

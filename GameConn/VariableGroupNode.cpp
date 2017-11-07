@@ -5,7 +5,6 @@
 #include "SyncGroups.h"
 #include "RUDPLink.h"
 #include "CoreNode.h"
-#include "ConnectionNode.h"
 #include "Util.h"
 
 #include <cassert>

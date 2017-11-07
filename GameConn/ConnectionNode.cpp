@@ -34,17 +34,17 @@ namespace Zerodelay
 		m_DispatchNode = coreNode->rn();
 	}
 
-	EConnectCallResult ConnectionNode::connect(const std::string& name, i32_t port, const std::string& pw, i32_t timeoutSeconds)
+	EConnectCallResult ConnectionNode::connect(const std::string& name, i32_t port, const std::string& pw, i32_t timeoutSeconds, bool sendRequest)
 	{
 		EndPoint endPoint;
 		if ( !endPoint.resolve( name, port ) )
 		{
 			return EConnectCallResult::CannotResolveHost;
 		}
-		return connect( endPoint, pw, timeoutSeconds );
+		return connect( endPoint, pw, timeoutSeconds, sendRequest );
 	}
 
-	EConnectCallResult ConnectionNode::connect(const EndPoint& endPoint, const std::string& pw, i32_t timeoutSeconds)
+	EConnectCallResult ConnectionNode::connect(const EndPoint& endPoint, const std::string& pw, i32_t timeoutSeconds, bool sendRequest)
 	{
 		if ( !m_DispatchNode->openSocketOnPort(0) )
 		{
@@ -60,9 +60,12 @@ namespace Zerodelay
 			return EConnectCallResult::AlreadyExists;
 		}
 		m_DispatchNode->startThreads(); // start after socket is opened
-		Connection* g = new Connection( this, true, link, timeoutSeconds, m_KeepAliveIntervalSeconds );
-		m_Connections.insert( std::make_pair( endPoint, g ) );
-		g->sendConnectRequest( pw );
+		if ( sendRequest )
+		{
+			Connection* g = new Connection( this, true, link, timeoutSeconds, m_KeepAliveIntervalSeconds );
+			m_Connections.insert( std::make_pair( endPoint, g ) );
+			g->sendConnectRequest( pw );
+		}
 		return EConnectCallResult::Succes;
 	}
 
@@ -305,9 +308,6 @@ namespace Zerodelay
 			case EDataPacketType::AlreadyConnected:
 				recvAlreadyConnected(g, payload, payloadLen);
 				break;
-			case EDataPacketType::Rpc:
-				recvRpcPacket(payload, payloadLen, g);
-				break;
 			default:
 				return false;
 			}
@@ -335,7 +335,7 @@ namespace Zerodelay
 		// Check password
 		static const i32_t kBuffSize=1024;
 		i8_t pw[kBuffSize];
-		if ( !Util::readString( pw, kBuffSize, payload, payloadLen ))
+		if ( Util::readString( pw, kBuffSize, payload, payloadLen ) < 0 )
 		{
 			m_CoreNode->setCriticalError(ECriticalError::SerializationError, ZERODELAY_FUNCTION);
 			return; // invalid serialization
@@ -466,32 +466,6 @@ namespace Zerodelay
 		});
 		// Consider this a warning
 		Platform::log("WARNING: Received already connected for %s", g->getEndPoint().asString().c_str());
-	}
-
-	void ConnectionNode::recvRpcPacket(const i8_t* payload, i32_t len, class Connection* g)
-	{
-		i8_t name[RPC_NAME_MAX_LENGTH];
-		if ( !Util::readFixed( name, RPC_NAME_MAX_LENGTH, payload, (RPC_NAME_MAX_LENGTH<len?RPC_NAME_MAX_LENGTH:len)) )
-		{
-			m_CoreNode->setCriticalError(ECriticalError::SerializationError, ZERODELAY_FUNCTION);
-			return;
-		}
-		i8_t fname[RPC_NAME_MAX_LENGTH*2];
-		auto* ptrNext = Util::appendString(fname, RPC_NAME_MAX_LENGTH*2, "__rpc_deserialize_");
-		Util::appendString(ptrNext, RPC_NAME_MAX_LENGTH, name);
-		void* pf = Platform::getPtrFromName( fname );
-		if ( pf )
-		{
-			// function signature
-			void (*pfunc)(const i8_t*, i32_t);
-			pfunc = (decltype(pfunc)) pf;
-			pfunc( payload, len );
-		}
-		else
-		{
-			m_CoreNode->setCriticalError(ECriticalError::CannotFindExternalCFunction, ZERODELAY_FUNCTION);
-			Platform::log("CRITICAL: Cannot find external C function %s", fname);
-		}
 	}
 
 	void ConnectionNode::updateConnecting(class Connection* g)

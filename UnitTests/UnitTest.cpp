@@ -34,8 +34,8 @@ namespace UnitTests
 		bool connected = false;
 		bool timedOut  = false;
 		bool foundNewConn = false;
-		ZNode* g1 = new ZNode(8, 2);
-		ZNode* g2 = new ZNode(8, 2);
+		ZNode* g1 = new ZNode(20, 2);
+		ZNode* g2 = new ZNode(20, 2);
 		g1->bindOnConnectResult( [&] (auto etp, auto res) 
 		{
 			std::string resStr;
@@ -350,12 +350,29 @@ namespace UnitTests
 			}
 		});
 
-		std::this_thread::sleep_for(1000ms);
-
 		if ( tSend.joinable() )
 			tSend.join();
 		if ( tRecv.joinable() )
 			tRecv.join();
+
+		g1->disconnectAll();
+		g2->disconnectAll();
+
+		// Wait until done
+		std::thread tWait( [&] () 
+		{
+			while ( g1->hasPendingData() || g2->hasPendingData() )
+			{	
+				g2->update();
+				g1->update();
+				std::this_thread::sleep_for(5ms);
+			}
+		});
+
+		std::this_thread::sleep_for(1000ms);
+
+		if ( tWait.joinable() )
+			tWait.join();
 
 		delete g1;
 		delete g2;
@@ -365,14 +382,16 @@ namespace UnitTests
 	/// RPC
 	//////////////////////////////////////////////////////////////////////////
 
-	int __high = ~0;
-	float __fltMax  = FLT_MAX;
-	float __fltMin  = FLT_MIN;
-	double __dblMax = DBL_MAX;
-	double __dblMin = DBL_MIN;
-	long __llong = LONG_MAX;
-	char __bb  = 127;
-	short __sk = 31535;
+	constexpr int nRpcs=10000;
+	int __high[nRpcs];				int hR=0, hS=0;
+	float __fltMax[nRpcs];			int hR1=0, hS1=0;
+	float __fltMin[nRpcs];			int hR2=0, hS2=0;
+	double __dblMax[nRpcs];			int hR3=0, hS3=0;
+	double __dblMin[nRpcs];			int hR4=0, hS4=0;
+	long __llong[nRpcs];			int hR5=0, hS5=0;
+	char __bb[nRpcs];				int hR6=0, hS6=0;
+	short __sk[nRpcs];				int hR7=0, hS7=0;
+	int hR8=0, hS8=0;
 
 	RPC_FUNC_0( unitRpcTest0 )
 	{
@@ -381,47 +400,63 @@ namespace UnitTests
 	RPC_FUNC_1( unitRpcTest1, int, a )
 	{
 //		printf(" unitRpcTest1 %d \n", a );
-		assert( a == __high );
+		assert( a == __high[hR++] );
 	}
 	RPC_FUNC_2( unitRpcTest2, int, a, float, b )
 	{
 //		printf(" unitRpcTest1 %d %.3f \n", a, b );
-		assert( a == __high && b==__fltMax );
+		assert( a == __high[hR1] && b==__fltMax[hR1] );
+		hR1++;
 	}
 	RPC_FUNC_3( unitRpcTest3, int, a, float, b, double, c )
 	{
 //		printf(" unitRpcTest %d %.3f %.f \n", a, b, c );
-		assert( a == __high && b==__fltMax && c==__dblMax );
+		assert( a == __high[hR2] && b==__fltMax[hR2] && c==__dblMax[hR2] );
+		hR2++;
 	}
 	RPC_FUNC_4( unitRpcTest4, int, a, float, b, double, c, long, k )
 	{
 //		printf(" unitRpcTest %d %.3f %.f %d \n", a, b, c, k );
-		assert( a == __high && b==__fltMax && c==__dblMax && k == __llong );
+		assert( a == __high[hR3] && b==__fltMax[hR3] && c==__dblMax[hR3] && k == __llong[hR3] );
+		hR3++;
 	}
 	RPC_FUNC_5( unitRpcTest5, int, a, float, b, double, c, long, k, char, bb )
 	{
 //		printf(" unitRpcTest %d %.3f %.f %d %d\n", a, b, c, k, bb );
-		assert( a == __high && b==__fltMax && c==__dblMax && k == __llong && bb==__bb );
+		assert( a == __high[hR4] && b==__fltMax[hR4] && c==__dblMax[hR4] && k == __llong[hR4] && bb==__bb[hR4] );
+		hR4++;
 	}
 	RPC_FUNC_6( unitRpcTest6, int, a, float, b, double, c, long, k, char, bb, double, fj )
 	{
 //		printf(" unitRpcTest %d %.3f %.f %d %d %f\n", a, b, c, k, bb, fj );
-		assert( a == __high && b==__fltMax && c==__dblMax && k == __llong && bb==__bb && fj==__dblMin );
+		if ( hR5 < nRpcs )
+		{
+			assert( a == __high[hR5] && b==__fltMax[hR5] && c==__dblMax[hR5] && k == __llong[hR5] && bb==__bb[hR5] && fj==__dblMin[hR5] );
+			hR5++;
+		}
+		else
+		{
+			static int ks5= 1;
+			printf("Hr delta %d\n", ks5++);
+		}
 	}
 	RPC_FUNC_7( unitRpcTest7, int, a, float, b, double, c, long, k, char, bb, double, fj, short, s )
 	{
 //		printf(" unitRpcTest %d %.3f %.f %d %d %f, %d\n", a, b, c, k, bb, fj, s );
-		assert( a == __high && b==__fltMax && c==__dblMax && k == __llong && bb==__bb && fj==__dblMin && s==__sk );
+		assert( a == __high[hR6] && b==__fltMax[hR6] && c==__dblMax[hR6] && k == __llong[hR6] && bb==__bb[hR6] && fj==__dblMin[hR6] && s==__sk[hR6] );
+		hR6++;
 	}
 	RPC_FUNC_8( unitRpcTest8, int, a, float, b, double, c, long, k, char, bb, double, fj, short, s, float, kt )
 	{
 //		printf(" unitRpcTest %d %.3f %.f %d %d %f, %d %.5f\n", a, b, c, k, bb, fj, s, kt );
-		assert( a == __high && b==__fltMax && c==__dblMax && k == __llong && bb==__bb && fj==__dblMin && s==__sk && kt==__fltMin );
+		assert( a == __high[hR7] && b==__fltMax[hR7] && c==__dblMax[hR7] && k == __llong[hR7] && bb==__bb[hR7] && fj==__dblMin[hR7] && s==__sk[hR7] && kt==__fltMin[hR7] );
+		hR7++;
 	}
 	RPC_FUNC_9( unitRpcTest9, int, a, float, b, double, c, long, k, char, bb, double, fj, short, s, float, kt, double, dt )
 	{
 //		printf(" unitRpcTest %d %.3f %.f %d %d %f, %d %.5f %f\n", a, b, c, k, bb, fj, s, kt, dt );
-		assert( a == __high && b==__fltMax && c==__dblMax && k == __llong && bb==__bb && fj==__dblMin && s==__sk && kt==__fltMin && dt == __dblMax );
+		assert( a == __high[hR8] && b==__fltMax[hR8] && c==__dblMax[hR8] && k == __llong[hR8] && bb==__bb[hR8] && fj==__dblMin[hR8] && s==__sk[hR8] && kt==__fltMin[hR8] && dt == __dblMax[hR8] );
+		hR8++;
 	}
 
 
@@ -432,10 +467,22 @@ namespace UnitTests
 
 	void RpcTest::run()
 	{
+		for ( int i=0; i<nRpcs; ++i)
+		{
+			__high[i] = rand();
+			__fltMax[i] = rand()%3 == 0? FLT_MIN : rand()%2==0 ? FLT_MAX : 1e20f *(rand()%RAND_MAX);
+			__dblMax[i] = rand()%3 == 0? DBL_MIN : rand()%2==0 ? DBL_MAX : 1e20f *(rand()%RAND_MAX);
+			__llong[i] = rand();
+			__bb[i] = rand();
+			__dblMin[i] = rand()%3 == 0? DBL_MIN : rand()%2==0 ? DBL_MAX : 1e20f *(rand()%RAND_MAX);
+			__sk[i] = rand()%3;
+			__fltMin[i] = rand()%3 == 0? FLT_MIN : rand()%2==0 ? FLT_MAX : 1e20f *(rand()%RAND_MAX);
+		}
+
 		ZNode* g1 = new ZNode();
 		ZNode* g2 = new ZNode();
 
-		g1->connect( "localhost", 27000 );
+		g1->connect( "localhost", 27000, "", 8, false );
 		g2->host( 27000 );
 
 		volatile bool bThreadClose = false;
@@ -443,25 +490,27 @@ namespace UnitTests
 			while ( !bThreadClose ) {
 				g1->update();
 				g2->update();
+				//std::this_thread::sleep_for(2ms);
 			}
 		});
 
+
 		int k = 0; 
-		int p = 1000;
+		int p = nRpcs;
+		int rpcChan = 0;
 		while ( k++ < p )
 		{
-			rpc_unitRpcTest0( g1 );
-			rpc_unitRpcTest1( g1, __high );
-			rpc_unitRpcTest2( g1, __high, __fltMax );
-			rpc_unitRpcTest3( g1, __high, __fltMax, __dblMax );
-			rpc_unitRpcTest4( g1, __high, __fltMax, __dblMax, __llong );
-			rpc_unitRpcTest5( g1, __high, __fltMax, __dblMax, __llong, __bb );
-			rpc_unitRpcTest6( g1, __high, __fltMax, __dblMax, __llong, __bb, __dblMin );
-			rpc_unitRpcTest7( g1, __high, __fltMax, __dblMax, __llong, __bb, __dblMin, __sk );
-			rpc_unitRpcTest8( g1, __high, __fltMax, __dblMax, __llong, __bb, __dblMin, __sk, __fltMin );
-			rpc_unitRpcTest9( g1, __high, __fltMax, __dblMax, __llong, __bb, __dblMin, __sk, __fltMin, __dblMax );
-
-		//	std::this_thread::sleep_for(100ms);
+			rpc_unitRpcTest0( g1, false, nullptr, false, rpcChan );
+			rpc_unitRpcTest1( g1, __high[hS++], false, nullptr, false, rpcChan );
+			rpc_unitRpcTest2( g1, __high[hS1], __fltMax[hS1], false, nullptr, false, rpcChan ); hS1++;
+			rpc_unitRpcTest3( g1, __high[hS2], __fltMax[hS2], __dblMax[hS2], false, nullptr, false, rpcChan ); hS2++;
+			rpc_unitRpcTest4( g1, __high[hS3], __fltMax[hS3], __dblMax[hS3], __llong[hS3], false, nullptr, false, rpcChan ); hS3++;
+			rpc_unitRpcTest5( g1, __high[hS4], __fltMax[hS4], __dblMax[hS4], __llong[hS4], __bb[hS4], false, nullptr, false, rpcChan ); hS4++;
+			rpc_unitRpcTest6( g1, __high[hS5], __fltMax[hS5], __dblMax[hS5], __llong[hS5], __bb[hS5], __dblMin[hS5], false, nullptr, false, rpcChan ); hS5++;
+			rpc_unitRpcTest7( g1, __high[hS6], __fltMax[hS6], __dblMax[hS6], __llong[hS6], __bb[hS6], __dblMin[hS6], __sk[hS6], false, nullptr, false, rpcChan ); hS6++;
+			rpc_unitRpcTest8( g1, __high[hS7], __fltMax[hS7], __dblMax[hS7], __llong[hS7], __bb[hS7], __dblMin[hS7], __sk[hS7], __fltMin[hS7], false, nullptr, false, rpcChan ); hS7++;
+			rpc_unitRpcTest9( g1, __high[hS8], __fltMax[hS8], __dblMax[hS8], __llong[hS8], __bb[hS8], __dblMin[hS8], __sk[hS8], __fltMin[hS8], __dblMax[hS8], false, nullptr, false, rpcChan ); hS8++;
+			//std::this_thread::sleep_for(1ms);
 		}
 
 		std::this_thread::sleep_for(300ms);
@@ -899,11 +948,11 @@ namespace UnitTests
 		std::vector<BaseTest*> tests;
 
 		// add tests
-		tests.emplace_back( new ConnectionLayerTest );
-	/*	tests.emplace_back( new MassConnectTest );
-		tests.emplace_back( new ReliableOrderTest );
+	//	tests.emplace_back( new ConnectionLayerTest );
+	//	tests.emplace_back( new MassConnectTest );
+	//	tests.emplace_back( new ReliableOrderTest );
 		tests.emplace_back( new RpcTest );
-		tests.emplace_back( new SyncGroupTest );*/
+	//	tests.emplace_back( new SyncGroupTest );
 			
 		// run them
 		for ( auto* t : tests )

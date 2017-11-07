@@ -2,6 +2,7 @@
 #include "Socket.h"
 #include "RecvNode.h"
 #include "Util.h"
+#include "CoreNode.h"
 
 #include <algorithm>
 #include <cassert>
@@ -9,7 +10,8 @@
 
 namespace Zerodelay
 {
-	RUDPLink::RUDPLink(const EndPoint& endPoint):
+	RUDPLink::RUDPLink(RecvNode* recvNode, const EndPoint& endPoint):
+		m_RecvNode(recvNode),
 		m_BlockNewSends(false),
 		m_PacketLossPercentage(0),
 		m_IsPendingDelete(false),
@@ -180,16 +182,19 @@ namespace Zerodelay
 		m_RecvQueuesMutex.unlock();
 	}
 
-	bool RUDPLink::areAllReliableSendQueuesEmpty() const
+	bool RUDPLink::areAllQueuesEmpty() const
 	{
 		std::unique_lock<std::mutex> lock(m_SendQueuesMutex);
 		for ( i32_t i=0; i<sm_NumChannels; ++i )
 		{
-			if ( !m_SendQueue_reliable[i].empty() )
-			{
-				return false;
-			}
+			if ( !m_SendQueue_reliable[i].empty() ) return false;
+			if ( !m_RecvQueue_unreliable_sequenced[i].empty() ) return false;
+			if ( !m_RecvQueue_reliable_order[i].empty() ) return false;
+			if ( !m_AckQueue[i].empty() ) return false;
 		}
+		if ( !m_SendQueue_unreliable.empty() ) return false;
+		if ( !m_SendQueue_reliable_newest.empty() ) return false;
+		if ( !m_RecvQueue_reliable_newest.empty() ) return false;
 		return true;
 	}
 
@@ -342,7 +347,8 @@ namespace Zerodelay
 					assert(kBytesWritten + item.dataLen <= ISocket::sm_MaxRecvBuffSize); 
 					if ( kBytesWritten + item.dataLen > ISocket::sm_MaxRecvBuffSize )
 					{
-						Platform::log("CRITICAL buffer overrun detected in %s", __FUNCTION__);
+						Platform::log("CRITICAL buffer overrun detected in %s", ZERODELAY_FUNCTION );
+						m_RecvNode->getCoreNode()->setCriticalError( ECriticalError::TooMuchDataToSend, ZERODELAY_FUNCTION );
 						return;
 					}
 					Platform::memCpy(dataBuffer + kBytesWritten, item.dataLen, item.data, item.dataLen);
@@ -557,7 +563,7 @@ namespace Zerodelay
 		pack.data[off_Norm_Chan] = channel;
 		pack.data[off_Norm_Chan] |= ((i8_t)relay) << 3; // skip over the bits for channel, 0 to 7
 		pack.data[off_Norm_Id] = dataId;
-		Platform::memCpy( pack.data + off_Norm_Data, len, data, len ); 
+		Platform::memCpy(pack.data + off_Norm_Data, len, data, len);
 		pack.len = len + off_Norm_Data;
 	}
 

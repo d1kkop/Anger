@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Platform.h"
+#include <cassert>
 
 #if ZERODELAY_SDL
 	#include "SDL.h"
@@ -164,12 +165,17 @@ namespace Zerodelay
 	bool Platform::memCpy(void* dst, i32_t dstSize, const void* src, i32_t srcSize)
 	{
 		if ( srcSize > dstSize )
+		{
+			assert(false);
 			return false;
+		}
+		i32_t res;
 	#ifdef _WIN32
-		memcpy_s( dst, dstSize, src, srcSize );
+		res = memcpy_s( dst, dstSize, src, srcSize );
 	#else
-		memcpy( dst, src, srcSize );
+		res = memcpy( dst, src, srcSize );
 	#endif
+		assert(res == 0);
 		return true;
 	}
 

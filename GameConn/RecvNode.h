@@ -38,6 +38,10 @@ namespace Zerodelay
 		class RUDPLink* getLinkAndPinIt(u32_t idx);
 		void unpinLink(RUDPLink* link);
 
+		void pinList(); // call from main
+		bool isListPinned() const;  // call from receive (must have openListMutex)
+		void unpinList(); // call from main
+
 		void simulatePacketLoss( i32_t percentage );
 		class ISocket* getSocket() const { return m_Socket; }
 
@@ -46,13 +50,14 @@ namespace Zerodelay
 		void startThreads();
 
 		i32_t getNumOpenLinks() const;
+		CoreNode* getCoreNode() const { return m_CoreNode; }
 
 	private:
 		void recvThread();
 		void sendThread();
 		void updatePendingDeletes();
 
-		// for each link
+		// for each link (only to b called from main thread)
 		template <typename Callback>
 		void forEachLink( const EndPoint* specific, bool exclude, bool connected, const Callback& cb );
 
@@ -68,6 +73,7 @@ namespace Zerodelay
 		// Currently opened links are put in a list so that reopend links on same address can not depend on a previously opened session
 		std::map<EndPoint, class RUDPLink*, EndPoint::STLCompare> m_OpenLinksMap;
 		std::vector<class RUDPLink*> m_OpenLinksList;
+		bool m_ListPinned;
 		// -- Ptrs of other managers
 		class CoreNode* m_CoreNode;
 		class ConnectionNode* m_ConnectionNode;
@@ -77,6 +83,7 @@ namespace Zerodelay
 	template <typename Callback>
 	void RecvNode::forEachLink(const EndPoint* specific, bool exclude, bool connected, const Callback& cb)
 	{
+		pinList();
 		if ( specific )
 		{
 			if ( exclude )
@@ -105,5 +112,6 @@ namespace Zerodelay
 				cb( it );
 			}
 		}
+		unpinList();
 	}
 }

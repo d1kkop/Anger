@@ -1,6 +1,8 @@
 #include "Util.h"
 #include "Platform.h"
 
+#include <cassert>
+
 namespace Zerodelay
 {
 
@@ -12,10 +14,13 @@ namespace Zerodelay
 		return dst+k;
 	}
 
-	bool Util::readString(i8_t* buff, i32_t buffSize, const i8_t* buffIn, i32_t buffInSize)
+	i32_t Util::readString(i8_t* buff, i32_t buffSize, const i8_t* buffIn, i32_t buffInSize)
 	{
 		if ( !buff || !buffIn )
+		{
+			assert(false);
 			return false;
+		}
 		i32_t k = 0;
 		while ((*buffIn != '\0') && (k < buffSize-1) && (k < buffInSize))
 		{
@@ -25,15 +30,20 @@ namespace Zerodelay
 		if ( buffSize > 0 )
 		{
 			*buff = '\0';
-			return true;
+			if ( (*buff=='\0') )
+				return k;
 		}
-		return false;
+		assert(false);
+		return -1;
 	}
 
 	bool Util::readFixed(i8_t* dst, i32_t dstSize, const i8_t* buffIn, i32_t buffInSize)
 	{
 		if ( !dst || !buffIn || buffInSize < dstSize )
+		{
+			assert(false);
 			return false;
+		}
 		memcpy( dst, buffIn, dstSize );
 		return true;
 	}	

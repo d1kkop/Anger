@@ -18,7 +18,6 @@ namespace Zerodelay
 		typedef std::function<void (const EndPoint&, EConnectResult)>					ConnectResultCallback;
 		typedef std::function<void (bool, const EndPoint&, EDisconnectReason)>			DisconnectCallback;
 		typedef std::function<void (const EndPoint&)>									NewConnectionCallback;
-		typedef std::function<void (const EndPoint&, u8_t, const i8_t*, i32_t, u8_t)>	CustomDataCallback;
 
 	public:
 		ConnectionNode(i32_t keepAliveIntervalSeconds=8);
@@ -26,8 +25,8 @@ namespace Zerodelay
 		void postInitialize(class CoreNode* coreNode);
 
 		// state
-		EConnectCallResult connect( const EndPoint& endPoint, const std::string& pw="", i32_t timeoutSeconds=8 );
-		EConnectCallResult connect( const std::string& name, i32_t port, const std::string& pw="", i32_t timeoutSeconds=8 );
+		EConnectCallResult connect( const EndPoint& endPoint, const std::string& pw="", i32_t timeoutSeconds=8, bool sendRequest=true );
+		EConnectCallResult connect( const std::string& name, i32_t port, const std::string& pw="", i32_t timeoutSeconds=8, bool sendRequest=true );
 		EListenCallResult listenOn( i32_t port, const std::string& pw="" );
 		EDisconnectCallResult disconnect( const EndPoint& endPoint );
 		void disconnectAll();
@@ -38,6 +37,7 @@ namespace Zerodelay
 		void beginProcessPacketsFor(const EndPoint& endPoint);					// returns true if is known connection
 		bool processPacket(const struct Packet& pack, class RUDPLink& link);			// returns false if packet was not processed (consumed)
 		void endProcessPackets();
+		class Connection* getProcessingConnection() const { return m_ProcessingConnection; }
 		// setters
 		void setPassword( const std::string& pw );
 		void setMaxIncomingConnections(i32_t maxNumConnections);
@@ -49,7 +49,6 @@ namespace Zerodelay
 		void bindOnConnectResult(const ConnectResultCallback& cb)		{ Util::bindCallback(m_ConnectResultCallbacks, cb); }
 		void bindOnNewConnection(const NewConnectionCallback& cb)		{ Util::bindCallback(m_NewConnectionCallbacks, cb); }
 		void bindOnDisconnect(const DisconnectCallback& cb)				{ Util::bindCallback(m_DisconnectCallbacks, cb); }
-		void bindOnCustomData(const CustomDataCallback& cb)				{ Util::bindCallback(m_CustomDataCallbacks, cb); }
 
 	private:
 		// sends (relay)
@@ -67,8 +66,6 @@ namespace Zerodelay
 		void recvInvalidPassword(class Connection* g, const i8_t* payload, i32_t payloadLen);
 		void recvMaxConnectionsReached(class Connection* g, const i8_t* payload, i32_t payloadLen);
 		void recvAlreadyConnected(class Connection* g, const i8_t* payload, i32_t payloadLen);
-		void recvRpcPacket( const i8_t* payload, i32_t len, class Connection* g);
-		void recvUserPacket(class Connection* g, const Packet& pack);
 		// updating
 		void updateConnecting( class Connection* g );
 		void updateKeepAlive( class Connection* g );
@@ -83,7 +80,6 @@ namespace Zerodelay
 		std::vector<ConnectResultCallback>	m_ConnectResultCallbacks;
 		std::vector<DisconnectCallback>		m_DisconnectCallbacks;
 		std::vector<NewConnectionCallback>	m_NewConnectionCallbacks;
-		std::vector<CustomDataCallback>		m_CustomDataCallbacks;
 		// --- ptrs to other managers
 		class CoreNode* m_CoreNode;
 		class RecvNode* m_DispatchNode;
