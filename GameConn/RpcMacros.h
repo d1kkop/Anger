@@ -46,32 +46,32 @@ namespace __sr
 	gn->sendReliableOrdered((u8_t)EDataPacketType::Rpc, data, (i32_t)(len), specific, exclude, channel, relay)
 
 
-#define RPC_FUNC_0( name) \
-	void name( );\
+#define RPC_FUNC_0( name ) \
+	void name( const ZEndpoint* etp, void* userData );\
 	extern "C" {\
-		RPC_EXPORT void __rpc_deserialize_##name( const i8_t* data, i32_t len ) \
+		RPC_EXPORT void __rpc_deserialize_##name( const ZEndpoint& etp, void* userData, const i8_t* data, i32_t len ) \
 		{ \
-			name( ); \
+			name( &etp, userData ); \
 		}\
 	}\
-	void rpc_##name( ZNode* gn, bool localCall = true, const ZEndpoint* specific=nullptr, bool exclude=false, u8_t channel=0, bool relay=true )\
+	void rpc_##name( ZNode* gn, bool localCall = true, const ZEndpoint* specific=nullptr, bool exclude=false, u8_t channel=0, bool relay=true ) \
 	{\
 		i8_t data[RPC_DATA_MAX]; \
-		i8_t* p=data;\
+		i8_t* p=data; \
 		__sr::writeStr(p, #name); \
 		RPC_SEND(p - data); \
-		if ( localCall ) { name( ); } \
+		if ( localCall ) { name( nullptr, gn->getUserDataPtr() ); } \
 	}\
-	void name()
+	void name( const ZEndpoint* etp, void* userData )
 
 
 #define RPC_FUNC_1( name, a, at ) \
-	void name( a at );\
+	void name( const ZEndpoint* etp, void* userData, a at );\
 	extern "C" {\
-		RPC_EXPORT void __rpc_deserialize_##name( const i8_t* data, i32_t len ) \
+		RPC_EXPORT void __rpc_deserialize_##name( const ZEndpoint& etp, void* userData, const i8_t* data, i32_t len ) \
 		{ \
 			a at; __sr::read(data, at); \
-			name( at ); \
+			name( &etp, userData, at ); \
 		}\
 	}\
 	void rpc_##name( ZNode* gn, a at, bool localCall = true, const ZEndpoint* specific=nullptr, bool exclude=false, u8_t channel=0, bool relay=true )\
@@ -81,19 +81,19 @@ namespace __sr
 		__sr::writeStr(p, #name); \
 		__sr::write(p, at); \
 		RPC_SEND(p - data); \
-		if ( localCall ) { name( at ); } \
+		if ( localCall ) { name( nullptr, gn->getUserDataPtr(), at ); } \
 	}\
-	void name( a at )
+	void name( const ZEndpoint* etp, void* userData, a at )
 
 
 #define RPC_FUNC_2( name, a, at, b, bt ) \
-	void name( a at, b bt );\
+	void name( const ZEndpoint* etp, void* userData, a at, b bt );\
 	extern "C" {\
-		RPC_EXPORT void __rpc_deserialize_##name( const i8_t* data, i32_t len ) \
+		RPC_EXPORT void __rpc_deserialize_##name( const ZEndpoint& etp, void* userData, const i8_t* data, i32_t len ) \
 		{ \
 			a at; __sr::read(data, at); \
 			b bt; __sr::read(data, bt); \
-			name( at, bt ); \
+			name( &etp, userData, at, bt ); \
 		}\
 	}\
 	void rpc_##name( ZNode* gn, a at, b bt, bool localCall = true, const ZEndpoint* specific=nullptr, bool exclude=false, u8_t channel=0, bool relay=true )\
@@ -104,20 +104,20 @@ namespace __sr
 		__sr::write(p, at); \
 		__sr::write(p, bt); \
 		RPC_SEND(p - data); \
-		if ( localCall ) { name( at, bt ); } \
+		if ( localCall ) { name( nullptr, gn->getUserDataPtr(), at, bt ); } \
 	}\
-	void name( a at, b bt )
+	void name( const ZEndpoint* etp, void* userData, a at, b bt )
 
 
 #define RPC_FUNC_3( name, a, at, b, bt, c, ct ) \
-	void name( a at, b bt, c ct );\
+	void name( const ZEndpoint* etp, void* userData, a at, b bt, c ct );\
 	extern "C" {\
-		RPC_EXPORT void __rpc_deserialize_##name( const i8_t* data, i32_t len ) \
+		RPC_EXPORT void __rpc_deserialize_##name( const ZEndpoint& etp, void* userData, const i8_t* data, i32_t len ) \
 		{ \
 			a at; __sr::read(data, at); \
 			b bt; __sr::read(data, bt); \
 			c ct; __sr::read(data, ct); \
-			name( at, bt, ct ); \
+			name( &etp, userData, at, bt, ct ); \
 		}\
 	}\
 	void rpc_##name( ZNode* gn, a at, b bt, c ct, bool localCall = true, const ZEndpoint* specific=nullptr, bool exclude=false, u8_t channel=0, bool relay=true )\
@@ -129,21 +129,21 @@ namespace __sr
 		__sr::write(p, bt); \
 		__sr::write(p, ct); \
 		RPC_SEND(p - data); \
-		if ( localCall ) { name( at, bt, ct ); } \
+		if ( localCall ) { name( nullptr, gn->getUserDataPtr(), at, bt, ct ); } \
 	}\
-	void name( a at, b bt, c ct )
+	void name( const ZEndpoint* etp, void* userData, a at, b bt, c ct )
 
 
 #define RPC_FUNC_4( name, a, at, b, bt, c, ct, d, dt ) \
-	void name( a at, b bt, c ct, d dt );\
+	void name( const ZEndpoint* etp, void* userData, a at, b bt, c ct, d dt );\
 	extern "C" {\
-		RPC_EXPORT void __rpc_deserialize_##name( const i8_t* data, i32_t len ) \
+		RPC_EXPORT void __rpc_deserialize_##name( const ZEndpoint& etp, void* userData, const i8_t* data, i32_t len ) \
 		{ \
 			a at; __sr::read(data, at); \
 			b bt; __sr::read(data, bt); \
 			c ct; __sr::read(data, ct); \
 			d dt; __sr::read(data, dt); \
-			name( at, bt, ct, dt ); \
+			name( &etp, userData, at, bt, ct, dt ); \
 		}\
 	}\
 	void rpc_##name( ZNode* gn, a at, b bt, c ct, d dt, bool localCall = true, const ZEndpoint* specific=nullptr, bool exclude=false, u8_t channel=0, bool relay=true )\
@@ -156,22 +156,22 @@ namespace __sr
 		__sr::write(p, ct); \
 		__sr::write(p, dt); \
 		RPC_SEND(p - data); \
-		if ( localCall ) { name( at, bt, ct, dt ); } \
+		if ( localCall ) { name( nullptr, gn->getUserDataPtr(), at, bt, ct, dt ); } \
 	}\
-	void name( a at, b bt, c ct, d dt )
+	void name( const ZEndpoint* etp, void* userData, a at, b bt, c ct, d dt )
 
 
 #define RPC_FUNC_5( name, a, at, b, bt, c, ct, d, dt, e, et ) \
-	void name( a at, b bt, c ct, d dt, e et );\
+	void name( const ZEndpoint* etp, void* userData, a at, b bt, c ct, d dt, e et );\
 	extern "C" {\
-		RPC_EXPORT void __rpc_deserialize_##name( const i8_t* data, i32_t len ) \
+		RPC_EXPORT void __rpc_deserialize_##name( const ZEndpoint& etp, void* userData, const i8_t* data, i32_t len ) \
 		{ \
 			a at; __sr::read(data, at); \
 			b bt; __sr::read(data, bt); \
 			c ct; __sr::read(data, ct); \
 			d dt; __sr::read(data, dt); \
 			e et; __sr::read(data, et); \
-			name( at, bt, ct, dt, et ); \
+			name( &etp, userData, at, bt, ct, dt, et ); \
 		}\
 	}\
 	void rpc_##name( ZNode* gn, a at, b bt, c ct, d dt, e et, bool localCall = true, const ZEndpoint* specific=nullptr, bool exclude=false, u8_t channel=0, bool relay=true )\
@@ -185,14 +185,14 @@ namespace __sr
 		__sr::write(p, dt); \
 		__sr::write(p, et); \
 		RPC_SEND(p - data); \
-		if ( localCall ) { name( at, bt, ct, dt, et ); } \
+		if ( localCall ) { name( nullptr, gn->getUserDataPtr(), at, bt, ct, dt, et ); } \
 	}\
-	void name( a at, b bt, c ct, d dt, e et )
+	void name( const ZEndpoint* etp, void* userData, a at, b bt, c ct, d dt, e et )
 
 #define RPC_FUNC_6( name, a, at, b, bt, c, ct, d, dt, e, et, f, ft ) \
-	void name( a at, b bt, c ct, d dt, e et, f ft );\
+	void name( const ZEndpoint* etp, void* userData, a at, b bt, c ct, d dt, e et, f ft );\
 	extern "C" {\
-		RPC_EXPORT void __rpc_deserialize_##name( const i8_t* data, i32_t len ) \
+		RPC_EXPORT void __rpc_deserialize_##name( const ZEndpoint& etp, void* userData, const i8_t* data, i32_t len ) \
 		{ \
 			a at; __sr::read(data, at); \
 			b bt; __sr::read(data, bt); \
@@ -200,7 +200,7 @@ namespace __sr
 			d dt; __sr::read(data, dt); \
 			e et; __sr::read(data, et); \
 			f ft; __sr::read(data, ft); \
-			name( at, bt, ct, dt, et, ft ); \
+			name( &etp, userData, at, bt, ct, dt, et, ft ); \
 		}\
 	}\
 	void rpc_##name( ZNode* gn, a at, b bt, c ct, d dt, e et, f ft, bool localCall = true, const ZEndpoint* specific=nullptr, bool exclude=false, u8_t channel=0, bool relay=true )\
@@ -215,15 +215,15 @@ namespace __sr
 		__sr::write(p, et); \
 		__sr::write(p, ft); \
 		RPC_SEND(p - data); \
-		if ( localCall ) { name( at, bt, ct, dt, et, ft ); } \
+		if ( localCall ) { name( nullptr, gn->getUserDataPtr(), at, bt, ct, dt, et, ft ); } \
 	}\
-	void name( a at, b bt, c ct, d dt, e et, f ft )
+	void name( const ZEndpoint* etp, void* userData, a at, b bt, c ct, d dt, e et, f ft )
 
 
 #define RPC_FUNC_7( name, a, at, b, bt, c, ct, d, dt, e, et, f, ft, h, ht ) \
-	void name( a at, b bt, c ct, d dt, e et, f ft, h ht );\
+	void name( const ZEndpoint* etp, void* userData, a at, b bt, c ct, d dt, e et, f ft, h ht );\
 	extern "C" {\
-		RPC_EXPORT void __rpc_deserialize_##name( const i8_t* data, i32_t len ) \
+		RPC_EXPORT void __rpc_deserialize_##name( const ZEndpoint& etp, void* userData, const i8_t* data, i32_t len ) \
 		{ \
 			a at; __sr::read(data, at); \
 			b bt; __sr::read(data, bt); \
@@ -232,7 +232,7 @@ namespace __sr
 			e et; __sr::read(data, et); \
 			f ft; __sr::read(data, ft); \
 			h ht; __sr::read(data, ht); \
-			name( at, bt, ct, dt, et, ft, ht ); \
+			name( &etp, userData, at, bt, ct, dt, et, ft, ht ); \
 		}\
 	}\
 	void rpc_##name( ZNode* gn, a at, b bt, c ct, d dt, e et, f ft, h ht, bool localCall = true, const ZEndpoint* specific=nullptr, bool exclude=false, u8_t channel=0, bool relay=true )\
@@ -248,15 +248,15 @@ namespace __sr
 		__sr::write(p, ft); \
 		__sr::write(p, ht); \
 		RPC_SEND(p - data); \
-		if ( localCall ) { name( at, bt, ct, dt, et, ft, ht ); } \
+		if ( localCall ) { name( nullptr, gn->getUserDataPtr(), at, bt, ct, dt, et, ft, ht ); } \
 	}\
-	void name( a at, b bt, c ct, d dt, e et, f ft, h ht )
+	void name( const ZEndpoint* etp, void* userData, a at, b bt, c ct, d dt, e et, f ft, h ht )
 
 
 #define RPC_FUNC_8( name, a, at, b, bt, c, ct, d, dt, e, et, f, ft, h, ht, i, it ) \
-	void name( a at, b bt, c ct, d dt, e et, f ft, h ht, i it );\
+	void name( const ZEndpoint* etp, void* userData, a at, b bt, c ct, d dt, e et, f ft, h ht, i it );\
 	extern "C" {\
-		RPC_EXPORT void __rpc_deserialize_##name( const i8_t* data, i32_t len ) \
+		RPC_EXPORT void __rpc_deserialize_##name( const ZEndpoint& etp, void* userData, const i8_t* data, i32_t len ) \
 		{ \
 			a at; __sr::read(data, at); \
 			b bt; __sr::read(data, bt); \
@@ -266,7 +266,7 @@ namespace __sr
 			f ft; __sr::read(data, ft); \
 			h ht; __sr::read(data, ht); \
 			i it; __sr::read(data, it); \
-			name( at, bt, ct, dt, et, ft, ht, it ); \
+			name( &etp, userData, at, bt, ct, dt, et, ft, ht, it ); \
 		}\
 	}\
 	void rpc_##name( ZNode* gn, a at, b bt, c ct, d dt, e et, f ft, h ht, i it, bool localCall = true, const ZEndpoint* specific=nullptr, bool exclude=false, u8_t channel=0, bool relay=true )\
@@ -283,15 +283,15 @@ namespace __sr
 		__sr::write(p, ht); \
 		__sr::write(p, it); \
 		RPC_SEND(p - data); \
-		if ( localCall ) { name( at, bt, ct, dt, et, ft, ht, it ); } \
+		if ( localCall ) { name( nullptr, gn->getUserDataPtr(), at, bt, ct, dt, et, ft, ht, it ); } \
 	}\
-	void name( a at, b bt, c ct, d dt, e et, f ft, h ht, i it )
+	void name( const ZEndpoint* etp, void* userData, a at, b bt, c ct, d dt, e et, f ft, h ht, i it )
 
 
 #define RPC_FUNC_9( name, a, at, b, bt, c, ct, d, dt, e, et, f, ft, h, ht, i, it, j, jt ) \
-	void name( a at, b bt, c ct, d dt, e et, f ft, h ht, i it, j jt );\
+	void name( const ZEndpoint* etp, void* userData, a at, b bt, c ct, d dt, e et, f ft, h ht, i it, j jt );\
 	extern "C" {\
-		RPC_EXPORT void __rpc_deserialize_##name( const i8_t* data, i32_t len ) \
+		RPC_EXPORT void __rpc_deserialize_##name( const ZEndpoint& etp, void* userData, const i8_t* data, i32_t len ) \
 		{ \
 			a at; __sr::read(data, at); \
 			b bt; __sr::read(data, bt); \
@@ -302,7 +302,7 @@ namespace __sr
 			h ht; __sr::read(data, ht); \
 			i it; __sr::read(data, it); \
 			j jt; __sr::read(data, jt); \
-			name( at, bt, ct, dt, et, ft, ht, it, jt ); \
+			name( &etp, userData, at, bt, ct, dt, et, ft, ht, it, jt ); \
 		}\
 	}\
 	void rpc_##name( ZNode* gn, a at, b bt, c ct, d dt, e et, f ft, h ht, i it, j jt, bool localCall = true, const ZEndpoint* specific=nullptr, bool exclude=false, u8_t channel=0, bool relay=true )\
@@ -320,6 +320,6 @@ namespace __sr
 		__sr::write(p, it); \
 		__sr::write(p, jt); \
 		RPC_SEND(p - data); \
-		if ( localCall ) { name( at, bt, ct, dt, et, ft, ht, it, jt ); } \
+		if ( localCall ) { name( nullptr, gn->getUserDataPtr(), at, bt, ct, dt, et, ft, ht, it, jt ); } \
 	}\
-	void name( a at, b bt, c ct, d dt, e et, f ft, h ht, i it, j jt )
+	void name( const ZEndpoint* etp, void* userData, a at, b bt, c ct, d dt, e et, f ft, h ht, i it, j jt )

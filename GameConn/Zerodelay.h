@@ -99,12 +99,23 @@ namespace Zerodelay
 
 
 	/** ---------------------------------------------------------------------------------------------------------------------------------
-		Endpoint is analogical to an address. It is either an Ipv4 or Ipv6 address.
+		ZEndpoint is analogical to an address. It is either an Ipv4 or Ipv6 address.
 		Do not keep a pointer to the endpoint but copy the structure instead.
-		It works out of the box with std::map and std::unordered_map. */
+		It works out of the box with std::map */
 	struct ZDLL_DECLSPEC ZEndpoint
 	{
 		ZEndpoint();
+		ZEndpoint( const std::string& name, u16_t port );
+
+
+		bool operator==(const ZEndpoint& other) const;
+		bool operator!=(const ZEndpoint& other) const { return !(*this == other); }
+
+
+		struct STLCompare
+		{
+			bool operator() (const ZEndpoint& left, const ZEndpoint& right) const;
+		};
 
 
 		/*	Use to see if a host can be connected to. If false is erturned, use getLastError to obtain more info. */
@@ -119,8 +130,11 @@ namespace Zerodelay
 		i32_t getLastError() const;
 
 
+		/* Returns true if instantiated but not yet resolved to any endpoint. */
+		bool isZero() const;
+
 	private:
-		i8_t pod[256];
+		i8_t d[32];
 	};
 
 
@@ -186,7 +200,7 @@ namespace Zerodelay
 			A connection is automatically cleaned up when a connection attempt failed or
 			if the connection was closed (may it be ungraceful).
 			This method could be used to periodically check if a connection is no longer known
-			and reconnect as such when desired. */
+			and reconnect as such if desired. */
 		bool isConnectionKnown(const ZEndpoint& ztp) const;
 
 

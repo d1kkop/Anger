@@ -400,63 +400,145 @@ namespace UnitTests
 	RPC_FUNC_1( unitRpcTest1, int, a )
 	{
 //		printf(" unitRpcTest1 %d \n", a );
-		assert( a == __high[hR++] );
+		RpcTest* rt = (RpcTest*)userData;
+		if ( rt->_zrecv.isZero() )
+			rt->_zrecv = *etp;
+		if ( rt->_zrecv == *etp )
+		{
+			assert( a == __high[hR++] );
+		}
+		else
+		{
+			printf("received rpc1 data from unknown endpoint \n");
+		}
 	}
 	RPC_FUNC_2( unitRpcTest2, int, a, float, b )
 	{
 //		printf(" unitRpcTest1 %d %.3f \n", a, b );
-		assert( a == __high[hR1] && b==__fltMax[hR1] );
-		hR1++;
+		RpcTest* rt = (RpcTest*)userData;
+		if ( rt->_zrecv.isZero() )
+			rt->_zrecv = *etp;
+		if ( rt->_zrecv == *etp )
+		{
+			assert( a == __high[hR1] && b==__fltMax[hR1] );
+			hR1++;
+		}
+		else
+		{
+			printf("received rpc2 data from unknown endpoint \n");
+		}
 	}
 	RPC_FUNC_3( unitRpcTest3, int, a, float, b, double, c )
 	{
 //		printf(" unitRpcTest %d %.3f %.f \n", a, b, c );
-		assert( a == __high[hR2] && b==__fltMax[hR2] && c==__dblMax[hR2] );
-		hR2++;
+		RpcTest* rt = (RpcTest*)userData;
+		if ( rt->_zrecv.isZero() )
+			rt->_zrecv = *etp;
+		if ( rt->_zrecv == *etp )
+		{
+			assert( a == __high[hR2] && b==__fltMax[hR2] && c==__dblMax[hR2] );
+			hR2++;
+		}
+		else
+		{
+			printf("received rpc3 data from unknown endpoint \n");
+		}
 	}
 	RPC_FUNC_4( unitRpcTest4, int, a, float, b, double, c, long, k )
 	{
 //		printf(" unitRpcTest %d %.3f %.f %d \n", a, b, c, k );
-		assert( a == __high[hR3] && b==__fltMax[hR3] && c==__dblMax[hR3] && k == __llong[hR3] );
-		hR3++;
+		RpcTest* rt = (RpcTest*)userData;
+		if ( rt->_zrecv.isZero() )
+			rt->_zrecv = *etp;
+		if ( rt->_zrecv == *etp )
+		{
+			assert( a == __high[hR3] && b==__fltMax[hR3] && c==__dblMax[hR3] && k == __llong[hR3] );
+			hR3++;
+		}
+		else
+		{
+			printf("received rpc4 data from unknown endpoint \n");
+		}
 	}
 	RPC_FUNC_5( unitRpcTest5, int, a, float, b, double, c, long, k, char, bb )
 	{
 //		printf(" unitRpcTest %d %.3f %.f %d %d\n", a, b, c, k, bb );
-		assert( a == __high[hR4] && b==__fltMax[hR4] && c==__dblMax[hR4] && k == __llong[hR4] && bb==__bb[hR4] );
-		hR4++;
+		RpcTest* rt = (RpcTest*)userData;
+		if ( rt->_zrecv.isZero() )
+			rt->_zrecv = *etp;
+		if ( rt->_zrecv == *etp )
+		{
+			assert( a == __high[hR4] && b==__fltMax[hR4] && c==__dblMax[hR4] && k == __llong[hR4] && bb==__bb[hR4] );
+			hR4++;
+		}
+		else
+		{
+			printf("received rpc5 data from unknown endpoint \n");
+		}
 	}
 	RPC_FUNC_6( unitRpcTest6, int, a, float, b, double, c, long, k, char, bb, double, fj )
 	{
 //		printf(" unitRpcTest %d %.3f %.f %d %d %f\n", a, b, c, k, bb, fj );
-		if ( hR5 < nRpcs )
+		RpcTest* rt = (RpcTest*)userData;
+		if ( rt->_zrecv.isZero() )
+			rt->_zrecv = *etp;
+		if ( rt->_zrecv == *etp )
 		{
 			assert( a == __high[hR5] && b==__fltMax[hR5] && c==__dblMax[hR5] && k == __llong[hR5] && bb==__bb[hR5] && fj==__dblMin[hR5] );
 			hR5++;
 		}
 		else
 		{
-			static int ks5= 1;
-			printf("Hr delta %d\n", ks5++);
+			printf("received rpc6 data from unknown endpoint \n");
 		}
 	}
 	RPC_FUNC_7( unitRpcTest7, int, a, float, b, double, c, long, k, char, bb, double, fj, short, s )
 	{
 //		printf(" unitRpcTest %d %.3f %.f %d %d %f, %d\n", a, b, c, k, bb, fj, s );
-		assert( a == __high[hR6] && b==__fltMax[hR6] && c==__dblMax[hR6] && k == __llong[hR6] && bb==__bb[hR6] && fj==__dblMin[hR6] && s==__sk[hR6] );
-		hR6++;
+		RpcTest* rt = (RpcTest*)userData;
+		if ( rt->_zrecv.isZero() )
+			rt->_zrecv = *etp;
+		if ( rt->_zrecv == *etp )
+		{
+			assert( a == __high[hR6] && b==__fltMax[hR6] && c==__dblMax[hR6] && k == __llong[hR6] && bb==__bb[hR6] && fj==__dblMin[hR6] && s==__sk[hR6] );
+			hR6++;
+		}
+		else
+		{
+			printf("received rpc7 data from unknown endpoint \n");
+		}
 	}
 	RPC_FUNC_8( unitRpcTest8, int, a, float, b, double, c, long, k, char, bb, double, fj, short, s, float, kt )
 	{
 //		printf(" unitRpcTest %d %.3f %.f %d %d %f, %d %.5f\n", a, b, c, k, bb, fj, s, kt );
-		assert( a == __high[hR7] && b==__fltMax[hR7] && c==__dblMax[hR7] && k == __llong[hR7] && bb==__bb[hR7] && fj==__dblMin[hR7] && s==__sk[hR7] && kt==__fltMin[hR7] );
-		hR7++;
+		RpcTest* rt = (RpcTest*)userData;
+		if ( rt->_zrecv.isZero() )
+			rt->_zrecv = *etp;
+		if ( rt->_zrecv == *etp )
+		{
+			assert( a == __high[hR7] && b==__fltMax[hR7] && c==__dblMax[hR7] && k == __llong[hR7] && bb==__bb[hR7] && fj==__dblMin[hR7] && s==__sk[hR7] && kt==__fltMin[hR7] );
+			hR7++;
+		}
+		else
+		{
+			printf("received rpc8 data from unknown endpoint \n");
+		}
 	}
 	RPC_FUNC_9( unitRpcTest9, int, a, float, b, double, c, long, k, char, bb, double, fj, short, s, float, kt, double, dt )
 	{
 //		printf(" unitRpcTest %d %.3f %.f %d %d %f, %d %.5f %f\n", a, b, c, k, bb, fj, s, kt, dt );
-		assert( a == __high[hR8] && b==__fltMax[hR8] && c==__dblMax[hR8] && k == __llong[hR8] && bb==__bb[hR8] && fj==__dblMin[hR8] && s==__sk[hR8] && kt==__fltMin[hR8] && dt == __dblMax[hR8] );
-		hR8++;
+		RpcTest* rt = (RpcTest*)userData;
+		if ( rt->_zrecv.isZero() )
+			rt->_zrecv = *etp;
+		if ( rt->_zrecv == *etp )
+		{
+			assert( a == __high[hR8] && b==__fltMax[hR8] && c==__dblMax[hR8] && k == __llong[hR8] && bb==__bb[hR8] && fj==__dblMin[hR8] && s==__sk[hR8] && kt==__fltMin[hR8] && dt == __dblMax[hR8] );
+			hR8++;
+		}
+		else
+		{
+			printf("received rpc9 data from unknown endpoint \n");
+		}
 	}
 
 
@@ -482,8 +564,12 @@ namespace UnitTests
 		ZNode* g1 = new ZNode();
 		ZNode* g2 = new ZNode();
 
-		g1->connect( "localhost", 27000, "", 8, false );
+		_ztp.resolve("localhost", 27000);
+		
+		g1->connect( _ztp, "", 8, true );
+		
 		g2->host( 27000 );
+		g2->setUserDataPtr( this );
 
 		volatile bool bThreadClose = false;
 		std::thread t( [&] () {

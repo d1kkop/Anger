@@ -8,6 +8,7 @@ namespace Zerodelay
 	struct EndPoint
 	{
 		EndPoint() { ::memset(this, 0, sizeof(*this)); }
+		EndPoint( const std::string& service, u16_t port );
 		bool operator==(const EndPoint& other) const;
 		bool operator!=(const EndPoint& other) const { return !(*this == other); }
 

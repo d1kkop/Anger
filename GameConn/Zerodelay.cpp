@@ -54,6 +54,22 @@ namespace Zerodelay
 		::memset(this, 0, sizeof(ZEndpoint));
 	}
 
+	ZEndpoint::ZEndpoint(const std::string& name, u16_t port)
+	{
+		::memset(this, 0, sizeof(ZEndpoint));
+		resolve(name, port);
+	}
+
+	bool ZEndpoint::operator==(const ZEndpoint& other) const
+	{
+		return ::memcmp( this, &other, sizeof(ZEndpoint) ) == 0;
+	}
+
+	bool ZEndpoint::STLCompare::operator()(const ZEndpoint& left, const ZEndpoint& right) const
+	{
+		return memcmp( &left, &right, sizeof(ZEndpoint) ) < 0;
+	}
+
 	bool ZEndpoint::resolve(const std::string& name, u16_t port)
 	{
 		EndPoint etp;
@@ -75,6 +91,13 @@ namespace Zerodelay
 		return asEpt(this)->getLastError();
 	}
 
+
+	bool ZEndpoint::isZero() const
+	{
+		i8_t* c = (i8_t*)this;
+		for ( auto i=0; i<sizeof(ZEndpoint); ++i ) if (*c != 0) return false;
+		return true;
+	}
 
 	// -------- ZNode ----------------------------------------------------------------------------------------------
 
@@ -319,5 +342,4 @@ namespace Zerodelay
 	{
 		C->vgn()->deferredCreateGroup( paramData, paramDataLen, channel );
 	}
-
 }

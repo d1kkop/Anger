@@ -29,7 +29,7 @@ namespace Zerodelay
 		void bindOnCustomData(const CustomDataCallback& cb)				{ Util::bindCallback(m_CustomDataCallbacks, cb); }
 
 		// Packets whose handle location is not really clear such as RPC and User data.
-		void recvRpcPacket( const i8_t* payload, i32_t len );
+		void recvRpcPacket( const i8_t* payload, i32_t len, const struct EndPoint& etp );
 		void recvUserPacket( const struct Packet& pack, const struct EndPoint& etp );
 		void processUnhandledPacket( struct Packet& pack, const struct EndPoint& etp );
 

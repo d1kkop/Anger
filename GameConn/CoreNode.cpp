@@ -6,8 +6,13 @@
 #include "VariableGroupNode.h"
 
 
+
 namespace Zerodelay
 {
+	extern ZEndpoint toZpt( const EndPoint& r );
+	extern EndPoint  toEtp( const ZEndpoint& z );
+
+
 	CoreNode::CoreNode(class ZNode* zn, class RecvNode* rn, class ConnectionNode* cn, class VariableGroupNode* vgn):
 		m_UserPtr(nullptr),
 		m_IsP2P(false),
@@ -31,7 +36,7 @@ namespace Zerodelay
 		delete m_VariableGroupNode;
 	}
 
-	void CoreNode::recvRpcPacket(const i8_t* payload, i32_t len)
+	void CoreNode::recvRpcPacket(const i8_t* payload, i32_t len, const EndPoint& etp)
 	{
 		i8_t funcName[RPC_NAME_MAX_LENGTH*2];
 		auto* ptrNext = Util::appendString(funcName, RPC_NAME_MAX_LENGTH*2, "__rpc_deserialize_");
@@ -45,9 +50,10 @@ namespace Zerodelay
 		if ( pf )
 		{
 			// function signature
-			void (*pfunc)(const i8_t*, i32_t);
+			void (*pfunc)(const ZEndpoint&, void*, const i8_t*, i32_t);
 			pfunc = (decltype(pfunc)) pf;
-			pfunc( payload+kRead+1, len );
+			ZEndpoint ztp = toZpt(etp);
+			pfunc( ztp, m_UserPtr, payload+kRead+1, len );
 		}
 		else
 		{
@@ -69,7 +75,7 @@ namespace Zerodelay
 		});
 	}
 
-	void CoreNode::processUnhandledPacket(Packet& pack, const EndPoint& etp )
+	void CoreNode::processUnhandledPacket(Packet& pack, const EndPoint& etp)
 	{
 		EDataPacketType packType = (EDataPacketType)pack.data[0];
 		const i8_t* payload  = pack.data+1;		// first byte is PacketType
@@ -84,7 +90,7 @@ namespace Zerodelay
 		switch (packType)
 		{
 		case EDataPacketType::Rpc:
-			recvRpcPacket(payload, payloadLen);
+			recvRpcPacket(payload, payloadLen, etp);
 			break;
 		default:
 			Platform::log("Received unhandled packet from: %s", etp.asString());	

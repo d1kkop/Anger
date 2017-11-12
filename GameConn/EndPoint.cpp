@@ -34,6 +34,11 @@ namespace Zerodelay
 		return "";
 	}
 
+	EndPoint::EndPoint(const std::string& service, u16_t port)
+	{
+		resolve(service, port);
+	}
+
 	bool EndPoint::resolve(const std::string& name, u16_t port)
 	{
 	#if ZERODELAY_WIN32SOCKET

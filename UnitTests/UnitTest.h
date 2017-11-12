@@ -56,6 +56,10 @@ namespace UnitTests
 	{
 		virtual void initialize() override;
 		virtual void run() override;
+
+		ZEndpoint _ztp;
+		ZNode* _node;
+		ZEndpoint _zrecv;
 	};
 
 
