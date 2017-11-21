@@ -17,7 +17,6 @@ namespace Zerodelay
 		MaxConnectionsReached,
 		Connected,
 		ConnectionTimedOut,
-		Disconnecting,
 		Disconnected
 	};
 
@@ -29,7 +28,7 @@ namespace Zerodelay
 	public:
 		Connection( class ConnectionNode* connectionNode, bool wasConnector, class RUDPLink* link, i32_t timeoutSeconds=8, i32_t keepAliveIntervalSeconds=8 );
 		~Connection();
-		bool disconnect(); // Returns true if was in 'Connected' and not called already state
+		void disconnect(const std::function<void ()>& cb); // invokes cb if was connected and send disconnect
 		bool acceptDisconnect();
 		bool setInvalidPassword();
 		bool setMaxConnectionsReached();
@@ -43,9 +42,8 @@ namespace Zerodelay
 		bool onReceiveKeepAliveRequest();
 		bool onReceiveKeepAliveAnswer();
 		// -- updates
-		bool updateConnecting();	// Returns true if there is a state change
-		bool updateKeepAlive();		// same
-		bool updateDisconnecting();	// same
+		void updateConnecting(const std::function<void ()>& cb);	// Invokes cb if connecting timed out
+		void updateKeepAlive(const std::function<void ()>& cb);		// Invokes cb if connection timed out
 		// -- getters
 		const EndPoint& getEndPoint() const;
 		EConnectionState getState() const;

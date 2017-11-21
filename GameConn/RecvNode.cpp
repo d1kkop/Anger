@@ -17,7 +17,8 @@ namespace Zerodelay
 		m_SendThreadSleepTimeMs(sendThreadSleepTimeMs),
 		m_Socket(ISocket::create()),
 		m_RecvThread(nullptr),
-		m_SendThread(nullptr)
+		m_SendThread(nullptr),
+		m_ListPinned(false)
 	{
 		m_CaptureSocketErrors = true;
 	}
@@ -124,7 +125,6 @@ namespace Zerodelay
 
 	bool RecvNode::isListPinned() const
 	{
-	//	std::lock_guard<std::mutex> lock(m_OpenLinksMutex);
 		return m_ListPinned;
 	}
 
@@ -238,8 +238,10 @@ namespace Zerodelay
 	void RecvNode::updatePendingDeletes()
 	{
 		// std::lock_guard<std::mutex> lock(m_OpenLinksMutex); Already acquired by send thread
-		if ( isListPinned() ) // if other thread is using the list
+		if ( isListPinned() ) 
 			return;
+
+		// If list is pinned, it cannot be pinned in the mean time because we have the OpenLinksMutex lock
 
 		// Delete (memory wise) dead connections
 		for ( auto it = m_OpenLinksList.begin(); it != m_OpenLinksList.end(); )

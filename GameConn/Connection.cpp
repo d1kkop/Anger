@@ -12,6 +12,12 @@ namespace Zerodelay
 		return false; \
 	}
 
+#define Check_State_NoRet( state ) \
+	if ( m_State != EConnectionState::##state ) \
+	{\
+		return; \
+	}
+
 #define Ensure_State( state ) \
 	if ( m_State != EConnectionState::##state ) \
 	{\
@@ -38,23 +44,24 @@ namespace Zerodelay
 	{
 	}
 
-	bool Connection::disconnect()
+	void Connection::disconnect(const std::function<void ()>& cb)
 	{
-		if (!m_DisconnectCalled)
+		if (m_DisconnectCalled)
+			return;
+
+		m_DisconnectCalled = true;
+		m_DisconnectTS = ::clock();
+		if ( m_State == EConnectionState::Connected ) 
 		{
-			m_DisconnectCalled = true;
-			m_DisconnectTS = ::clock();
-			if ( m_State == EConnectionState::Connected ) sendSystemMessage( EDataPacketType::Disconnect );
-			if ( m_Link )
-			{
-				m_Link->markPendingDelete();
-				m_Link->blockAllUpcomingSends();
-			}
-			auto oldState = m_State;
-			m_State = EConnectionState::Disconnecting;
-			return (oldState == EConnectionState::Connected);
+			sendSystemMessage( EDataPacketType::Disconnect );
+			cb();
 		}
-		return true;
+		m_State = EConnectionState::Disconnected;
+		if ( m_Link )
+		{
+			m_Link->blockAllUpcomingSends();
+			m_Link->markPendingDelete();
+		}
 	}
 
 	bool Connection::acceptDisconnect()
@@ -137,22 +144,21 @@ namespace Zerodelay
 		return false;
 	}
 
-	bool Connection::updateConnecting()
+	void Connection::updateConnecting(const std::function<void ()>& cb)
 	{
-		Check_State( Connecting );
+		Check_State_NoRet( Connecting );
 		if ( Util::getTimeSince( m_StartConnectingTS ) >= m_ConnectTimeoutSeconMs )
 		{
 			m_State = EConnectionState::InitiateTimedOut;
-			return true;
+			cb();
 		}
-		return false;
 	}
 
-	bool Connection::updateKeepAlive()
+	void Connection::updateKeepAlive(const std::function<void ()>& cb)
 	{
-		Check_State( Connected );
+		Check_State_NoRet( Connected );
 		if ( m_KeepAliveIntervalMs <= 0 )
-			return false; // discard update
+			return; // discard update
 		if ( !m_IsWaitingForKeepAlive )
 		{
 			if ( Util::getTimeSince( m_KeepAliveTS ) > m_KeepAliveIntervalMs )
@@ -165,21 +171,8 @@ namespace Zerodelay
 		else if ( Util::getTimeSince( m_KeepAliveTS ) > 3000 ) // 3 seconds is rediculous ping, so consider it lost
 		{
 			m_State = EConnectionState::ConnectionTimedOut;
-			return true;
+			cb();
 		}
-		return false;
-	}
-
-	bool Connection::updateDisconnecting()
-	{
-		Check_State( Disconnecting );
-		if ( Util::getTimeSince(m_DisconnectTS) > RUDPLink::sm_MaxLingerTimeMs )
-		{
-			// assume afrer this time, that the message was received, otherwise just unlucky
-			m_State = EConnectionState::Disconnected;
-			return true;
-		}
-		return false;
 	}
 
 	const EndPoint& Connection::getEndPoint() const

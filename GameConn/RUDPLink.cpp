@@ -208,45 +208,6 @@ namespace Zerodelay
 		return Util::getTimeSince(m_MarkDeleteTS);
 	}
 
-	void RUDPLink::flushSendQueue(ISocket* socket)
-	{
-		dispatchSendQueue(socket);
-		dispatchAckQueue(socket);
-		dispatchRelNewestAckQueue(socket);
-	}
-
-	void RUDPLink::recvData(const i8_t* buff, i32_t rawSize)
-	{
-		if ( m_PacketLossPercentage > 0 && (u8_t)(rand() % 100) < m_PacketLossPercentage )
-			return; // discard
-
-		EHeaderPacketType type = (EHeaderPacketType)buff[off_Type];
-		switch ( type )
-		{
-		case EHeaderPacketType::Ack:
-			receiveAck(buff, rawSize);
-			break;
-
-		case EHeaderPacketType::Ack_Reliable_Newest:
-			receiveAckRelNewest(buff, rawSize);
-			break;
-
-		case EHeaderPacketType::Reliable_Ordered:
-			// ack it (even if we already processed this packet)
-			addAckToAckQueue( buff[off_Norm_Chan] & 7, *(u32_t*)&buff[off_Norm_Seq] );
-			receiveReliableOrdered(buff, rawSize);	
-			break;
-
-		case EHeaderPacketType::Unreliable_Sequenced:
-			receiveUnreliableSequenced(buff, rawSize);
-			break;
-
-		case EHeaderPacketType::Reliable_Newest:
-			receiveReliableNewest( buff, rawSize );
-			break;
-		}
-	}
-
 	void RUDPLink::markPendingDelete()
 	{
 		std::lock_guard<std::mutex> lock(m_PendingDeleteMutex);
@@ -271,14 +232,14 @@ namespace Zerodelay
 		m_PinnedCount--;
 	}
 
-	void RUDPLink::addAckToAckQueue(i8_t channel, u32_t seq)
+
+	// ----------------- Called from send thread -----------------------------------------------
+
+	void RUDPLink::flushSendQueue(ISocket* socket)
 	{
-		std::lock_guard<std::mutex> lock(m_AckMutex);
-		auto it = std::find( m_AckQueue[channel].begin(), m_AckQueue[channel].end(), seq );
-		if ( it == m_AckQueue[channel].end() )
-		{
-			m_AckQueue[channel].emplace_back( seq );
-		}
+		dispatchSendQueue(socket);
+		dispatchAckQueue(socket);
+		dispatchRelNewestAckQueue(socket);
 	}
 
 	void RUDPLink::dispatchSendQueue(ISocket* socket)
@@ -321,7 +282,7 @@ namespace Zerodelay
 		*(u32_t*)(dataBuffer + off_RelNew_Seq) = m_SendSeq_reliable_newest; // followed by sequence number
 		i32_t kNumGroupsWritten = 0;  // keeps track of num groups as is not know yet
 		i32_t kBytesWritten = off_RelNew_GroupId; // skip 4 bytes, as num groups is not yet known
-		//for (auto& kvp : m_SendQueue_reliable_newest)
+												  //for (auto& kvp : m_SendQueue_reliable_newest)
 		for (auto& it = m_SendQueue_reliable_newest.begin(); it != m_SendQueue_reliable_newest.end(); it++)
 		{
 			auto& kvp = *it;
@@ -422,6 +383,51 @@ namespace Zerodelay
 		*(u32_t*)&buff[off_Ack_RelNew_Seq] = recvThreadAckValue;
 		socket->send(m_EndPoint, buff, 5);
 		m_RecvSeq_reliable_newest_sendThread = recvThreadAckValue+1;
+	}
+
+
+	// ----------------- Called from receive thread -----------------------------------------------
+
+	void RUDPLink::recvData(const i8_t* buff, i32_t rawSize)
+	{
+		if ( m_PacketLossPercentage > 0 && (u8_t)(rand() % 100) < m_PacketLossPercentage )
+			return; // discard
+
+		EHeaderPacketType type = (EHeaderPacketType)buff[off_Type];
+		switch ( type )
+		{
+		case EHeaderPacketType::Ack:
+		receiveAck(buff, rawSize);
+		break;
+
+		case EHeaderPacketType::Ack_Reliable_Newest:
+		receiveAckRelNewest(buff, rawSize);
+		break;
+
+		case EHeaderPacketType::Reliable_Ordered:
+		// ack it (even if we already processed this packet)
+		addAckToAckQueue( buff[off_Norm_Chan] & 7, *(u32_t*)&buff[off_Norm_Seq] );
+		receiveReliableOrdered(buff, rawSize);	
+		break;
+
+		case EHeaderPacketType::Unreliable_Sequenced:
+		receiveUnreliableSequenced(buff, rawSize);
+		break;
+
+		case EHeaderPacketType::Reliable_Newest:
+		receiveReliableNewest( buff, rawSize );
+		break;
+		}
+	}
+
+	void RUDPLink::addAckToAckQueue(i8_t channel, u32_t seq)
+	{
+		std::lock_guard<std::mutex> lock(m_AckMutex);
+		auto it = std::find( m_AckQueue[channel].begin(), m_AckQueue[channel].end(), seq );
+		if ( it == m_AckQueue[channel].end() )
+		{
+			m_AckQueue[channel].emplace_back( seq );
+		}
 	}
 
 	void RUDPLink::receiveReliableOrdered(const i8_t * buff, i32_t rawSize)
@@ -555,6 +561,9 @@ namespace Zerodelay
 			}
 		}
 	}
+
+
+	// ----------------- Support functions (does not touch class data) -----------------------------------------------
 
 	void RUDPLink::assembleNormalPacket(Packet& pack, EHeaderPacketType packetType, u8_t dataId, const i8_t* data, i32_t len, i32_t hdrSize, i8_t channel, bool relay)
 	{

@@ -125,21 +125,8 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 		RefreshLobby();
     }
 
-	g_Node->disconnectAll();
-
-	// Give some chance to send disconnect messages
-	auto tp = std::chrono::high_resolution_clock::now();
-	while ( true )
-	{
-		g_Node->update();
-		std::this_thread::sleep_for( std::chrono::milliseconds(10) );
-
-		auto tn = std::chrono::high_resolution_clock::now();
-		std::chrono::duration<float> dt = tn - tp;
-		
-		if ( dt.count() > .3f )
-			break;
-	}
+	g_Node->disconnect();
+	std::this_thread::sleep_for(std::chrono::milliseconds(300));
 
 	delete g_Node;
     return (int) msg.wParam;

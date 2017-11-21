@@ -104,15 +104,12 @@ namespace UnitTests
 			t.join();
 		Result = (foundNewConn);
 
-		g1->disconnectAll();
-		g2->disconnectAll();
-
+		g1->disconnect();
+		g2->disconnect();
 
 		int k = 0;
 		while (++k < 20 && (g1->getNumOpenLinks() != 0 || g2->getNumOpenLinks() != 0))
 		{
-			g1->update();
-			g2->update();
 			std::this_thread::sleep_for(std::chrono::milliseconds(50));
 		}
 
@@ -355,8 +352,8 @@ namespace UnitTests
 		if ( tRecv.joinable() )
 			tRecv.join();
 
-		g1->disconnectAll();
-		g2->disconnectAll();
+		g1->disconnect();
+		g2->disconnect();
 
 		// Wait until done
 		std::thread tWait( [&] () 
@@ -1005,7 +1002,7 @@ namespace UnitTests
 			}
 
 			if ( kTicks == 300 )
-				clients[0]->disconnectAll();
+				clients[0]->disconnect();
 
 			if ( kTicks > 15000 )
 				break;

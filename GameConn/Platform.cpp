@@ -192,6 +192,14 @@ namespace Zerodelay
 		return true;
 	}
 
+	void Platform::sleep(i32_t milliSeconds)
+	{
+		if (milliSeconds>0)
+		{
+			std::this_thread::sleep_for(std::chrono::milliseconds(milliSeconds));
+		}
+	}
+
 	bool Platform::wasInitialized = false;
 	std::mutex Platform::mapMutex;
 	std::mutex Platform::logMutex;

@@ -30,6 +30,7 @@ namespace Zerodelay
 		EListenCallResult listenOn( i32_t port, const std::string& pw="" );
 		EDisconnectCallResult disconnect( const EndPoint& endPoint );
 		void disconnectAll();
+		void deleteConnections();
 		i32_t getNumOpenConnections() const;
 		bool isInConnectionList(const ZEndpoint& ztp) const;
 		// flow
@@ -69,7 +70,6 @@ namespace Zerodelay
 		// updating
 		void updateConnecting( class Connection* g );
 		void updateKeepAlive( class Connection* g );
-		void updateDisconnecting( class Connection* g );
 		
 		bool m_RelayConnectAndDisconnect;
 		i32_t m_KeepAliveIntervalSeconds;

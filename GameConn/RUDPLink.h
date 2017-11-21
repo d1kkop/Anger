@@ -70,51 +70,53 @@ namespace Zerodelay
 		RUDPLink(class RecvNode* recvNode, const EndPoint& endPoint);
 		~RUDPLink();
 
-		// Thread safe
-		//------------------------------
-			void addToSendQueue( u8_t id, const i8_t* data, i32_t len, EHeaderPacketType packetType, u8_t channel=0, bool relay=true );
-			void addReliableNewest( u8_t id, const i8_t* data, i32_t len, u32_t groupId, i8_t groupBit );
-			void blockAllUpcomingSends();
+		// ------ Called from main thread -------
+
+		void addToSendQueue( u8_t id, const i8_t* data, i32_t len, EHeaderPacketType packetType, u8_t channel=0, bool relay=true );
+		void addReliableNewest( u8_t id, const i8_t* data, i32_t len, u32_t groupId, i8_t groupBit );
+		void blockAllUpcomingSends();
 		
-			// Always first call beginPoll, then repeatedly poll until no more packets, then endPoll
-			void beginPoll();
-			bool poll(Packet& pack);
-			void endPoll();
+		// Always first call beginPoll, then repeatedly poll until no more packets, then endPoll
+		void beginPoll();
+		bool poll(Packet& pack);
+		void endPoll();
 
-			void flushSendQueue( ISocket* socket );
-			void recvData( const i8_t* buff, i32_t len );
+		void markPendingDelete();
+		bool isPendingDelete() const { return m_IsPendingDelete; }
 
-			void markPendingDelete();
-			bool isPendingDelete() const { return m_IsPendingDelete; }
+		// If pinned, link will not be deleted from memory
+		// Should only be called when having OpenListMutex lock
+		void pin();
+		bool isPinned() const;
+		void unpin();
 
-			// If pinned, link will not be deleted from memory
-			// Should only be called when having RecvNode lock
-			void pin();
-			bool isPinned() const;
-			void unpin();
-
-			bool areAllQueuesEmpty() const;
-		//------------------------------
+		bool areAllQueuesEmpty() const;
 
 		// Set to 0, to turn off. Default is off.
 		void simulatePacketLoss( u8_t percentage = 10 );						// Not thread safe, but only for debugging purposes so deliberately no atomic_int.
 		const EndPoint& getEndPoint() const { return m_EndPoint; }				// Set at beginning, can be queried by multiple threads.
 		i32_t getTimeSincePendingDelete() const;								// Is set when becomes pending delete which is thread safe, so this can be queried thread safe.
 
-
 	private:
-		void addAckToAckQueue( i8_t channel, u32_t seq );
+		// executed on send thread
+		void flushSendQueue( ISocket* socket );
 		void dispatchSendQueue(ISocket* socket);
 		void dispatchReliableNewestQueue(ISocket* socket);
 		void dispatchReliableQueue(ISocket* socket);
 		void dispatchUnreliableQueue(ISocket* socket);
 		void dispatchAckQueue(ISocket* socket);
 		void dispatchRelNewestAckQueue(ISocket* socket);
+
+		// executed on recv thread
+		void recvData( const i8_t* buff, i32_t len );
+		void addAckToAckQueue( i8_t channel, u32_t seq );
 		void receiveReliableOrdered(const i8_t * buff, i32_t rawSize);
 		void receiveUnreliableSequenced(const i8_t * buff, i32_t rawSize);
 		void receiveReliableNewest(const i8_t* buff, i32_t rawSize);
 		void receiveAck(const i8_t* buff, i32_t rawSize);
 		void receiveAckRelNewest(const i8_t* buff, i32_t rawSize);
+
+		// support functions
 		void assembleNormalPacket( Packet& pack, EHeaderPacketType packetType, u8_t dataId, const i8_t* data, i32_t len, i32_t hdrSize, i8_t channel, bool relay );
 		void extractChannelRelayAndSeq(const i8_t* buff, i32_t rawSize, i8_t& channOut, bool& relayOut, u32_t& seqOut );
 		void createNormalPacket(Packet& pack, const i8_t* buff, i32_t dataSize, i8_t channel, bool relay, EHeaderPacketType type) const;
@@ -159,5 +161,7 @@ namespace Zerodelay
 		std::mutex m_PendingDeleteMutex;
 		std::atomic_bool m_IsPendingDelete; // Set from main thread, queried by recv thread
 		clock_t m_MarkDeleteTS;
+
+		friend class RecvNode;
 	};
 }

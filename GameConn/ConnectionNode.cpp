@@ -25,6 +25,7 @@ namespace Zerodelay
 
 	ConnectionNode::~ConnectionNode()
 	{
+		deleteConnections();
 	}
 
 	void ConnectionNode::postInitialize(CoreNode* coreNode)
@@ -87,25 +88,46 @@ namespace Zerodelay
 		if ( it != m_Connections.end() )
 		{
 			Connection* conn = it->second;
-			if ( conn->disconnect() ) // returns false if connection is not in 'connected' state
+			EDisconnectCallResult disconResult = EDisconnectCallResult::NotConnected;
+			conn->disconnect( [&] () // lamda is invoked when state changed from connected to disconnected
 			{
-				return EDisconnectCallResult::Succes;
-			}
-			return EDisconnectCallResult::NotConnected;
+				Util::forEachCallback(m_DisconnectCallbacks, [&](auto& fcb)
+				{
+					(fcb)(true, endPoint, EDisconnectReason::Closed);
+				});
+				disconResult = EDisconnectCallResult::Succes;
+			});
+			delete conn;
+			m_Connections.erase(it);
+			return disconResult;
 		}
 		return EDisconnectCallResult::UnknownEndpoint;
 	}
 
 	void ConnectionNode::disconnectAll()
 	{
-		for ( auto it : m_Connections )
+		for ( auto& kvp : m_Connections )
 		{
-			assert( it.second );
-			if ( it.second ) 
+			Connection* c = kvp.second;
+			c->disconnect( [&] () // lamda is invoked when state changed from connected to disconnected
 			{
-				it.second->disconnect();
-			}
+				Util::forEachCallback(m_DisconnectCallbacks, [&](auto& fcb)
+				{
+					(fcb)(true, c->getEndPoint(), EDisconnectReason::Closed);
+				});
+			});
+			delete c;
 		}
+		m_Connections.clear();
+	}
+
+	void ConnectionNode::deleteConnections()
+	{
+		for ( auto& kvp : m_Connections )
+		{
+			delete kvp.second;
+		}
+		m_Connections.clear();
 	}
 
 	i32_t ConnectionNode::getNumOpenConnections() const
@@ -130,31 +152,11 @@ namespace Zerodelay
 
 	void ConnectionNode::update()
 	{
-		for ( auto it = m_Connections.begin(); it != m_Connections.end(); )
+		for ( auto& kvp : m_Connections )
 		{
-			Connection* c = it->second;
-			if (!c)
-			{
-				it = m_Connections.erase(it);
-				continue;
-			}
-			else
-			{
-				// if connection is not one of the following states, remove it
-				auto s = c->getState();
-				assert(s != EConnectionState::Idle); // invalid state, should never be the case
-				if ( !(s == EConnectionState::Connecting || s == EConnectionState::Connected || s == EConnectionState::Disconnecting) )
-				{
-					c->disconnect();
-					delete c;
-					it = m_Connections.erase(it);
-					continue;
-				}
-			}
+			Connection* c = kvp.second;
 			updateConnecting( c );
 			updateKeepAlive( c );	
-			updateDisconnecting( c );
-			it++;
 		}
 	}
 
@@ -464,27 +466,27 @@ namespace Zerodelay
 		{
 			(fcb)(g->getEndPoint(), EConnectResult::AlreadyConnected);
 		});
-		// Consider this a warning
-		Platform::log("WARNING: Received already connected for %s", g->getEndPoint().asString().c_str());
+		//// Consider this a warning
+		//Platform::log("WARNING: Received already connected for %s", g->getEndPoint().asString().c_str());
 	}
 
 	void ConnectionNode::updateConnecting(class Connection* g)
 	{
-		// updateConnecting only returns true if was Connecting and state changed
-		if ( g->updateConnecting() && g->getState() == EConnectionState::InitiateTimedOut )
+		// invokes lamda when connecting state changes to timedout
+		g->updateConnecting( [&] ()
 		{
 			Util::forEachCallback( m_ConnectResultCallbacks, [g] (auto& fcb)
 			{
 				(fcb)( g->getEndPoint(), EConnectResult::Timedout );
 			});
 			Platform::log( "Removing connection %s, timed out", g->getEndPoint().asString().c_str() );
-		}
+		});
 	}
 
 	void ConnectionNode::updateKeepAlive(class Connection* g)
 	{
-		// updateKeepAlive only returns true if was Connected and state change
-		if ( g->updateKeepAlive() && g->getState() == EConnectionState::ConnectionTimedOut )
+		// invokes lamda when connected state changes to lost
+		g->updateKeepAlive( [&] ()
 		{
 			sendRemoteDisconnected( g, EDisconnectReason::Lost );
 			Util::forEachCallback( m_DisconnectCallbacks, [g] (auto& fcb)
@@ -492,20 +494,7 @@ namespace Zerodelay
 				(fcb)( true, g->getEndPoint(), EDisconnectReason::Lost );
 			});
 			Platform::log( "Removing connection %s as it was timed out", g->getEndPoint().asString().c_str() );
-		}
-	}
-
-	void ConnectionNode::updateDisconnecting(class Connection* g)
-	{
-		// updateDisconnecting only returns true if was disconnecting and a state change occurred
-		if ( g->updateDisconnecting() && g->getState() == EConnectionState::Disconnected )
-		{
-			Util::forEachCallback( m_DisconnectCallbacks, [g] (auto& fcb)
-			{
-				(fcb)( true, g->getEndPoint(), EDisconnectReason::Closed );
-			});
-			Platform::log( "Disconnected connection %s gracefully", g->getEndPoint().asString().c_str() );
-		}
+		});
 	}
 
 }

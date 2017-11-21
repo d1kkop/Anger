@@ -170,14 +170,14 @@ namespace Zerodelay
 		EListenCallResult host( i32_t port, const std::string& pw="", i32_t maxConnections=32 );
 
 
-		/*	Disconnect a specific endpoint. */
-		EDisconnectCallResult disconnect( const ZEndpoint& endPoint );
-
-
 		/*	Calls disconnect on each connection in the node. 
 			A node has multiple connections in case of server-client, where it is the server or in p2p.
-			Individual results to disconnect() on a connection are ignored. */
-		void disconnectAll();
+			The function returns immediately. */
+		void disconnect();
+
+
+		/*	Disconnect a specific endpoint. */
+		EDisconnectCallResult disconnect( const ZEndpoint& endPoint );
 
 
 		/*	Returns the number of connections that are not in a connecting or disconnecting state,
@@ -204,7 +204,7 @@ namespace Zerodelay
 		bool isConnectionKnown(const ZEndpoint& ztp) const;
 
 
-		/*	Returns true if there is not a single connection that has pending data to be processed. */
+		/*	Returns true if there is at least one connection that has pending data to be processed. */
 		bool hasPendingData() const;
 
 

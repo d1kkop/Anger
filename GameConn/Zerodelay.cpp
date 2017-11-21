@@ -95,7 +95,7 @@ namespace Zerodelay
 	bool ZEndpoint::isZero() const
 	{
 		i8_t* c = (i8_t*)this;
-		for ( auto i=0; i<sizeof(ZEndpoint); ++i ) if (*c != 0) return false;
+		for ( auto i=0; i<sizeof(ZEndpoint); ++i ) if (c[i] != 0) return false;
 		return true;
 	}
 
@@ -138,14 +138,14 @@ namespace Zerodelay
 		return C->cn()->listenOn( port, pw );
 	}
 
+	void ZNode::disconnect()
+	{
+		C->cn()->disconnectAll();
+	}
+
 	EDisconnectCallResult ZNode::disconnect(const ZEndpoint& endPoint)
 	{
 		return C->cn()->disconnect( toEtp( endPoint ) );
-	}
-
-	void ZNode::disconnectAll()
-	{
-		return C->cn()->disconnectAll();
 	}
 
 	i32_t ZNode::getNumOpenConnections() const

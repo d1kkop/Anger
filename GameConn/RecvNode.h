@@ -38,6 +38,7 @@ namespace Zerodelay
 		class RUDPLink* getLinkAndPinIt(u32_t idx);
 		void unpinLink(RUDPLink* link);
 
+		// This functionality can only be called from one thread (the main usually)
 		void pinList(); // call from main
 		bool isListPinned() const;  // call from receive (must have openListMutex)
 		void unpinList(); // call from main
@@ -74,7 +75,7 @@ namespace Zerodelay
 		std::map<EndPoint, class RUDPLink*, EndPoint::STLCompare> m_OpenLinksMap;
 		std::vector<class RUDPLink*> m_OpenLinksList;
 		bool m_ListPinned;
-		// -- Ptrs of other managers
+		// -- Ptrs to other managers
 		class CoreNode* m_CoreNode;
 		class ConnectionNode* m_ConnectionNode;
 	};
