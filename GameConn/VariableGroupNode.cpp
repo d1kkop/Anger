@@ -152,7 +152,7 @@ namespace Zerodelay
 		assert( VariableGroup::Last == nullptr && "should be NULL" );
 		VariableGroup::Last = new VariableGroup();
 		VariableGroup::Last->setNetworkId( networkId );
-		VariableGroup::Last->setControl( ztp ? EVarControl::Remote : (m_ZNode->isSuperPeer() ? EVarControl::Full : EVarControl::Semi) );
+		VariableGroup::Last->setControl( ztp ? EVarControl::Remote : (m_ZNode->isAuthorative() ? EVarControl::Full : EVarControl::Semi) );
 		// ----------------------------
 		if (ztp) // is remote group
 		{
@@ -300,18 +300,12 @@ namespace Zerodelay
 	{
 		// now that networkId is known, push it in front as first parameter of paramData
 		*(u32_t*)(paramData + RPC_NAME_MAX_LENGTH) = networkId;
-		if ( !m_ZNode->sendReliableOrdered( (u8_t)EDataPacketType::VariableGroupCreate, paramData, paramDataLen, nullptr, false, channel, true )) 
-		{
-			Platform::log("FAILED: to dispatch create variable group with network id %d", networkId);
-		}
+		m_ZNode->sendReliableOrdered( (u8_t)EDataPacketType::VariableGroupCreate, paramData, paramDataLen, nullptr, false, channel, true, true );
 	}
 
 	void VariableGroupNode::sendDestroyVariableGroup(u32_t networkId)
 	{
-		if ( !m_ZNode->sendReliableOrdered( (u8_t)EDataPacketType::VariableGroupDestroy, (const i8_t*)&networkId, sizeof(networkId) ))
-		{
-			Platform::log("FAILED: sending destroy variable group with id %d...", networkId);
-		}
+		m_ZNode->sendReliableOrdered( (u8_t)EDataPacketType::VariableGroupDestroy, (const i8_t*)&networkId, sizeof(networkId) );
 	}
 
 	void VariableGroupNode::sendIdPackProvide(const EndPoint& etp, i32_t numIds)
@@ -327,7 +321,7 @@ namespace Zerodelay
 		// Send reliable ordered. If connection is dropped just after sending, the connection is removed and no retransmission will take place.
 		m_ZNode->sendReliableOrdered((u8_t)EDataPacketType::IdPackProvide,
 									(const i8_t*)idPack, sizeof(u32_t)*numIds,
-									&toZpt(etp), false, 0, false);
+									&toZpt(etp), false, 0, false, true);
 	}
 
 	void VariableGroupNode::intervalSendIdRequest()
@@ -346,7 +340,7 @@ namespace Zerodelay
 				m_LastIdPackRequestTS = tNow;
 				// Send unreliable sequenced, because it is possible that at the time of sending the data, no connections
 				// are fully connected anymore in which case the reliable ordered packet becomes unreliable.
-				m_ZNode->sendUnreliableSequenced((u8_t)EDataPacketType::IdPackRequest, nullptr, 0, nullptr, false, 0, false);
+				m_ZNode->sendUnreliableSequenced((u8_t)EDataPacketType::IdPackRequest, nullptr, 0, nullptr, false, 0, false, true);
 				Platform::log("Sending IdPack request...");
 			}
 		}

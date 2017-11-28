@@ -25,15 +25,16 @@ namespace Zerodelay
 	class RecvNode
 	{
 	public:
-		RecvNode(i32_t sendThreadSleepTimeMs=20);
+		RecvNode(i32_t resendIntervalMs=20);
 		virtual ~RecvNode();
 		void postInitialize(class CoreNode* coreNode);
 		bool openSocketOnPort(u16_t port);
+		void closeSocket();
 
 	public:
-		bool send( u8_t id, const i8_t* data, i32_t len, const EndPoint* specific=nullptr, bool exclude=false, 
+		void send( u8_t id, const i8_t* data, i32_t len, const EndPoint* specific=nullptr, bool exclude=false, 
 				   EHeaderPacketType type=EHeaderPacketType::Reliable_Ordered, u8_t channel=0, bool relay=true );
-		bool sendReliableNewest( u8_t id, u32_t groupId, i8_t groupBit, const i8_t* data, i32_t len, const EndPoint* specific=nullptr, bool exclude=false );
+		void sendReliableNewest( u8_t id, u32_t groupId, i8_t groupBit, const i8_t* data, i32_t len, const EndPoint* specific=nullptr, bool exclude=false );
 
 		class RUDPLink* getLinkAndPinIt(u32_t idx);
 		void unpinLink(RUDPLink* link);
@@ -66,7 +67,7 @@ namespace Zerodelay
 		volatile bool m_IsClosing;
 		class ISocket* m_Socket;
 		bool   m_CaptureSocketErrors;
-		i32_t  m_SendThreadSleepTimeMs;
+		i32_t  m_ResendIntervalMs;
 		std::thread* m_RecvThread;
 		std::thread* m_SendThread;
 		std::condition_variable m_SendThreadCv;

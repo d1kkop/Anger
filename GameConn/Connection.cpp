@@ -42,6 +42,17 @@ namespace Zerodelay
 
 	Connection::~Connection()
 	{
+		cleanLink();
+	}
+
+	void Connection::cleanLink()
+	{
+		if (m_Link)
+		{
+			m_Link->blockAllUpcomingSends();
+			m_Link->markPendingDelete();
+			m_Link = nullptr; // link itself is deleted from sendThread in receive/dispather node
+		}
 	}
 
 	void Connection::disconnect(const std::function<void ()>& cb)
@@ -57,11 +68,7 @@ namespace Zerodelay
 			cb();
 		}
 		m_State = EConnectionState::Disconnected;
-		if ( m_Link )
-		{
-			m_Link->blockAllUpcomingSends();
-			m_Link->markPendingDelete();
-		}
+		cleanLink();
 	}
 
 	bool Connection::acceptDisconnect()
@@ -191,10 +198,16 @@ namespace Zerodelay
 		return getState() == EConnectionState::Connected;
 	}
 
+	class RUDPLink* Connection::getLink() const
+	{
+		return m_Link;
+	}
+
 	void Connection::sendSystemMessage(EDataPacketType packType, const i8_t* payload, i32_t payloadLen)
 	{
 		assert(m_Link);
 		if (!m_Link) return;
 		m_Link->addToSendQueue( (u8_t)packType, payload, payloadLen, EHeaderPacketType::Reliable_Ordered );
 	}
+
 }

@@ -3,6 +3,7 @@
 #include "Socket.h"
 #include "CoreNode.h"
 #include "RecvNode.h"
+#include "Connection.h"
 #include "ConnectionNode.h"
 #include "VariableGroupNode.h"
 
@@ -129,15 +130,6 @@ namespace Zerodelay
 		return C->cn()->connect( name, port, pw, timeoutSeconds, sendRequest );
 	}
 
-	EListenCallResult ZNode::host(i32_t port, const std::string& pw, i32_t maxConnections)
-	{
-		C->cn()->setMaxIncomingConnections( maxConnections );
-		C->cn()->setRelayConnectAndDisconnectEvents( true );
-		C->vgn()->setIsNetworkIdProvider( true );
-		C->vgn()->setRelayVariableGroupEvents( true );
-		return C->cn()->listenOn( port, pw );
-	}
-
 	void ZNode::disconnect()
 	{
 		C->cn()->disconnectAll();
@@ -146,6 +138,21 @@ namespace Zerodelay
 	EDisconnectCallResult ZNode::disconnect(const ZEndpoint& endPoint)
 	{
 		return C->cn()->disconnect( toEtp( endPoint ) );
+	}
+
+	EListenCallResult ZNode::listen(i32_t port, const std::string& pw, i32_t maxConnections)
+	{
+		if (C->isListening()) return EListenCallResult::AlreadyStartedServer;
+		C->cn()->setMaxIncomingConnections( maxConnections );
+		C->cn()->setRelayConnectAndDisconnectEvents( true );
+		C->vgn()->setIsNetworkIdProvider( true );
+		C->vgn()->setRelayVariableGroupEvents( true );
+		EListenCallResult res = C->cn()->listenOn( port, pw );
+		if (res == EListenCallResult::Succes)
+		{
+			C->setIsListening(true);
+		}
+		return res;
 	}
 
 	i32_t ZNode::getNumOpenConnections() const
@@ -227,9 +234,9 @@ namespace Zerodelay
 		C->cn()->getConnectionListCopy(listOut);
 	}
 
-	bool ZNode::isSuperPeer() const
+	bool ZNode::isAuthorative() const
 	{
-		return C->isSuperPeer();
+		return (!C->isP2P() && C->isListening()) || (C->isP2P() && C->isSuperPeer());
 	}
 
 	void ZNode::simulatePacketLoss(i32_t percentage)
@@ -237,33 +244,64 @@ namespace Zerodelay
 		C->rn()->simulatePacketLoss( percentage );
 	}
 
-	bool ZNode::sendReliableOrdered(u8_t id, const i8_t* data, i32_t len, const ZEndpoint* specific, bool exclude, u8_t channel, bool relay)
+	void ZNode::sendReliableOrdered(u8_t id, const i8_t* data, i32_t len, const ZEndpoint* specific, bool exclude, u8_t channel, bool relay, bool requiresConnection)
 	{
-		ISocket* sock = C->rn()->getSocket();
-		bool bAdded = false;
-		if ( sock )
-			bAdded = C->rn()->send( id, data, len, asEpt(specific), exclude, EHeaderPacketType::Reliable_Ordered, channel );
+		if (requiresConnection)
+		{
+			C->cn()->forConnections(asEpt(specific), exclude, [&](Connection& c)
+			{
+				if (!c.isConnected()) return;
+				c.getLink()->addToSendQueue( id, data, len, EHeaderPacketType::Reliable_Ordered, channel, relay );
+			});
+		}
 		else
-			C->setCriticalError(ECriticalError::SocketIsNull, ZERODELAY_FUNCTION);
-		return bAdded;
+		{
+			ISocket* sock = C->rn()->getSocket();
+			if ( sock )
+				C->rn()->send( id, data, len, asEpt(specific), exclude, EHeaderPacketType::Reliable_Ordered, channel, relay );
+			else
+				C->setCriticalError(ECriticalError::SocketIsNull, ZERODELAY_FUNCTION);
+		}
 	}
 
-	void ZNode::sendReliableNewest(u8_t packId, u32_t groupId, i8_t groupBit, const i8_t* data, i32_t len, const ZEndpoint* specific, bool exclude)
+	void ZNode::sendReliableNewest(u8_t packId, u32_t groupId, i8_t groupBit, const i8_t* data, i32_t len, const ZEndpoint* specific, bool exclude, bool requiresConnection)
 	{
-		ISocket* sock = C->rn()->getSocket();
-		if ( sock )
-			C->rn()->sendReliableNewest( packId, groupId, groupBit, data, len, asEpt(specific), exclude );
-		else
-			C->setCriticalError(ECriticalError::SocketIsNull, ZERODELAY_FUNCTION);
+		if (requiresConnection)
+		{
+			C->cn()->forConnections(asEpt(specific), exclude, [&](Connection& c)
+			{
+				if (!c.isConnected()) return;
+				c.getLink()->addReliableNewest( packId,data, len, groupId, groupBit );
+			});
+		}
+		else // send raw without requiring a connection
+		{
+			ISocket* sock = C->rn()->getSocket();
+			if ( sock )
+				C->rn()->sendReliableNewest( packId, groupId, groupBit, data, len, asEpt(specific), exclude );
+			else
+				C->setCriticalError(ECriticalError::SocketIsNull, ZERODELAY_FUNCTION);
+		}
 	}
 
-	void ZNode::sendUnreliableSequenced(u8_t packId, const i8_t* data, i32_t len, const ZEndpoint* specific, bool exclude, u8_t channel, bool relay, bool discardSendIfNotConnected)
+	void ZNode::sendUnreliableSequenced(u8_t packId, const i8_t* data, i32_t len, const ZEndpoint* specific, bool exclude, u8_t channel, bool relay, bool requiresConnection)
 	{
-		ISocket* sock = C->rn()->getSocket();
-		if ( sock )
-			C->rn()->send( packId, data, len, asEpt(specific), exclude, EHeaderPacketType::Unreliable_Sequenced, channel, discardSendIfNotConnected );
-		else
-			C->setCriticalError(ECriticalError::SocketIsNull, ZERODELAY_FUNCTION);
+		if (requiresConnection)
+		{
+			C->cn()->forConnections(asEpt(specific), exclude, [&](Connection& c)
+			{
+				if (!c.isConnected()) return;
+				c.getLink()->addToSendQueue( packId, data, len, EHeaderPacketType::Unreliable_Sequenced, channel, relay );
+			});
+		}
+		else // send raw without requiring a connection
+		{
+			ISocket* sock = C->rn()->getSocket();
+			if ( sock )
+				C->rn()->send( packId, data, len, asEpt(specific), exclude, EHeaderPacketType::Unreliable_Sequenced, channel, relay );
+			else
+				C->setCriticalError(ECriticalError::SocketIsNull, ZERODELAY_FUNCTION);
+		}
 	}
 
 	void ZNode::bindOnConnectResult(const std::function<void(const ZEndpoint&, EConnectResult)>& cb)
@@ -321,7 +359,7 @@ namespace Zerodelay
 			ZEndpoint* zeptr = nullptr;
 			if ( etp )
 			{
-				zept = toZpt(*etp);
+				zept  = toZpt(*etp);
 				zeptr = &zept;
 			}
 			cb( zeptr, id );

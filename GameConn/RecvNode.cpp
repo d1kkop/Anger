@@ -11,10 +11,10 @@
 
 namespace Zerodelay
 {
-	RecvNode::RecvNode(i32_t sendThreadSleepTimeMs):
+	RecvNode::RecvNode(i32_t resendIntervalMs):
 		m_SocketOpened(false),
 		m_IsClosing(false),
-		m_SendThreadSleepTimeMs(sendThreadSleepTimeMs),
+		m_ResendIntervalMs(resendIntervalMs),
 		m_Socket(ISocket::create()),
 		m_RecvThread(nullptr),
 		m_SendThread(nullptr),
@@ -69,32 +69,26 @@ namespace Zerodelay
 		return true;
 	}
 
-	bool RecvNode::send( u8_t id, const i8_t* data, i32_t len, const EndPoint* specific, bool exclude, EHeaderPacketType type, u8_t channel, bool relay )
+	void RecvNode::send(u8_t id, const i8_t* data, i32_t len, const EndPoint* specific, bool exclude, EHeaderPacketType type, u8_t channel, bool relay)
 	{
 		assert( type == EHeaderPacketType::Reliable_Ordered || type == EHeaderPacketType::Unreliable_Sequenced );
 		if ( !(type == EHeaderPacketType::Reliable_Ordered || type == EHeaderPacketType::Unreliable_Sequenced) )
 		{
-			return false;
+			m_CoreNode->setCriticalError(ECriticalError::InvalidLogic, ZERODELAY_FUNCTION);
+			return;
 		}
-		bool bWasAddedToQueue = false;
 		forEachLink( specific, exclude, true, [&] (RUDPLink* link)
 		{
 			link->addToSendQueue( id, data, len, type, channel, relay );
-			bWasAddedToQueue = true;
-			
 		});
-		return bWasAddedToQueue;
 	}
 
-	bool RecvNode::sendReliableNewest(u8_t id, u32_t groupId, i8_t groupBit, const i8_t* data, i32_t len, const EndPoint* specific, bool exclude)
+	void RecvNode::sendReliableNewest(u8_t id, u32_t groupId, i8_t groupBit, const i8_t* data, i32_t len, const EndPoint* specific, bool exclude)
 	{
-		bool bWasAddedToQueue = false;
 		forEachLink( specific, exclude, true, [&] (RUDPLink* link)
 		{
 			link->addReliableNewest( id, data, len, groupId, groupBit );
-			bWasAddedToQueue = true;
 		});
-		return bWasAddedToQueue;
 	}
 
 	RUDPLink* RecvNode::getLinkAndPinIt(u32_t idx)
@@ -224,7 +218,7 @@ namespace Zerodelay
 		while ( !m_IsClosing )
 		{
 			std::unique_lock<std::mutex> lock(m_OpenLinksMutex);
-			m_SendThreadCv.wait_for( lock, std::chrono::milliseconds(m_SendThreadSleepTimeMs) );
+			m_SendThreadCv.wait_for( lock, std::chrono::milliseconds(m_ResendIntervalMs) );
 			if ( m_IsClosing )
 				return;
 			for (auto& kvp : m_OpenLinksMap)

@@ -14,7 +14,8 @@ namespace Zerodelay
 		SerializationError = 1,
 		CannotFindExternalCFunction = 2,
 		SocketIsNull = 4,
-		TooMuchDataToSend = 8
+		TooMuchDataToSend = 8,
+		InvalidLogic = 16
 	};
 
 
@@ -33,8 +34,14 @@ namespace Zerodelay
 		void recvUserPacket( const struct Packet& pack, const struct EndPoint& etp );
 		void processUnhandledPacket( struct Packet& pack, const struct EndPoint& etp );
 
-		bool isSuperPeer() const { return m_IsSuperPeer; }
+		void setIsListening(bool isListening) { m_IsListening = isListening; }
+		bool isListening() const { return m_IsListening; } // client-server has a server
+
+		void setIsP2P(bool isP2p) { m_IsP2P = isP2p; }
 		bool isP2P() const { return m_IsP2P; }
+
+		void setIsSuperPeer(bool superPeer) { m_IsSuperPeer = superPeer; }
+		bool isSuperPeer() const { return m_IsSuperPeer; }
 
 		void setCriticalError(ECriticalError error, const char* fn);
 		bool hasCriticalErrors() const { return m_CriticalErrors != 0; }
@@ -52,7 +59,8 @@ namespace Zerodelay
 	private:
 		void* m_UserPtr;
 		bool m_IsP2P;
-		bool m_IsSuperPeer; // server or super peer in p2p
+		bool m_IsListening;
+		bool m_IsSuperPeer;
 		std::string m_FunctionInError;
 		std::atomic_uint32_t m_CriticalErrors;
 		class ZNode* m_ZNode;

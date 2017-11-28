@@ -28,8 +28,11 @@ namespace Zerodelay
 	public:
 		Connection( class ConnectionNode* connectionNode, bool wasConnector, class RUDPLink* link, i32_t timeoutSeconds=8, i32_t keepAliveIntervalSeconds=8 );
 		~Connection();
+		void cleanLink();
 		void disconnect(const std::function<void ()>& cb); // invokes cb if was connected and send disconnect
+
 		bool acceptDisconnect();
+		// -- set connect result states other than accept
 		bool setInvalidPassword();
 		bool setMaxConnectionsReached();
 		// -- sends
@@ -48,6 +51,7 @@ namespace Zerodelay
 		const EndPoint& getEndPoint() const;
 		EConnectionState getState() const;
 		bool isConnected() const;
+		class RUDPLink* getLink() const; // returns nullptr if connection disconnected
 
 	private:
 		void sendSystemMessage( EDataPacketType type, const i8_t* payload=nullptr, i32_t payloadLen=0 );

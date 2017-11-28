@@ -223,7 +223,7 @@ void InitNetwork(bool isServ)
 	if ( isServ )
 	{
 		strcpy_s( g_lobby.name[0], 64, "server" );
-		g_Node->host(27000, "auto", 9);
+		g_Node->listen(27000, "auto", 9);
 		g_lines.emplace_back( "started as server..." );
 	}
 	else

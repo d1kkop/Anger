@@ -36,7 +36,7 @@ namespace Zerodelay
 		// flow
 		void update();
 		void beginProcessPacketsFor(const EndPoint& endPoint);					// returns true if is known connection
-		bool processPacket(const struct Packet& pack, class RUDPLink& link);			// returns false if packet was not processed (consumed)
+		bool processPacket(const struct Packet& pack, class RUDPLink& link);	// returns false if packet was not processed (consumed)
 		void endProcessPackets();
 		class Connection* getProcessingConnection() const { return m_ProcessingConnection; }
 		// setters
@@ -45,11 +45,13 @@ namespace Zerodelay
 		void setRelayConnectAndDisconnectEvents(bool relay);
 		// getters
 		bool getRelayConnectAndDisconnect() const { return m_RelayConnectAndDisconnect; }
-		void getConnectionListCopy(std::vector<ZEndpoint>& endpoints);
+		void getConnectionListCopy(std::vector<ZEndpoint>& endpoints); // only puts connected connections in list
 		// callbacks
 		void bindOnConnectResult(const ConnectResultCallback& cb)		{ Util::bindCallback(m_ConnectResultCallbacks, cb); }
 		void bindOnNewConnection(const NewConnectionCallback& cb)		{ Util::bindCallback(m_NewConnectionCallbacks, cb); }
 		void bindOnDisconnect(const DisconnectCallback& cb)				{ Util::bindCallback(m_DisconnectCallbacks, cb); }
+		// iterating
+		void forConnections(const EndPoint* specific, bool exclude, const std::function<void (Connection&)>& cb);
 
 	private:
 		// sends (relay)

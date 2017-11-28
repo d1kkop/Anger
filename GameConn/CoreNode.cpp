@@ -16,6 +16,7 @@ namespace Zerodelay
 	CoreNode::CoreNode(class ZNode* zn, class RecvNode* rn, class ConnectionNode* cn, class VariableGroupNode* vgn):
 		m_UserPtr(nullptr),
 		m_IsP2P(false),
+		m_IsListening(false),
 		m_IsSuperPeer(false),
 		m_ZNode(zn),
 		m_RecvNode(rn), 
@@ -31,9 +32,9 @@ namespace Zerodelay
 
 	CoreNode::~CoreNode()
 	{
-		delete m_RecvNode;
 		delete m_ConnectionNode;
 		delete m_VariableGroupNode;
+		delete m_RecvNode;
 	}
 
 	void CoreNode::recvRpcPacket(const i8_t* payload, i32_t len, const EndPoint& etp)

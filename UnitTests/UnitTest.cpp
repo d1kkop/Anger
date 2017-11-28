@@ -80,7 +80,7 @@ namespace UnitTests
 		assert(res == EConnectCallResult::AlreadyExists);
 		g2->setMaxIncomingConnections(-1);
 		g2->setMaxIncomingConnections(1);
-		g2->host(27000, "lala");
+		g2->listen(27000, "lala");
 
 		volatile bool bClose = false;
 		std::thread t( [&] () {
@@ -193,7 +193,7 @@ namespace UnitTests
 		}
 
 		ZNode* listener = new ZNode();
-		auto eRes = listener->host(27001, pw);
+		auto eRes = listener->listen(27001, pw);
 		if ( (int)eRes != 0 )
 		{
 			printf("listen call res error: %d\n", (int)eRes );
@@ -251,7 +251,7 @@ namespace UnitTests
 		g2->simulatePacketLoss(PackLoss);
 
 		g1->connect( "localhost", 27000 );
-		g2->host( 27000 );
+		g2->listen( 27000 );
 
 		int kTicks = 0;
 		while ( g1->getNumOpenConnections() == 0 )
@@ -565,12 +565,14 @@ namespace UnitTests
 		
 		g1->connect( _ztp, "", 8, true );
 		
-		g2->host( 27000 );
+		g2->listen( 27000 );
 		g2->setUserDataPtr( this );
 
 		volatile bool bThreadClose = false;
-		std::thread t( [&] () {
-			while ( !bThreadClose ) {
+		std::thread t( [&] () 
+		{
+			while ( !bThreadClose ) 
+			{
 				g1->update();
 				g2->update();
 				//std::this_thread::sleep_for(2ms);
@@ -809,7 +811,7 @@ namespace UnitTests
 			clients[i]->bindOnGroupDestroyed( fnGroupDestroyed );
 			clients[i]->connect("localhost", 27000);
 		}
-		g1->host( 27000 );
+		g1->listen( 27000 );
 		g1->bindOnGroupUpdated( fnGroupUpdated );
 		g1->bindOnGroupDestroyed( fnGroupDestroyed );
 

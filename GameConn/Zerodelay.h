@@ -145,10 +145,10 @@ namespace Zerodelay
 	class ZDLL_DECLSPEC ZNode
 	{
 	public:
-		/*[sendSleepTimeMs]				Is the time to wait before retransmitting existing packets in the send queue.
-										If new packets are added within this timeout, they are sent immeidately.
+		/*[resendIntervalMs]			Is the time to wait before retransmitting (reliable) packets in the send queue.
+										New packets are always sent immediately.
 		  [keepAliveIntervalSeconds]	Is the time between consequative requests to keep the connection alive. */
-		ZNode( i32_t sendThreadSleepTimeMs=50, i32_t keepAliveIntervalSeconds=8 );
+		ZNode( i32_t resendIntervalMs=50, i32_t keepAliveIntervalSeconds=8 );
 		virtual ~ZNode();
 
 
@@ -160,6 +160,14 @@ namespace Zerodelay
 		EConnectCallResult connect( const std::string& name, i32_t port, const std::string& pw="", i32_t timeoutSeconds=8, bool sendConnectRequest=true );
 
 
+		/*	Calls disconnect on each connection in the node. New incoming connections can still connect. */
+		void disconnect();
+
+
+		/*	Disconnect a specific endpoint. */
+		EDisconnectCallResult disconnect( const ZEndpoint& endPoint );
+
+
 		/*	Host a new session. For client-server, only one peer should call host while the others should connect.
 			For p2p, every peer should call host as well as connect.
 			Bind onNewConnection to do something with the new connections. 
@@ -167,17 +175,7 @@ namespace Zerodelay
 			[pw]				Password string.
 			[maxConnections]	Maximum number of connections. 
 			[relayEvents]		If true, events such as ´disconnect´ will be relayed to other connections. If not client-server architecture, the parameter is ignored. */
-		EListenCallResult host( i32_t port, const std::string& pw="", i32_t maxConnections=32 );
-
-
-		/*	Calls disconnect on each connection in the node. 
-			A node has multiple connections in case of server-client, where it is the server or in p2p.
-			The function returns immediately. */
-		void disconnect();
-
-
-		/*	Disconnect a specific endpoint. */
-		EDisconnectCallResult disconnect( const ZEndpoint& endPoint );
+		EListenCallResult listen( i32_t port, const std::string& pw="", i32_t maxConnections=32 );
 
 
 		/*	Returns the number of connections that are not in a connecting or disconnecting state,
@@ -230,7 +228,7 @@ namespace Zerodelay
 
 
 		/*	Returns ture if is server in client-server architecture or if is the authorative peer in a p2p network. */
-		bool isSuperPeer() const;
+		bool isAuthorative() const;
 
 
 		/*	Simulate packet loss to test Quality of Service in game. 
@@ -247,8 +245,8 @@ namespace Zerodelay
 						- If not nullptr and exclude is true, then message is sent to all except the specific.
 			[channel]	On what channel to sent the message. Packets are sequenced and ordered per channel. Max of 8 channels.
 			[relay]		Whether to relay the message to other connected clients when it arrives. 
-						Returns true if was added to a dispatch queue, false otherwise. */
-		bool sendReliableOrdered( u8_t packId, const i8_t* data, i32_t len, const ZEndpoint* specific=nullptr, bool exclude=false, u8_t channel=0, bool relay=true );
+			[requiresConnection] If false, the packet is sent regardless of whether the endpoint(s) are in connected state. Default is true to avoid non atomic network actions. */
+		void sendReliableOrdered( u8_t packId, const i8_t* data, i32_t len, const ZEndpoint* specific=nullptr, bool exclude=false, u8_t channel=0, bool relay=true, bool requiresConnection=true );
 
 
 		/*	The last message of a certain 'dataId' is guarenteed to arrive. That is, if twice data is send with the same 'dataId' the first one may not arrive.
@@ -259,8 +257,10 @@ namespace Zerodelay
 			[groupBit]	Identifies the piece of data in the group we want to update. A maximum of 16 pieces can be set, so bit [0 to 15].
 			[specific]	- If nullptr, message is sent to all connections in node.
 			- If not nullptr and exclude is false, then message is only sent to the specific address.
-			- If not nullptr and exclude is true, then message is sent to all except the specific. */
-		void sendReliableNewest( u8_t packId, u32_t groupId, i8_t groupBit, const i8_t* data, i32_t len, const ZEndpoint* specific=nullptr, bool exclude=false );
+			- If not nullptr and exclude is true, then message is sent to all except the specific. 
+			[requiresConnection] If false, the packet is sent regardless of whether the endpoint(s) are in connected state. 
+								 This might prove useful in case you want a connectionless state. */
+		void sendReliableNewest( u8_t packId, u32_t groupId, i8_t groupBit, const i8_t* data, i32_t len, const ZEndpoint* specific=nullptr, bool exclude=false, bool requiresConnection=true );
 
 
 		/*	Messages are unreliable (they may not arrive) but older or duplicate packets are ignored. This applies per channel.
@@ -271,8 +271,10 @@ namespace Zerodelay
 						- If not nullptr and exclude is false, then message is only sent to the specific address.
 						- If not nullptr and exclude is true, then message is sent to all except the specific.
 			[channel]	On what channel to sent the message. Packets are sequenced and ordered per channel. Max of 8 channels.
-			[relay]		Whether to relay the message to other connected clients when it arrives. */
-		void sendUnreliableSequenced( u8_t packId, const i8_t* data, i32_t len, const ZEndpoint* specific=nullptr, bool exclude=false, u8_t channel=0, bool relay=true, bool discardSendIfNotConnected=true );
+			[relay]		Whether to relay the message to other connected clients when it arrives. 
+			[requiresConnection] If false, the packet is sent regardless of whether the endpoint(s) are in connected state. 
+								 This might prove useful in case you want a connectionless state. */
+		void sendUnreliableSequenced( u8_t packId, const i8_t* data, i32_t len, const ZEndpoint* specific=nullptr, bool exclude=false, u8_t channel=0, bool relay=true, bool requiresConnection=true );
 
 		/*	----- Callbacks ----------------------------------------------------------------------------------------------- */
 
@@ -299,11 +301,11 @@ namespace Zerodelay
 
 		/*	If at least a single variable inside the group is updated, this callback is invoked.
 			Note that varialbes can also have custom callbacks that are called per variable. 
-			If called locally, ZEndpoint is a null ptr. */
+			If called locally, ZEndpoint is a nullptr. */
 		void bindOnGroupUpdated( const std::function<void (const ZEndpoint*, u8_t id)>& cb );
 
 
-		/*	Called when group gets destroyed. If called locally, ZEndpoint is a null ptr. */
+		/*	Called when group gets destroyed. If called locally, ZEndpoint is a nullptr. */
 		void bindOnGroupDestroyed( const std::function<void (const ZEndpoint*, u8_t id)>& cb );
 
 

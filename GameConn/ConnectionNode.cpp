@@ -47,6 +47,7 @@ namespace Zerodelay
 
 	EConnectCallResult ConnectionNode::connect(const EndPoint& endPoint, const std::string& pw, i32_t timeoutSeconds, bool sendRequest)
 	{
+		// For p2p, the socket is already listening on a specific port, the function will return true
 		if ( !m_DispatchNode->openSocketOnPort(0) )
 		{
 			return EConnectCallResult::SocketError; 
@@ -214,6 +215,50 @@ namespace Zerodelay
 			if ( c && c->isConnected() )
 			{
 				endpoints.emplace_back( toZpt(c->getEndPoint()) );
+			}
+		}
+	}
+
+	void ConnectionNode::forConnections(const EndPoint* specific, bool exclude, const std::function<void(Connection&)>& cb)
+	{
+		assert(cb);
+		if(!cb)
+		{
+			m_CoreNode->setCriticalError(ECriticalError::InvalidLogic, ZERODELAY_FUNCTION); 
+			return;
+		}
+		if ( specific )
+		{
+			if ( exclude )
+			{
+				for ( auto& kvp : m_Connections )
+				{
+					Connection* c = kvp.second;
+					if (!c) continue;
+					if (c->getEndPoint() == *specific) continue; // skip this one
+					cb(*c);
+				}
+			}
+			else
+			{
+				auto it = m_Connections.find( *specific );
+				if ( it != m_Connections.end() )
+				{
+					cb( *it->second );
+				}
+				else
+				{
+					Platform::log("WARNING: Trying to send to specific endpoint %s which is not in the list of connections.", specific->asString().c_str());
+				}
+			}
+		}
+		else
+		{
+			for ( auto& kvp : m_Connections )
+			{
+				Connection* c = kvp.second;
+				if (!c) continue;
+				cb(*c);
 			}
 		}
 	}
@@ -479,7 +524,7 @@ namespace Zerodelay
 			{
 				(fcb)( g->getEndPoint(), EConnectResult::Timedout );
 			});
-			Platform::log( "Removing connection %s, timed out", g->getEndPoint().asString().c_str() );
+			Platform::log( "Removing connection %s, connection attempt timed out", g->getEndPoint().asString().c_str() );
 		});
 	}
 
@@ -493,7 +538,7 @@ namespace Zerodelay
 			{
 				(fcb)( true, g->getEndPoint(), EDisconnectReason::Lost );
 			});
-			Platform::log( "Removing connection %s as it was timed out", g->getEndPoint().asString().c_str() );
+			Platform::log( "Removing connection %s as it was timed out (no longer answered keep alive packets)", g->getEndPoint().asString().c_str() );
 		});
 	}
 
