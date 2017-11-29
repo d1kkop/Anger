@@ -139,9 +139,8 @@ namespace Zerodelay
 
 
 	/** ---------------------------------------------------------------------------------------------------------------------------------
-		A node is the main class for creating and maintaining connections.
-		A connection is nothing more than a state machine built on top of Reliable UDP. 
-		Furthermore, the Node class provides functions for sending data the easy way. */
+		A node contains the network state of all connections and variables that
+		are tied to higher level objects.*/
 	class ZDLL_DECLSPEC ZNode
 	{
 	public:

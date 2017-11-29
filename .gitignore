@@ -9,3 +9,17 @@
 /x64/Release
 /x64/Debug/GameConn.exp
 /GameConn/AngerLog.txt
+/UnitTests/x64
+/x64/Debug/UnitTests.pdb
+/x64/Debug/UnitTests.ilk
+/x64/Debug/UnitTests.exp
+/x64/Debug/GameConn.pdb
+/x64/Debug/GameConn.ilk
+/x64/Debug/Chat.pdb
+/x64/Debug/Chat.ilk
+/Chat/x64/Debug/Chat.tlog
+/Chat/x64/Debug
+/.vs/Anger/v15/ipch/AutoPCH/e407db7a4f0174eb
+*.suo
+/.vs/Anger/v15/Browse.VC.db
+/.vs
