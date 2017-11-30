@@ -9,3 +9,10 @@
 /x64/Release
 /x64/Debug/GameConn.exp
 /GameConn/AngerLog.txt
+/.vs/GameConn/v15
+/Chat/x64
+/UnitTests/x64
+*.vspx
+*.diagsession
+/UnitTests/ZerodelayLog.txt
+/Chat/ZerodelayLog.txt

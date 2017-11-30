@@ -1,0 +1,12 @@
+--------- NEW SESSION ---------
+-------------------------------
+Sun Aug 20 23:33:39 2017		accepted connection 2.0.105.120:27000
+Sun Aug 20 23:33:39 2017		remote 2.0.220.157:56477 connected
+Sun Aug 20 23:33:39 2017		remote 2.0.220.157:56477 connected
+Sun Aug 20 23:33:39 2017		remote 2.0.220.157:56477 connected
+Sun Aug 20 23:33:39 2017		remote 2.0.220.157:56477 connected
+Sun Aug 20 23:33:45 2017		disconnect received, removing connecting..2.0.220.152:56472
+Sun Aug 20 23:33:45 2017		disconnect received, removing connecting..2.0.220.154:56474
+Sun Aug 20 23:33:46 2017		disconnect received, removing connecting..2.0.220.157:56477
+Sun Aug 20 23:33:46 2017		disconnect received, removing connecting..2.0.220.153:56473
+Sun Aug 20 23:33:46 2017		disconnect received, removing connecting..2.0.220.155:56475
