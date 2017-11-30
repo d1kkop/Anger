@@ -71,14 +71,13 @@ namespace Zerodelay
 		return EConnectCallResult::Succes;
 	}
 
-	EListenCallResult ConnectionNode::listenOn(i32_t port, const std::string& pw)
+	EListenCallResult ConnectionNode::listenOn(i32_t port)
 	{
 		if ( !m_DispatchNode->openSocketOnPort(port) )
 		{
 			return EListenCallResult::SocketError;
 		}
 		m_DispatchNode->startThreads(); // start after socket is opened
-		setPassword( pw );
 		return EListenCallResult::Succes;
 	}
 
@@ -89,15 +88,8 @@ namespace Zerodelay
 		if ( it != m_Connections.end() )
 		{
 			Connection* conn = it->second;
-			EDisconnectCallResult disconResult = EDisconnectCallResult::NotConnected;
-			conn->disconnect( [&] () // lamda is invoked when state changed from connected to disconnected
-			{
-				Util::forEachCallback(m_DisconnectCallbacks, [&](auto& fcb)
-				{
-					(fcb)(true, endPoint, EDisconnectReason::Closed);
-				});
-				disconResult = EDisconnectCallResult::Succes;
-			});
+			EDisconnectCallResult disconResult = (conn->isConnected() ? EDisconnectCallResult::Succes : EDisconnectCallResult::NotConnected);
+			conn->disconnect(true, endPoint, EDisconnectReason::Closed, EConnectionState::Disconnected, true);
 			delete conn;
 			m_Connections.erase(it);
 			return disconResult;
@@ -110,13 +102,7 @@ namespace Zerodelay
 		for ( auto& kvp : m_Connections )
 		{
 			Connection* c = kvp.second;
-			c->disconnect( [&] () // lamda is invoked when state changed from connected to disconnected
-			{
-				Util::forEachCallback(m_DisconnectCallbacks, [&](auto& fcb)
-				{
-					(fcb)(true, c->getEndPoint(), EDisconnectReason::Closed);
-				});
-			});
+			c->disconnect(true, c->getEndPoint(), EDisconnectReason::Closed, EConnectionState::Disconnected, true);
 			delete c;
 		}
 		m_Connections.clear();
@@ -153,11 +139,22 @@ namespace Zerodelay
 
 	void ConnectionNode::update()
 	{
-		for ( auto& kvp : m_Connections )
+		for ( auto it = m_Connections.begin(); it != m_Connections.end(); )
 		{
-			Connection* c = kvp.second;
+			Connection* c = it->second;
+
+			// Instead of trying to remember on which event we have to remove the connection. Only a state is changed.
+			// Every update cycle, check if the state of the connection is valid to continue, otherwise remove it.
+			EConnectionState state = c->getState();
+			if ( !(state == EConnectionState::Connected || state == EConnectionState::Connecting) )
+			{
+				it = m_Connections.erase( it );
+				continue;
+			}
+
 			updateConnecting( c );
 			updateKeepAlive( c );	
+			it++;
 		}
 	}
 
@@ -196,7 +193,7 @@ namespace Zerodelay
 	{
 		if ( maxNumConnections < 1 )
 		{
-			Platform::log( "WARNING: maxNumConnections less than 1, call ignored. ");
+			Platform::log( "WARNING: maxNumConnections less than 1, call ignored." );
 			return;
 		}
 		m_MaxIncomingConnections = maxNumConnections;
@@ -212,7 +209,7 @@ namespace Zerodelay
 		for ( auto& kvp : m_Connections )
 		{
 			Connection* c = kvp.second;
-			if ( c && c->isConnected() )
+			if ( c->isConnected() )
 			{
 				endpoints.emplace_back( toZpt(c->getEndPoint()) );
 			}
@@ -234,7 +231,6 @@ namespace Zerodelay
 				for ( auto& kvp : m_Connections )
 				{
 					Connection* c = kvp.second;
-					if (!c) continue;
 					if (c->getEndPoint() == *specific) continue; // skip this one
 					cb(*c);
 				}
@@ -263,10 +259,40 @@ namespace Zerodelay
 		}
 	}
 
+	void ConnectionNode::doConnectResultCallbacks(const EndPoint& remote, EConnectResult result)
+	{
+		ZEndpoint ztp = toZpt(remote);
+		Util::forEachCallback(m_ConnectResultCallbacks,[&](auto& fcb)
+		{
+			(fcb)(ztp, result);
+		});
+	}
+
+	void ConnectionNode::doDisconnectCallbacks(bool directLink, const EndPoint& remote,EDisconnectReason reason)
+	{
+		ZEndpoint ztp = toZpt(remote);
+		Util::forEachCallback(m_DisconnectCallbacks,[&](auto& fcb)
+		{
+			(fcb)(directLink, ztp, reason);
+		});
+	}
+
+	void ConnectionNode::doNewIncomingConnectionCallbacks(bool directLink, const EndPoint& remote)
+	{
+		ZEndpoint ztp = toZpt(remote);
+		Util::forEachCallback(m_NewConnectionCallbacks,[&](auto& fcb)
+		{
+			(fcb)(directLink, ztp);
+		});
+	}
+
 	void ConnectionNode::sendRemoteConnected(const Connection* g)
 	{
-		if ( !getRelayConnectAndDisconnect() )
+		if ( !getRelayConnectAndDisconnect() ) 
+		{
+			assert(false);
 			return; 
+		}
 		auto& etp = g->getEndPoint();
 		i8_t buff[128];
 		i32_t offs = etp.write( buff, 128 );
@@ -282,7 +308,10 @@ namespace Zerodelay
 	void ConnectionNode::sendRemoteDisconnected(const Connection* g, EDisconnectReason reason)
 	{
 		if ( !getRelayConnectAndDisconnect() )
-			return; // relay message if wanted
+		{
+			assert(false);
+			return; 
+		}
 		auto& etp = g->getEndPoint();
 		i8_t buff[128];
 		i32_t offs = etp.write( buff, 128 );
@@ -402,36 +431,23 @@ namespace Zerodelay
 		Connection* g = new Connection( this, false, &link );
 		g->sendConnectAccept();
 		m_Connections.insert( std::make_pair(link.getEndPoint(), g) );
-		Util::forEachCallback(m_NewConnectionCallbacks, [&](auto& fcb)
-		{
-			(fcb)(link.getEndPoint());
-		});
-		sendRemoteConnected( g );
-		Platform::log( "%s connected", g->getEndPoint().asString().c_str() );
+		doNewIncomingConnectionCallbacks(true, link.getEndPoint());
+		if (m_RelayConnectAndDisconnect) sendRemoteConnected( g );
+		Platform::log( "New incoming connection %s.", g->getEndPoint().asString().c_str() );
 	}
 
 	void ConnectionNode::recvConnectAccept(class Connection* g)
 	{
-		if (g->onReceiveConnectAccept()) // returns true if state was successfully handled
-		{
-			Util::forEachCallback(m_ConnectResultCallbacks, [&](auto& fcb)
-			{
-				(fcb)(g->getEndPoint(), EConnectResult::Succes);
-			});
-			Platform::log( "Connection accepted to %s", g->getEndPoint().asString().c_str() );
-		}
+		g->onReceiveConnectAccept();	
 	}
 
 	void ConnectionNode::recvDisconnectPacket(const i8_t* payload, i32_t len, class Connection* g)
 	{
-		if ( g->acceptDisconnect() ) // returns true if state was successfully handled
+		bool bWasConnected = (g->getState() == EConnectionState::Connected);
+		g->acceptDisconnect();
+		if (bWasConnected && m_RelayConnectAndDisconnect)
 		{
 			sendRemoteDisconnected( g, EDisconnectReason::Closed );
-			Util::forEachCallback(m_DisconnectCallbacks, [&](auto& fcb)
-			{
-				(fcb)(true, g->getEndPoint(), EDisconnectReason::Closed);
-			});
-			Platform::log( "Disconnect received, removing connection %s", g->getEndPoint().asString().c_str() );
 		}
 	}
 
@@ -449,11 +465,8 @@ namespace Zerodelay
 			m_CoreNode->setCriticalError(ECriticalError::SerializationError, ZERODELAY_FUNCTION);
 			return;
 		}
-		Util::forEachCallback(m_NewConnectionCallbacks, [&](auto& fcb)
-		{
-			(fcb)(etp);
-		});
-		Platform::log( "Remote %s connected", etp.asString().c_str() );
+		doNewIncomingConnectionCallbacks(false, etp);
+		Platform::log( "Remote %s connected.", etp.asString().c_str() );
 	}
 
 	void ConnectionNode::recvRemoteDisconnected(class Connection* g, const i8_t* data, i32_t len)
@@ -473,73 +486,43 @@ namespace Zerodelay
 			return;
 		}
 		reason = (EDisconnectReason)data[offs];
-		Util::forEachCallback(m_DisconnectCallbacks, [&](auto& fcb)
-		{
-			(fcb)(false, etp, reason);
-		});
-		Platform::log( "Remote %s disconnected", etp.asString().c_str() );
+		doDisconnectCallbacks(false, etp, reason);
+		Platform::log( "Remote %s disconnected.", etp.asString().c_str() );
 	}
 
 	void ConnectionNode::recvInvalidPassword(class Connection* g, const i8_t* payload, i32_t payloadLen)
 	{
-		if ( g->setInvalidPassword() ) // returns true if state change ocurred
-		{
-			Util::forEachCallback(m_ConnectResultCallbacks, [&](auto& fcb)
-			{
-				(fcb)(g->getEndPoint(), EConnectResult::InvalidPassword);
-			});
-			Platform::log("Received invalid password for connection %s", g->getEndPoint().asString().c_str());
-		}
+		g->setInvalidPassword();
 	}
 
 	void ConnectionNode::recvMaxConnectionsReached(class Connection* g, const i8_t* payload, i32_t payloadLen)
 	{
-		if ( g->setMaxConnectionsReached() ) // returns true if state change occurred
-		{
-			Util::forEachCallback(m_ConnectResultCallbacks, [&](auto& fcb)
-			{
-				(fcb)(g->getEndPoint(), EConnectResult::MaxConnectionsReached);
-			});
-			Platform::log("Received max connections reached for connection %s", g->getEndPoint().asString().c_str());
-		}
+		g->setMaxConnectionsReached();
 	}
 
 	void ConnectionNode::recvAlreadyConnected(class Connection* g, const i8_t* payload, i32_t payloadLen)
 	{
 		// No state change on the connection in this case, could already be successfully connected before.
+		ZEndpoint ztp = toZpt(g->getEndPoint());
 		Util::forEachCallback(m_ConnectResultCallbacks, [&](auto& fcb)
 		{
-			(fcb)(g->getEndPoint(), EConnectResult::AlreadyConnected);
+			(fcb)(ztp, EConnectResult::AlreadyConnected);
 		});
-		//// Consider this a warning
-		//Platform::log("WARNING: Received already connected for %s", g->getEndPoint().asString().c_str());
 	}
 
 	void ConnectionNode::updateConnecting(class Connection* g)
 	{
-		// invokes lamda when connecting state changes to timedout
-		g->updateConnecting( [&] ()
-		{
-			Util::forEachCallback( m_ConnectResultCallbacks, [g] (auto& fcb)
-			{
-				(fcb)( g->getEndPoint(), EConnectResult::Timedout );
-			});
-			Platform::log( "Removing connection %s, connection attempt timed out", g->getEndPoint().asString().c_str() );
-		});
+		g->updateConnecting();
 	}
 
 	void ConnectionNode::updateKeepAlive(class Connection* g)
 	{
-		// invokes lamda when connected state changes to lost
-		g->updateKeepAlive( [&] ()
+		bool bWasConnected = g->isConnected();
+		g->updateKeepAlive();
+		if (bWasConnected && m_RelayConnectAndDisconnect) 
 		{
 			sendRemoteDisconnected( g, EDisconnectReason::Lost );
-			Util::forEachCallback( m_DisconnectCallbacks, [g] (auto& fcb)
-			{
-				(fcb)( true, g->getEndPoint(), EDisconnectReason::Lost );
-			});
-			Platform::log( "Removing connection %s as it was timed out (no longer answered keep alive packets)", g->getEndPoint().asString().c_str() );
-		});
+		}
 	}
 
 }

@@ -202,7 +202,7 @@ void InitNetwork(bool isServ)
 		}
 		RefreshTextField();
 	});
-	g_Node->bindOnNewConnection( [=] (auto etp) 
+	g_Node->bindOnNewConnection( [=] (bool directLink, auto etp) 
 	{
 		if ( isServ )
 		{

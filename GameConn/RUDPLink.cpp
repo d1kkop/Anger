@@ -98,13 +98,13 @@ namespace Zerodelay
 			// for the other items, set the correct local/remote revision, so that the group can be popped when an item acked (even for not used items)
 			reliableNewestDataGroup rd;
 			rd.dataId = id;
-			for ( auto i=0; i<sm_MaxItemsPerGroup; i++ )
+			for (auto & groupItem : rd.groupItems)
 			{
 				// initialize items in group
-				rd.groupItems[i].data = nullptr;
-				rd.groupItems[i].dataLen = rd.groupItems[i].dataCapacity = 0;
-				rd.groupItems[i].localRevision  = m_SendSeq_reliable_newest-1; // both -1 is correct, the variable that is actually changed (see above) has a diff of -1 between local and remote
-				rd.groupItems[i].remoteRevision = m_SendSeq_reliable_newest-1;
+				groupItem.data = nullptr;
+				groupItem.dataLen = groupItem.dataCapacity = 0;
+				groupItem.localRevision  = m_SendSeq_reliable_newest-1; // both -1 is correct, the variable that is actually changed (see above) has a diff of -1 between local and remote
+				groupItem.remoteRevision = m_SendSeq_reliable_newest-1;
 			}
 			// copy new item
 			Platform::memCpy(&rd.groupItems[groupBit], sizeof(item), &item, sizeof(item));			
@@ -156,9 +156,8 @@ namespace Zerodelay
 			}
 		}
 		// try unreliable sequenced packets
-		for (i32_t i=0; i<sm_NumChannels; i++)
+		for (auto& queue : m_RecvQueue_unreliable_sequenced)
 		{
-			auto& queue = m_RecvQueue_unreliable_sequenced[i];
 			if ( !queue.empty() )
 			{
 				pack = queue.front();
@@ -542,17 +541,16 @@ namespace Zerodelay
 		{
 			auto& group = it->second;
 			bool removeGroup = true;
-			for (auto k=0; k<sm_MaxItemsPerGroup; ++k)
+			for (auto& item : group.groupItems)
 			{
-				auto& item = group.groupItems[k];
 				item.remoteRevision = ackSeq;
 				if ( removeGroup && isSequenceNewerGroupItem( item.localRevision, item.remoteRevision ) )
 					removeGroup = false; // cannot remove group
 			}
 			if ( removeGroup )
 			{
-				for(auto k=0; k<sm_MaxItemsPerGroup; ++k) // cleanup data
-					delete [] group.groupItems[k].data;
+				for(auto & groupItem : group.groupItems) // cleanup data
+					delete [] groupItem.data;
 				it = queue.erase(it);
 			}
 			else

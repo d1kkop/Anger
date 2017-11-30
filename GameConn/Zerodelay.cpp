@@ -143,11 +143,13 @@ namespace Zerodelay
 	EListenCallResult ZNode::listen(i32_t port, const std::string& pw, i32_t maxConnections)
 	{
 		if (C->isListening()) return EListenCallResult::AlreadyStartedServer;
+		// set session inital states
 		C->cn()->setMaxIncomingConnections( maxConnections );
 		C->cn()->setRelayConnectAndDisconnectEvents( true );
+		C->cn()->setPassword( pw );
 		C->vgn()->setIsNetworkIdProvider( true );
 		C->vgn()->setRelayVariableGroupEvents( true );
-		EListenCallResult res = C->cn()->listenOn( port, pw );
+		EListenCallResult res = C->cn()->listenOn( port );
 		if (res == EListenCallResult::Succes)
 		{
 			C->setIsListening(true);
@@ -306,34 +308,22 @@ namespace Zerodelay
 
 	void ZNode::bindOnConnectResult(const std::function<void(const ZEndpoint&, EConnectResult)>& cb)
 	{
-		C->cn()->bindOnConnectResult( [=] (auto etp, auto res) 
-		{
-			cb( toZpt(etp), res );
-		});
+		C->cn()->bindOnConnectResult( cb);
 	}
 
-	void ZNode::bindOnNewConnection(const std::function<void (const ZEndpoint&)>& cb)
+	void ZNode::bindOnNewConnection(const std::function<void (bool directLink, const ZEndpoint&)>& cb)
 	{
-		C->cn()->bindOnNewConnection( [=] (auto etp) 
-		{
-			cb( toZpt(etp) );
-		});
+		C->cn()->bindOnNewConnection( cb );
 	}
 
 	void ZNode::bindOnDisconnect(const std::function<void (bool isThisConnection, const ZEndpoint&, EDisconnectReason)>& cb)
 	{
-		C->cn()->bindOnDisconnect( [=] (bool thisConn, auto etp, auto reason) 
-		{
-			cb( thisConn, toZpt( etp ), reason );
-		});
+		C->cn()->bindOnDisconnect( cb );
 	}
 
 	void ZNode::bindOnCustomData(const std::function<void (const ZEndpoint&, u8_t id, const i8_t* data, i32_t length, u8_t channel)>& cb)
 	{
-		C->bindOnCustomData( [=] ( auto etp, auto id, auto data, auto len, auto chan ) 
-		{
-			cb( toZpt( etp ), id, data, len, chan );
-		});
+		C->bindOnCustomData( cb );
 	}
 
 	void ZNode::bindOnGroupUpdated(const std::function<void(const ZEndpoint*, u8_t id)>& cb)

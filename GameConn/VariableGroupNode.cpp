@@ -51,7 +51,7 @@ namespace Zerodelay
 	void VariableGroupNode::setupConnectionCallbacks()
 	{
 		// on new connect, put variable group map (with empty set of groups) in list so that we know the set of known EndPoints
-		m_ZNode->bindOnNewConnection( [this] (auto& ztp)
+		m_ZNode->bindOnNewConnection( [this] (bool directLink, auto& ztp)
 		{
 			EndPoint etp = toEtp( ztp );
 			if ( m_RemoteVariableGroups.count(etp) != 1 )

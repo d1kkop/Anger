@@ -15,9 +15,9 @@ namespace Zerodelay
 {
 	class ConnectionNode
 	{
-		typedef std::function<void (const EndPoint&, EConnectResult)>					ConnectResultCallback;
-		typedef std::function<void (bool, const EndPoint&, EDisconnectReason)>			DisconnectCallback;
-		typedef std::function<void (const EndPoint&)>									NewConnectionCallback;
+		using ConnectResultCallback = std::function<void (const ZEndpoint&, EConnectResult)>;
+		using DisconnectCallback	= std::function<void (bool, const ZEndpoint&, EDisconnectReason)>;
+		using NewConnectionCallback = std::function<void (bool, const ZEndpoint&)>;
 
 	public:
 		ConnectionNode(i32_t keepAliveIntervalSeconds=8);
@@ -27,7 +27,7 @@ namespace Zerodelay
 		// state
 		EConnectCallResult connect( const EndPoint& endPoint, const std::string& pw="", i32_t timeoutSeconds=8, bool sendRequest=true );
 		EConnectCallResult connect( const std::string& name, i32_t port, const std::string& pw="", i32_t timeoutSeconds=8, bool sendRequest=true );
-		EListenCallResult listenOn( i32_t port, const std::string& pw="" );
+		EListenCallResult listenOn( i32_t port );
 		EDisconnectCallResult disconnect( const EndPoint& endPoint );
 		void disconnectAll();
 		void deleteConnections();
@@ -52,6 +52,10 @@ namespace Zerodelay
 		void bindOnDisconnect(const DisconnectCallback& cb)				{ Util::bindCallback(m_DisconnectCallbacks, cb); }
 		// iterating
 		void forConnections(const EndPoint* specific, bool exclude, const std::function<void (Connection&)>& cb);
+		// call callbacks
+		void doConnectResultCallbacks(const EndPoint& remote, EConnectResult result);
+		void doDisconnectCallbacks(bool directLink, const EndPoint& remote, EDisconnectReason reason);
+		void doNewIncomingConnectionCallbacks(bool directLink, const EndPoint& remote);
 
 	private:
 		// sends (relay)

@@ -15,6 +15,7 @@ Zerodelay is a network gaming library that is aimed to be lightweight, cross pla
 			data may never be updated since it was not created yet. solve this.
 		* Cluster Reliable_Ordered data (more efficient sending)
 		* Cluster Unreliable data (more efficient sending)
+		* Links that are created but never connected, will not remove themselves.
 
 
 	NOTES:

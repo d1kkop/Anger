@@ -9,12 +9,6 @@ namespace Zerodelay
 #define Check_State( state ) \
 	if ( m_State != EConnectionState::##state ) \
 	{\
-		return false; \
-	}
-
-#define Check_State_NoRet( state ) \
-	if ( m_State != EConnectionState::##state ) \
-	{\
 		return; \
 	}
 
@@ -22,7 +16,7 @@ namespace Zerodelay
 	if ( m_State != EConnectionState::##state ) \
 	{\
 		Platform::log("WARNING state mismatch in %s, wanted state %s, but is %d\n", (__FUNCTION__), #state, m_State); \
-		return false;\
+		return; \
 	}
 
 
@@ -55,7 +49,7 @@ namespace Zerodelay
 		}
 	}
 
-	void Connection::disconnect(const std::function<void ()>& cb)
+	void Connection::disconnect(bool isDirectLink, const EndPoint& directOrRemoteEndpoint, EDisconnectReason reason, EConnectionState newState, bool sendMsg)
 	{
 		if (m_DisconnectCalled)
 			return;
@@ -64,106 +58,103 @@ namespace Zerodelay
 		m_DisconnectTS = ::clock();
 		if ( m_State == EConnectionState::Connected ) 
 		{
-			sendSystemMessage( EDataPacketType::Disconnect );
-			cb();
+			if (sendMsg) sendSystemMessage( EDataPacketType::Disconnect );
+			m_ConnectionNode->doDisconnectCallbacks( isDirectLink, directOrRemoteEndpoint, reason );
 		}
-		m_State = EConnectionState::Disconnected;
+		m_State = newState;
 		cleanLink();
 	}
 
-	bool Connection::acceptDisconnect()
+	void Connection::acceptDisconnect()
 	{
 		Ensure_State( Connected )
-		m_State = EConnectionState::Disconnected;
-		return true;
+		disconnect(true, getEndPoint(), EDisconnectReason::Closed, EConnectionState::Disconnected, false);
+		Platform::log( "Disconnect received, removing connection %s.", getEndPoint().asString().c_str() );
 	}
 
-	bool Connection::setInvalidPassword()
+	void Connection::setInvalidPassword()
 	{
 		Ensure_State( Connecting );
 		m_State = EConnectionState::InvalidPassword;
-		return true;
+		m_ConnectionNode->doConnectResultCallbacks( getEndPoint(), EConnectResult::InvalidPassword );
+		Platform::log("Received invalid password for connection %s.", getEndPoint().asString().c_str());
 	}
 
-	bool Connection::setMaxConnectionsReached()
+	void Connection::setMaxConnectionsReached()
 	{
 		Ensure_State( Connecting );
 		m_State = EConnectionState::MaxConnectionsReached;
-		return true;
+		m_ConnectionNode->doConnectResultCallbacks( getEndPoint(), EConnectResult::MaxConnectionsReached );
+		Platform::log("Received max connections reached for connection %s.", getEndPoint().asString().c_str());
 	}
 
-	bool Connection::sendConnectRequest(const std::string& pw)
+	void Connection::sendConnectRequest(const std::string& pw)
 	{
-		Ensure_State( Idle );
+		assert( m_State == EConnectionState::Idle ); // just called after creation
 		m_State = EConnectionState::Connecting;
 		m_StartConnectingTS = ::clock();
 		sendSystemMessage( EDataPacketType::ConnectRequest, pw.c_str(), (i32_t)pw.size()+1 );
-		return true;
 	}
 
-	bool Connection::sendConnectAccept()
+	void Connection::sendConnectAccept()
 	{
-		Ensure_State( Idle )
+		assert( m_State == EConnectionState::Idle ); // just called after creation
 		m_State = EConnectionState::Connected;
 		sendSystemMessage( EDataPacketType::ConnectAccept );
-		return true;
 	}
 
-	bool Connection::sendKeepAliveRequest()
+	void Connection::sendKeepAliveRequest()
 	{
-		Ensure_State( Connected );
+		Check_State( Connected );
 		m_KeepAliveTS = ::clock();
 		sendSystemMessage( EDataPacketType::KeepAliveRequest );
-		return true;
 	}
 
-	bool Connection::sendKeepAliveAnswer()
+	void Connection::sendKeepAliveAnswer()
 	{
-		Ensure_State( Connected );
+		Check_State( Connected );
 		sendSystemMessage( EDataPacketType::KeepAliveAnswer );
-		return true;
 	}
 
-	bool Connection::onReceiveConnectAccept()
+	void Connection::onReceiveConnectAccept()
 	{
-		Ensure_State( Connecting );
+		Check_State( Connecting );
 		m_State = EConnectionState::Connected;
 		m_KeepAliveTS = ::clock();
-		return true;
+		Platform::log( "Connection accepted to %s.", getEndPoint().asString().c_str() );
 	}
 
-	bool Connection::onReceiveKeepAliveRequest()
+	void Connection::onReceiveKeepAliveRequest()
 	{
 		Ensure_State( Connected );
 		sendSystemMessage( EDataPacketType::KeepAliveAnswer );
-		return true;
 	}
 
-	bool Connection::onReceiveKeepAliveAnswer()
+	void Connection::onReceiveKeepAliveAnswer()
 	{
 		if ( m_IsWaitingForKeepAlive )
 		{
 			m_IsWaitingForKeepAlive = false;
 			m_KeepAliveTS = ::clock();
-			// printf("alive response..\n"); // dbg
-			return true;
+			// printf("received keep alive answer...\n"); // dbg
 		}
-		return false;
 	}
 
-	void Connection::updateConnecting(const std::function<void ()>& cb)
+	void Connection::updateConnecting()
 	{
-		Check_State_NoRet( Connecting );
+		Check_State( Connecting );
 		if ( Util::getTimeSince( m_StartConnectingTS ) >= m_ConnectTimeoutSeconMs )
 		{
 			m_State = EConnectionState::InitiateTimedOut;
-			cb();
+			m_ConnectionNode->doConnectResultCallbacks(getEndPoint(), EConnectResult::Timedout);
+			cleanLink();
+			Platform::log("Connection attempt timed out to %s.", getEndPoint().asString().c_str());
 		}
 	}
 
-	void Connection::updateKeepAlive(const std::function<void ()>& cb)
+	void Connection::updateKeepAlive()
 	{
-		Check_State_NoRet( Connected );
+		Check_State( Connected );
 		if ( m_KeepAliveIntervalMs <= 0 )
 			return; // discard update
 		if ( !m_IsWaitingForKeepAlive )
@@ -175,10 +166,10 @@ namespace Zerodelay
 				// printf("alive request..\n"); // dbg
 			}
 		}
-		else if ( Util::getTimeSince( m_KeepAliveTS ) > 3000 ) // 3 seconds is rediculous ping, so consider it lost
+		else if ( Util::getTimeSince( m_KeepAliveTS ) > 5000 ) // 5 seconds is rediculous ping, so consider it lost
 		{
-			m_State = EConnectionState::ConnectionTimedOut;
-			cb();
+			disconnect(true, getEndPoint(), EDisconnectReason::Lost, EConnectionState::ConnectionTimedOut, false);
+			Platform::log("Connection timed out to %s.", getEndPoint().asString().c_str());
 		}
 	}
 

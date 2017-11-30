@@ -29,24 +29,23 @@ namespace Zerodelay
 		Connection( class ConnectionNode* connectionNode, bool wasConnector, class RUDPLink* link, i32_t timeoutSeconds=8, i32_t keepAliveIntervalSeconds=8 );
 		~Connection();
 		void cleanLink();
-		void disconnect(const std::function<void ()>& cb); // invokes cb if was connected and send disconnect
-
-		bool acceptDisconnect();
-		// -- set connect result states other than accept
-		bool setInvalidPassword();
-		bool setMaxConnectionsReached();
+		void disconnect(bool isDirectLink, const EndPoint& directOrRemoteEndpoint, EDisconnectReason reason, EConnectionState newState, bool sendMsg);
+		// -- connect result events --
+		void acceptDisconnect();
+		void setInvalidPassword();
+		void setMaxConnectionsReached();
 		// -- sends
-		bool sendConnectRequest(const std::string& pw);
-		bool sendConnectAccept();
-		bool sendKeepAliveRequest();
-		bool sendKeepAliveAnswer();
+		void sendConnectRequest(const std::string& pw);
+		void sendConnectAccept();
+		void sendKeepAliveRequest();
+		void sendKeepAliveAnswer();
 		// -- receives
-		bool onReceiveConnectAccept();
-		bool onReceiveKeepAliveRequest();
-		bool onReceiveKeepAliveAnswer();
+		void onReceiveConnectAccept();
+		void onReceiveKeepAliveRequest();
+		void onReceiveKeepAliveAnswer();
 		// -- updates
-		void updateConnecting(const std::function<void ()>& cb);	// Invokes cb if connecting timed out
-		void updateKeepAlive(const std::function<void ()>& cb);		// Invokes cb if connection timed out
+		void updateConnecting();
+		void updateKeepAlive();
 		// -- getters
 		const EndPoint& getEndPoint() const;
 		EConnectionState getState() const;

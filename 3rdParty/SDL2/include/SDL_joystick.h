@@ -106,8 +106,6 @@ typedef enum
 } SDL_JoystickPowerLevel;
 
 /* Function prototypes */
-<<<<<<< HEAD
-=======
 
 /**
  * Locking for multi-threaded access to the joystick API
@@ -122,7 +120,6 @@ typedef enum
 extern DECLSPEC void SDLCALL SDL_LockJoysticks(void);
 extern DECLSPEC void SDLCALL SDL_UnlockJoysticks(void);
 
->>>>>>> 612db85aa653c8a3731a85938a87fe9817ea5d46
 /**
  *  Count the number of joysticks attached to the system right now
  */

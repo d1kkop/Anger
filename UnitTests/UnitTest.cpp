@@ -59,7 +59,7 @@ namespace UnitTests
 			}
 			printf( "connect result: %s %s\n", etp.asString().c_str(), resStr.c_str() );
 		});
-		g2->bindOnNewConnection( [&] (auto& etp)
+		g2->bindOnNewConnection( [&] (bool directLink, auto& etp)
 		{ 
 			printf("new connection: %s\n", etp.asString().c_str());
 			foundNewConn = true;
@@ -74,7 +74,7 @@ namespace UnitTests
 		ZEndpoint ztp;
 		bool bResolve = ztp.resolve("localhost", 27000);
 		assert(bResolve);
-		auto res = g1->connect( ztp, "lala2" );
+		auto res = g1->connect( ztp, "lala" );
 		assert(res == EConnectCallResult::Succes);
 		res = g1->connect("localhost",27000,"lala");
 		assert(res == EConnectCallResult::AlreadyExists);
@@ -105,12 +105,14 @@ namespace UnitTests
 		Result = (foundNewConn);
 
 		g1->disconnect();
-		g2->disconnect();
+	//	g2->disconnect();
 
 		int k = 0;
-		while (++k < 20 && (g1->getNumOpenLinks() != 0 || g2->getNumOpenLinks() != 0))
+		while (/*++k < 20 &&*/ (g1->getNumOpenLinks() != 0 || g2->getNumOpenLinks() != 0))
 		{
 			std::this_thread::sleep_for(std::chrono::milliseconds(50));
+			g1->update();
+			g2->update();
 		}
 
 		delete g1;
@@ -156,7 +158,7 @@ namespace UnitTests
 			}
 		};
 
-		auto onNewConnLamda = [&] (auto etp)
+		auto onNewConnLamda = [&] (bool directLink, auto etp)
 		{
 			connNewIncomingConns++;
 		};
@@ -1033,10 +1035,10 @@ namespace UnitTests
 		std::vector<BaseTest*> tests;
 
 		// add tests
-	//	tests.emplace_back( new ConnectionLayerTest );
+		tests.emplace_back( new ConnectionLayerTest );
 	//	tests.emplace_back( new MassConnectTest );
 	//	tests.emplace_back( new ReliableOrderTest );
-		tests.emplace_back( new RpcTest );
+	//	tests.emplace_back( new RpcTest );
 	//	tests.emplace_back( new SyncGroupTest );
 			
 		// run them

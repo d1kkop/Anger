@@ -21,7 +21,7 @@ namespace Zerodelay
 
 	class CoreNode
 	{
-		typedef std::function<void (const struct EndPoint&, u8_t, const i8_t*, i32_t, u8_t)>	CustomDataCallback;
+		using CustomDataCallback = std::function<void (const struct ZEndpoint&, u8_t, const i8_t*, i32_t, u8_t)>;
 
 
 	public:
@@ -35,13 +35,13 @@ namespace Zerodelay
 		void processUnhandledPacket( struct Packet& pack, const struct EndPoint& etp );
 
 		void setIsListening(bool isListening) { m_IsListening = isListening; }
-		bool isListening() const { return m_IsListening; } // client-server has a server
+		bool isListening() const { return m_IsListening; } // client-server has a server, in p2p everyone is also a listener
 
 		void setIsP2P(bool isP2p) { m_IsP2P = isP2p; }
 		bool isP2P() const { return m_IsP2P; }
 
 		void setIsSuperPeer(bool superPeer) { m_IsSuperPeer = superPeer; }
-		bool isSuperPeer() const { return m_IsSuperPeer; }
+		bool isSuperPeer() const { return m_IsSuperPeer; } // server or authorative peer in p2p
 
 		void setCriticalError(ECriticalError error, const char* fn);
 		bool hasCriticalErrors() const { return m_CriticalErrors != 0; }

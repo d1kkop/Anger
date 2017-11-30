@@ -281,17 +281,18 @@ namespace Zerodelay
 		void bindOnConnectResult( const std::function<void (const ZEndpoint&, EConnectResult)>& cb );
 
 
-		/*	For handling new incoming connections. 
-			In a client-server achitecture, this event is relayed to all other clients by the server. */
-		void bindOnNewConnection( const std::function<void (const ZEndpoint&)>& cb );
+		/*	[directLink]	If true, a connection attempt was made to this Znode. 
+							If false, a non directive link such as a remote connection that disconnected from the server.
+							If false, the endpoint will not be found when obtaining a list of open connections through getNumOpenConnections(). 
+			[Zendpoint]		The endpoint, either of our direct link or relayed by eg the server (a remote). */
+		void bindOnNewConnection( const std::function<void (bool directLink, const ZEndpoint&)>& cb );
 
 
-		/*	For when connection is closed or gets dropped.
-			In a client-server architecture, disconnect events are relayed by the server. 
-			[isThisConnection]	Is true, if a client-server architecture and server closed connection or if
-								is p2p connection and one of the peers closed connection.
-								All other cases false, eg. if a remote client disconnected in a client-server architecture. */
-		void bindOnDisconnect( const std::function<void (bool isThisConnection, const ZEndpoint&, EDisconnectReason)>& cb );
+		/*	[directLink]	If true, one of the endpoints that this Znode connected to disconnects our we disconnected.
+							If false, the message is relayed by an authorative node such as the server. 
+							If false, the endpoint will not be found when obtaining a list of open connections through getNumOpenConnections(). 
+			[Zendpoint]		The endpoint, either of our direct link or relayed by eg the server (a remote). */
+		void bindOnDisconnect( const std::function<void (bool directLink, const ZEndpoint&, EDisconnectReason)>& cb );
 
 
 		/*	For all other data that is specific to the application. */

@@ -164,8 +164,6 @@ typedef void (SDLCALL * SDL_AudioCallback) (void *userdata, Uint8 * stream,
 
 /**
  *  The calculated values in this structure are calculated by SDL_OpenAudio().
-<<<<<<< HEAD
-=======
  *
  *  For multi-channel audio, the default SDL channel mapping is:
  *  2:  FL FR                       (stereo)
@@ -175,7 +173,6 @@ typedef void (SDLCALL * SDL_AudioCallback) (void *userdata, Uint8 * stream,
  *  6:  FL FR FC LFE SL SR          (5.1 surround - last two can also be BL BR)
  *  7:  FL FR FC LFE BC SL SR       (6.1 surround)
  *  8:  FL FR FC LFE BL BR SL SR    (7.1 surround)
->>>>>>> 612db85aa653c8a3731a85938a87fe9817ea5d46
  */
 typedef struct SDL_AudioSpec
 {
@@ -489,8 +486,6 @@ extern DECLSPEC int SDLCALL SDL_BuildAudioCVT(SDL_AudioCVT * cvt,
  */
 extern DECLSPEC int SDLCALL SDL_ConvertAudio(SDL_AudioCVT * cvt);
 
-<<<<<<< HEAD
-=======
 /* SDL_AudioStream is a new audio conversion interface.
    The benefits vs SDL_AudioCVT:
     - it can handle resampling data in chunks without generating
@@ -617,7 +612,6 @@ extern DECLSPEC void SDLCALL SDL_AudioStreamClear(SDL_AudioStream *stream);
  */
 extern DECLSPEC void SDLCALL SDL_FreeAudioStream(SDL_AudioStream *stream);
 
->>>>>>> 612db85aa653c8a3731a85938a87fe9817ea5d46
 #define SDL_MIX_MAXVOLUME 128
 /**
  *  This takes two audio buffers of the playing audio format and mixes
@@ -673,11 +667,7 @@ extern DECLSPEC void SDLCALL SDL_MixAudioFormat(Uint8 * dst,
  *  \param dev The device ID to which we will queue audio.
  *  \param data The data to queue to the device for later playback.
  *  \param len The number of bytes (not samples!) to which (data) points.
-<<<<<<< HEAD
- *  \return zero on success, -1 on error.
-=======
  *  \return 0 on success, or -1 on error.
->>>>>>> 612db85aa653c8a3731a85938a87fe9817ea5d46
  *
  *  \sa SDL_GetQueuedAudioSize
  *  \sa SDL_ClearQueuedAudio

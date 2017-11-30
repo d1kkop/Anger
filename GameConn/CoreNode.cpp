@@ -70,9 +70,10 @@ namespace Zerodelay
 			// except self
 			m_RecvNode->send( pack.data[0], pack.data+1, pack.len-1, &etp, true, pack.type, pack.channel, false /* relay only once */ );
 		}
+		ZEndpoint ztp = toZpt(etp);
 		Util::forEachCallback(m_CustomDataCallbacks, [&](auto& fcb)
 		{
-			(fcb)(etp, pack.data[0], pack.data+1, pack.len-1, pack.channel);
+			(fcb)(ztp, pack.data[0], pack.data+1, pack.len-1, pack.channel);
 		});
 	}
 
