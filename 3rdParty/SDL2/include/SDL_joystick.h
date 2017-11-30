@@ -106,6 +106,23 @@ typedef enum
 } SDL_JoystickPowerLevel;
 
 /* Function prototypes */
+<<<<<<< HEAD
+=======
+
+/**
+ * Locking for multi-threaded access to the joystick API
+ *
+ * If you are using the joystick API or handling events from multiple threads
+ * you should use these locking functions to protect access to the joysticks.
+ *
+ * In particular, you are guaranteed that the joystick list won't change, so
+ * the API functions that take a joystick index will be valid, and joystick
+ * and game controller events will not be delivered.
+ */
+extern DECLSPEC void SDLCALL SDL_LockJoysticks(void);
+extern DECLSPEC void SDLCALL SDL_UnlockJoysticks(void);
+
+>>>>>>> 612db85aa653c8a3731a85938a87fe9817ea5d46
 /**
  *  Count the number of joysticks attached to the system right now
  */

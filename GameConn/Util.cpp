@@ -67,7 +67,7 @@ namespace Zerodelay
 	}
 
 
-	i32_t Util::getTimeSince(i32_t timestamp) const
+	i32_t Util::getTimeSince(i32_t timestamp)
 	{
 		clock_t now = ::clock();
 		float elapsedSeconds = float(now - timestamp) / (float)CLOCKS_PER_SEC;

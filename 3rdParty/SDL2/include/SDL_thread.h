@@ -90,6 +90,7 @@ typedef int (SDLCALL * SDL_ThreadFunction) (void *data);
  *  library!
  */
 #define SDL_PASSED_BEGINTHREAD_ENDTHREAD
+<<<<<<< HEAD
 #include <process.h>            /* This has _beginthread() and _endthread() defined! */
 
 typedef uintptr_t(__cdecl * pfnSDL_CurrentBeginThread) (void *, unsigned,
@@ -98,6 +99,13 @@ typedef uintptr_t(__cdecl * pfnSDL_CurrentBeginThread) (void *, unsigned,
                                                                          *),
                                                         void *arg, unsigned,
                                                         unsigned *threadID);
+=======
+#include <process.h> /* _beginthreadex() and _endthreadex() */
+
+typedef uintptr_t(__cdecl * pfnSDL_CurrentBeginThread)
+                   (void *, unsigned, unsigned (__stdcall *func)(void *),
+                    void * /*arg*/, unsigned, unsigned * /* threadID */);
+>>>>>>> 612db85aa653c8a3731a85938a87fe9817ea5d46
 typedef void (__cdecl * pfnSDL_CurrentEndThread) (unsigned code);
 
 /**
@@ -124,7 +132,15 @@ SDL_CreateThread(SDL_ThreadFunction fn, const char *name, void *data,
  * into a dll with Watcom's runtime statically linked.
  */
 #define SDL_PASSED_BEGINTHREAD_ENDTHREAD
+<<<<<<< HEAD
 #include <process.h>
+=======
+#ifndef __EMX__
+#include <process.h>
+#else
+#include <stdlib.h>
+#endif
+>>>>>>> 612db85aa653c8a3731a85938a87fe9817ea5d46
 typedef int (*pfnSDL_CurrentBeginThread)(void (*func)(void *), void *, unsigned, void * /*arg*/);
 typedef void (*pfnSDL_CurrentEndThread)(void);
 extern DECLSPEC SDL_Thread *SDLCALL
