@@ -11,7 +11,7 @@
 
 namespace Zerodelay
 {
-	typedef std::function<void (const EndPoint*, u32_t)>							GroupCallback;
+	using GroupCallback = std::function<void (const EndPoint*, u32_t)>;
 
 
 	/** ---------------------------------------------------------------------------------------------------------------------------------
@@ -76,11 +76,12 @@ namespace Zerodelay
 		void sendVariableGroups();
 		/* support */
 		void callCreateVariableGroup(i8_t* data, i32_t len, bool remote, const ZEndpoint* ztp);
-		bool deserializeGroup(const i8_t*& data, int32_t& buffLen);
+		bool deserializeGroup(const i8_t*& data, i32_t& buffLen);
 		class VariableGroup* findOrRemoveBrokenGroup( u32_t networkId, const EndPoint* etp = nullptr );
 		// group callbacks
 		void bindOnGroupUpdated(const GroupCallback& cb)				{ Util::bindCallback(m_GroupUpdateCallbacks, cb); }
 		void bindOnGroupDestroyed(const GroupCallback& cb)				{ Util::bindCallback(m_GroupDestroyCallbacks, cb); }
+
 
 		bool m_IsNetworkIdProvider; // Only 1 node is the owner of all id's, it provides id's on request.
 		bool m_RelayVariableGroupEvents;

@@ -15,6 +15,7 @@ namespace Zerodelay
 		InitiateTimedOut,
 		InvalidPassword,
 		MaxConnectionsReached,
+		InvalidConnectPacket,
 		Connected,
 		ConnectionTimedOut,
 		Disconnected
@@ -34,6 +35,7 @@ namespace Zerodelay
 		void acceptDisconnect();
 		void setInvalidPassword();
 		void setMaxConnectionsReached();
+		void setInvalidConnectPacket();
 		// -- sends
 		void sendConnectRequest(const std::string& pw);
 		void sendConnectAccept();
@@ -57,6 +59,7 @@ namespace Zerodelay
 
 		class ConnectionNode* m_ConnectionNode;
 		class RUDPLink* m_Link;
+		struct EndPoint m_Endpoint;
 		// how was initialized (from connect accept, or started connected)
 		bool m_WasConnector;
 		bool m_DisconnectCalled;

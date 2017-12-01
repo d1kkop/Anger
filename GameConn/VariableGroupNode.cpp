@@ -351,7 +351,7 @@ namespace Zerodelay
 		// If is id provider, simulate the same behaviour as for requesters by pushing id's in the IdDeck
 		if ( m_IsNetworkIdProvider )
 		{
-			if ( m_PendingGroups.size() )
+			if ( !m_PendingGroups.empty() )
 			{
 				for (i32_t i = 0; i < (i32_t)m_PendingGroups.size() ; i++)
 				{
@@ -360,7 +360,7 @@ namespace Zerodelay
 			}
 		}
 		// If has pending groups to be resolved and unique network wide id's are availalbe, resolve them!
-		while (m_PendingGroups.size()>0 && m_UniqueIds.size()>0)
+		while (!m_PendingGroups.empty() && !m_UniqueIds.empty())
 		{
 			auto& pvg = m_PendingGroups.front();
 			u32_t id = m_UniqueIds.front();

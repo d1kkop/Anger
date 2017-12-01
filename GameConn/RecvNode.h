@@ -29,7 +29,6 @@ namespace Zerodelay
 		virtual ~RecvNode();
 		void postInitialize(class CoreNode* coreNode);
 		bool openSocketOnPort(u16_t port);
-		void closeSocket();
 
 	public:
 		void send( u8_t id, const i8_t* data, i32_t len, const EndPoint* specific=nullptr, bool exclude=false, 

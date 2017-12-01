@@ -38,6 +38,7 @@ namespace Zerodelay
 		IncorrectPassword,
 		MaxConnectionsReached,
 		AlreadyConnected,
+		InvalidConnectPacket,
 		Rpc,
 		IdPackRequest,
 		IdPackProvide,
@@ -78,7 +79,8 @@ namespace Zerodelay
 		Timedout,
 		InvalidPassword,
 		MaxConnectionsReached,
-		AlreadyConnected
+		AlreadyConnected,
+		InvalidConnectPacket
 	};
 
 	enum class EDisconnectReason : u8_t

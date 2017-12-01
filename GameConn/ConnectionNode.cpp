@@ -148,6 +148,7 @@ namespace Zerodelay
 			EConnectionState state = c->getState();
 			if ( !(state == EConnectionState::Connected || state == EConnectionState::Connecting) )
 			{
+				delete c;
 				it = m_Connections.erase( it );
 				continue;
 			}
@@ -253,7 +254,6 @@ namespace Zerodelay
 			for ( auto& kvp : m_Connections )
 			{
 				Connection* c = kvp.second;
-				if (!c) continue;
 				cb(*c);
 			}
 		}
@@ -262,27 +262,27 @@ namespace Zerodelay
 	void ConnectionNode::doConnectResultCallbacks(const EndPoint& remote, EConnectResult result)
 	{
 		ZEndpoint ztp = toZpt(remote);
-		Util::forEachCallback(m_ConnectResultCallbacks,[&](auto& fcb)
+		Util::forEachCallback(m_ConnectResultCallbacks,[&](const ConnectResultCallback& crb)
 		{
-			(fcb)(ztp, result);
+			(crb)(ztp, result);
 		});
 	}
 
 	void ConnectionNode::doDisconnectCallbacks(bool directLink, const EndPoint& remote,EDisconnectReason reason)
 	{
 		ZEndpoint ztp = toZpt(remote);
-		Util::forEachCallback(m_DisconnectCallbacks,[&](auto& fcb)
+		Util::forEachCallback(m_DisconnectCallbacks,[&](const DisconnectCallback& dcb)
 		{
-			(fcb)(directLink, ztp, reason);
+			(dcb)(directLink, ztp, reason);
 		});
 	}
 
 	void ConnectionNode::doNewIncomingConnectionCallbacks(bool directLink, const EndPoint& remote)
 	{
 		ZEndpoint ztp = toZpt(remote);
-		Util::forEachCallback(m_NewConnectionCallbacks,[&](auto& fcb)
+		Util::forEachCallback(m_NewConnectionCallbacks,[&](const NewConnectionCallback& ncb)
 		{
-			(fcb)(directLink, ztp);
+			(ncb)(directLink, ztp);
 		});
 	}
 
@@ -338,7 +338,7 @@ namespace Zerodelay
 		assert(pack.type == EHeaderPacketType::Reliable_Ordered);
 		if (!(pack.type == EHeaderPacketType::Reliable_Ordered))
 		{
-			Platform::log("WARNING: Unexpected packet type (%d) in %s", (i32_t)pack.type, __FUNCTION__);
+			Platform::log("WARNING: Unexpected packet type (%d) in %s", (i32_t)pack.type, ZERODELAY_FUNCTION);
 			return false; // all connect node packets are reliable ordered
 		}
 		EDataPacketType packType = (EDataPacketType)pack.data[0];
@@ -350,8 +350,13 @@ namespace Zerodelay
 			if (packType == EDataPacketType::ConnectRequest) 
 			{
 				recvConnectPacket(payload, payloadLen, link);
-				return true; // packet handled
 			}
+			else
+			{
+				// This ensures that the link gets immediately marked for delete so that it will remove itself after linger time.
+				handleInvalidConnectAttempt(EDataPacketType::InvalidConnectPacket, link);
+			}
+			return true; // packet handled
 		}
 		else
 		{
@@ -376,20 +381,22 @@ namespace Zerodelay
 				g->onReceiveKeepAliveAnswer();
 				break;
 			case EDataPacketType::IncorrectPassword:
-				recvInvalidPassword(g, payload, payloadLen);
+				g->setInvalidPassword();
 				break;
 			case EDataPacketType::MaxConnectionsReached:
-				recvMaxConnectionsReached(g, payload, payloadLen);
+				g->setMaxConnectionsReached();
 				break;
 			case EDataPacketType::AlreadyConnected:
-				recvAlreadyConnected(g, payload, payloadLen);
+				g->setInvalidConnectPacket();
+				break;
+			case EDataPacketType::InvalidConnectPacket:
 				break;
 			default:
-				return false;
+				return false; // unhandled;
 			}
-			return true;
+			return true; // handeld
 		}
-		return false;
+		return false; // unhandeld
 	}
 
 	void ConnectionNode::handleInvalidConnectAttempt(EDataPacketType responseType, RUDPLink& link)
@@ -459,7 +466,7 @@ namespace Zerodelay
 			m_CoreNode->setCriticalError(ECriticalError::SerializationError, ZERODELAY_FUNCTION);
 			return;
 		}
-		assert(etp != g->getEndPoint());
+		assert(etp != g->getEndPoint()); // should never get remote endpoint msg from direct link
 		if (g->getEndPoint() == etp)
 		{
 			m_CoreNode->setCriticalError(ECriticalError::SerializationError, ZERODELAY_FUNCTION);
@@ -479,7 +486,7 @@ namespace Zerodelay
 			m_CoreNode->setCriticalError(ECriticalError::SerializationError, ZERODELAY_FUNCTION);
 			return;
 		}
-		assert(g->getEndPoint() != etp); // should not remote disconnect for a direct connection
+		assert(g->getEndPoint() != etp); // should not remote disconnect for a direct link
 		if (g->getEndPoint() == etp)
 		{
 			m_CoreNode->setCriticalError(ECriticalError::SerializationError, ZERODELAY_FUNCTION);
@@ -490,23 +497,13 @@ namespace Zerodelay
 		Platform::log( "Remote %s disconnected.", etp.asString().c_str() );
 	}
 
-	void ConnectionNode::recvInvalidPassword(class Connection* g, const i8_t* payload, i32_t payloadLen)
-	{
-		g->setInvalidPassword();
-	}
-
-	void ConnectionNode::recvMaxConnectionsReached(class Connection* g, const i8_t* payload, i32_t payloadLen)
-	{
-		g->setMaxConnectionsReached();
-	}
-
 	void ConnectionNode::recvAlreadyConnected(class Connection* g, const i8_t* payload, i32_t payloadLen)
 	{
 		// No state change on the connection in this case, could already be successfully connected before.
 		ZEndpoint ztp = toZpt(g->getEndPoint());
-		Util::forEachCallback(m_ConnectResultCallbacks, [&](auto& fcb)
+		Util::forEachCallback(m_ConnectResultCallbacks, [&](const ConnectResultCallback& crc)
 		{
-			(fcb)(ztp, EConnectResult::AlreadyConnected);
+			(crc)(ztp, EConnectResult::AlreadyConnected);
 		});
 	}
 

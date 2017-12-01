@@ -32,11 +32,11 @@ namespace Zerodelay
 	};
 
 
-	typedef std::deque<Packet> sendQueueType;
-	typedef std::deque<Packet> recvQueueType;
-	typedef std::deque<u32_t> ackQueueType;
-	typedef std::map<u32_t, Packet> recvReliableOrderedQueueType;
-	typedef std::map<u32_t, reliableNewestDataGroup> sendReliableNewestQueueType; 
+	using sendQueueType = std::deque<Packet>;
+	using recvQueueType = std::deque<Packet>;
+	using ackQueueType  = std::deque<u32_t>;
+	using recvReliableOrderedQueueType = std::map<u32_t, Packet>;
+	using sendReliableNewestQueueType  = std::map<u32_t, reliableNewestDataGroup>; 
 
 
 	class RUDPLink
@@ -46,16 +46,16 @@ namespace Zerodelay
 		static const i32_t sm_MaxItemsPerGroup = 16;
 
 		// TODO Packet layout offsets should not be completely here because it contains higher level data layout information
-		static const i32_t off_Type = 0;	// Reliable, Unreliable or Ack
-		static const i32_t off_Ack_Chan = 1; // In case of ack, the channel
-		static const i32_t off_Ack_Num = 2;  // In case of ack, ther number of acks in one packet cluttered together
-		static const i32_t off_Ack_Payload = 6;  // In case of ack, the sequence numb
-		static const i32_t off_Norm_Chan = 1;	// Normal, Channel
-		static const i32_t off_Norm_Seq  = 2;	// Normal, Seq numb
-		static const i32_t off_Norm_Id   = 6;	// Normal/Data, Packet Id 
-		static const i32_t off_Norm_Data = 7;	// Normal, Payload
-		static const i32_t off_RelNew_Seq  = 1;	// RelNew, sequence
-		static const i32_t off_RelNew_Num  = 5;	// RelNew, num groups
+		static const i32_t off_Type = 0;			// Reliable, Unreliable or Ack
+		static const i32_t off_Ack_Chan = 1;		// In case of ack, the channel
+		static const i32_t off_Ack_Num  = 2;		// In case of ack, ther number of acks in one packet cluttered together
+		static const i32_t off_Ack_Payload = 6;		// In case of ack, the sequence numb
+		static const i32_t off_Norm_Chan = 1;		// Normal, Channel
+		static const i32_t off_Norm_Seq  = 2;		// Normal, Seq numb
+		static const i32_t off_Norm_Id   = 6;		// Normal/Data, Packet Id 
+		static const i32_t off_Norm_Data = 7;		// Normal, Payload
+		static const i32_t off_RelNew_Seq  = 1;		// RelNew, sequence
+		static const i32_t off_RelNew_Num  = 5;		// RelNew, num groups
 		static const i32_t off_RelNew_GroupId   = 9;		// ReliableNew, GroupId (4 bytes)
 		static const i32_t off_RelNew_GroupBits = 13;		// 2 Bytes (max 16 vars per group)
 		static const i32_t off_RelNew_GroupSkipBytes = 15;	// 2 bytes that hold amount of bytes to skip in case group id is is not known

@@ -16,6 +16,7 @@ Zerodelay is a network gaming library that is aimed to be lightweight, cross pla
 		* Cluster Reliable_Ordered data (more efficient sending)
 		* Cluster Unreliable data (more efficient sending)
 		* Links that are created but never connected, will not remove themselves.
+		* Make endiannes correct in RUDP link and everywhere else
 
 
 	NOTES:

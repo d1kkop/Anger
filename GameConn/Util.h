@@ -30,9 +30,9 @@ namespace Zerodelay
 	template <typename List, typename Callback>
 	void Util::forEachCallback(const List& list, const Callback& cb)
 	{
-		for (auto it = list.begin(); it != list.end(); ++it)
+		for (auto& fcb : list)
 		{
-			cb( *it );
+			cb(fcb);
 		}
 	}
 }

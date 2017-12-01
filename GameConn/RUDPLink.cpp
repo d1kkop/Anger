@@ -251,11 +251,10 @@ namespace Zerodelay
 
 	void RUDPLink::dispatchReliableQueue(ISocket* socket)
 	{
-		for (i32_t i = 0; i < sm_NumChannels; ++i)
+		for (auto& queue : m_SendQueue_reliable)
 		{
-			for (auto& it : m_SendQueue_reliable[i])
+			for (auto& pack : queue)
 			{
-				auto& pack = it;
 				// reliable pack.data is deleted when it gets acked
 				socket->send(m_EndPoint, pack.data, pack.len);
 			}
@@ -264,9 +263,8 @@ namespace Zerodelay
 
 	void RUDPLink::dispatchUnreliableQueue(ISocket* socket)
 	{
-		for (auto& it : m_SendQueue_unreliable)
+		for (auto& pack : m_SendQueue_unreliable)
 		{
-			auto& pack = it;
 			socket->send(m_EndPoint, pack.data, pack.len);
 			delete[] pack.data;
 		}
@@ -281,7 +279,6 @@ namespace Zerodelay
 		*(u32_t*)(dataBuffer + off_RelNew_Seq) = m_SendSeq_reliable_newest; // followed by sequence number
 		i32_t kNumGroupsWritten = 0;  // keeps track of num groups as is not know yet
 		i32_t kBytesWritten = off_RelNew_GroupId; // skip 4 bytes, as num groups is not yet known
-												  //for (auto& kvp : m_SendQueue_reliable_newest)
 		for (auto& it = m_SendQueue_reliable_newest.begin(); it != m_SendQueue_reliable_newest.end(); it++)
 		{
 			auto& kvp = *it;
@@ -396,26 +393,30 @@ namespace Zerodelay
 		switch ( type )
 		{
 		case EHeaderPacketType::Ack:
-		receiveAck(buff, rawSize);
-		break;
+			receiveAck(buff, rawSize);
+			break;
 
 		case EHeaderPacketType::Ack_Reliable_Newest:
-		receiveAckRelNewest(buff, rawSize);
-		break;
+			receiveAckRelNewest(buff, rawSize);
+			break;
 
 		case EHeaderPacketType::Reliable_Ordered:
-		// ack it (even if we already processed this packet)
-		addAckToAckQueue( buff[off_Norm_Chan] & 7, *(u32_t*)&buff[off_Norm_Seq] );
-		receiveReliableOrdered(buff, rawSize);	
-		break;
+			// ack it (even if we already processed this packet)
+			addAckToAckQueue( buff[off_Norm_Chan] & 7, *(u32_t*)&buff[off_Norm_Seq] );
+			receiveReliableOrdered(buff, rawSize);	
+			break;
 
 		case EHeaderPacketType::Unreliable_Sequenced:
-		receiveUnreliableSequenced(buff, rawSize);
-		break;
+			receiveUnreliableSequenced(buff, rawSize);
+			break;
 
 		case EHeaderPacketType::Reliable_Newest:
-		receiveReliableNewest( buff, rawSize );
-		break;
+			receiveReliableNewest( buff, rawSize );
+			break;
+
+		default:
+			Platform::log("WARNING: Unknown HeaderPacketType received. Packet dropped.");
+			break;
 		}
 	}
 

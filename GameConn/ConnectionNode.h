@@ -70,8 +70,6 @@ namespace Zerodelay
 		void recvDisconnectPacket( const i8_t* payload, i32_t len, class Connection* g );
 		void recvRemoteConnected(class Connection* g, const i8_t* payload, i32_t payloadLen);
 		void recvRemoteDisconnected(class Connection* g, const i8_t* payload, i32_t payloadLen);
-		void recvInvalidPassword(class Connection* g, const i8_t* payload, i32_t payloadLen);
-		void recvMaxConnectionsReached(class Connection* g, const i8_t* payload, i32_t payloadLen);
 		void recvAlreadyConnected(class Connection* g, const i8_t* payload, i32_t payloadLen);
 		// updating
 		void updateConnecting( class Connection* g );

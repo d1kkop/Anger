@@ -23,6 +23,7 @@ namespace Zerodelay
 	Connection::Connection(ConnectionNode* connectionNode, bool wasConnector, RUDPLink* link, i32_t timeoutSeconds, i32_t keepAliveIntervalSeconds):
 		m_ConnectionNode(connectionNode),
 		m_Link(link),
+		m_Endpoint(link->getEndPoint()),
 		m_WasConnector(wasConnector),
 		m_DisconnectCalled(false),
 		m_ConnectTimeoutSeconMs(timeoutSeconds*1000),
@@ -86,6 +87,14 @@ namespace Zerodelay
 		m_State = EConnectionState::MaxConnectionsReached;
 		m_ConnectionNode->doConnectResultCallbacks( getEndPoint(), EConnectResult::MaxConnectionsReached );
 		Platform::log("Received max connections reached for connection %s.", getEndPoint().asString().c_str());
+	}
+
+	void Connection::setInvalidConnectPacket()
+	{
+		Ensure_State(Connecting);
+		m_State = EConnectionState::InvalidConnectPacket;
+		m_ConnectionNode->doConnectResultCallbacks(getEndPoint(), EConnectResult::InvalidConnectPacket);
+		Platform::log("Received invalid connect packet for connection %s.", getEndPoint().asString().c_str());
 	}
 
 	void Connection::sendConnectRequest(const std::string& pw)
@@ -175,8 +184,7 @@ namespace Zerodelay
 
 	const EndPoint& Connection::getEndPoint() const
 	{
-		assert(m_Link);
-		return m_Link->getEndPoint();
+		return m_Endpoint;
 	}
 
 	EConnectionState Connection::getState() const
