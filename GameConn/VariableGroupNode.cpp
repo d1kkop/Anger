@@ -91,6 +91,8 @@ namespace Zerodelay
 
 	void VariableGroupNode::update()
 	{
+		if (m_CoreNode->hasCriticalErrors()) return;
+
 		intervalSendIdRequest();
 		resolvePendingGroups();	// causes groups to be created
 		sendVariableGroups();	// syncs variables in the groups
@@ -278,7 +280,8 @@ namespace Zerodelay
 			u32_t groupId = *(u32_t*)data;
 			if (!deserializeGroup(data, buffLen))
 			{
-				Platform::log( "ERROR deserialization of variable group failed dataLen %d", buffLen );
+				Platform::log( "ERROR deserialization of variable group failed dataLen %d.", buffLen );
+				m_CoreNode->setCriticalError(ECriticalError::SerializationError, ZERODELAY_FUNCTION);
 				break;
 			}
 			else
@@ -292,8 +295,11 @@ namespace Zerodelay
 		}
 		// If all data is exactly read, then buffLen should be zero, if groups are skipped, then this is subtracted from BuffLen, so should still be zero.
 		assert( buffLen == 0 );
-		// if ( buffLen != 0 ) // TODO set critical error
-						
+		if (buffLen != 0)
+		{
+			Platform::log( "ERROR deserialization of %d variable groups was not correct.", numGroups );
+			m_CoreNode->setCriticalError(ECriticalError::SerializationError, ZERODELAY_FUNCTION);
+		}				
 	}
 
 	void VariableGroupNode::sendCreateVariableGroup(u32_t networkId, const i8_t* paramData, i32_t paramDataLen, i8_t channel)
@@ -416,7 +422,8 @@ namespace Zerodelay
 		i8_t name[RPC_NAME_MAX_LENGTH];
 		if (!Util::readFixed(name, RPC_NAME_MAX_LENGTH, data, (RPC_NAME_MAX_LENGTH < len ? RPC_NAME_MAX_LENGTH : len)))
 		{
-			Platform::log("CRITICAL serialization error in %s, trying to read function name %s, remote variable group was not created!", __FUNCTION__, name);
+			Platform::log("CRITICAL serialization error in %s, trying to read function name %s, remote variable group was not created!", ZERODELAY_FUNCTION, name);
+			m_CoreNode->setCriticalError(ECriticalError::SerializationError, ZERODELAY_FUNCTION);
 			return;
 		}
 		u32_t nId = *(u32_t*)(data + RPC_NAME_MAX_LENGTH);
@@ -435,7 +442,8 @@ namespace Zerodelay
 		}
 		else
 		{
-			Platform::log("CRITICAL: serialize group function: %s not found, from: %s, no remote variable group was created!", fname, __FUNCTION__);
+			Platform::log("CRITICAL: serialize group function: %s not found, from: %s, no remote variable group was created!", fname, ZERODELAY_FUNCTION);
+			m_CoreNode->setCriticalError(ECriticalError::CannotFindExternalCFunction, ZERODELAY_FUNCTION);
 		}
 	}
 

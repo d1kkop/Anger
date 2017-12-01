@@ -139,6 +139,8 @@ namespace Zerodelay
 
 	void ConnectionNode::update()
 	{
+		if (m_CoreNode->hasCriticalErrors()) return;
+
 		for ( auto it = m_Connections.begin(); it != m_Connections.end(); )
 		{
 			Connection* c = it->second;

@@ -121,7 +121,7 @@ namespace Zerodelay
 	{
 	public:
 		SDLSocket();
-		virtual ~SDLSocket();
+		~SDLSocket() override;
 
 		// ISocket
 		virtual bool open(IPProto ipProto, bool reuseAddr) override;

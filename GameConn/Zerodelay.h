@@ -224,7 +224,7 @@ namespace Zerodelay
 
 
 		/*	Fills the vector with all fully connected connections, that is all connections which are not in an any other state than
-			connected. Therefore, connections in connecting state or disconnecting state are discareded. */
+			connected. Therefore, connections in connecting state or disconnecting state are discarded. */
 		void getConnectionListCopy( std::vector<ZEndpoint>& listOut );
 
 
@@ -244,37 +244,35 @@ namespace Zerodelay
 			[specific]	- If nullptr, message is sent to all connections in node.
 						- If not nullptr and exclude is false, then message is only sent to the specific address.
 						- If not nullptr and exclude is true, then message is sent to all except the specific.
-			[channel]	On what channel to sent the message. Packets are sequenced and ordered per channel. Max of 8 channels.
+			[channel]	On what channel to sent the message. Packets are sequenced and ordered per channel. Max of 8 channels, 0 to 7.
 			[relay]		Whether to relay the message to other connected clients when it arrives. 
-			[requiresConnection] If false, the packet is sent regardless of whether the endpoint(s) are in connected state. Default is true to avoid non atomic network actions. */
+			[requiresConnection] If false, the packet is sent regardless of whether the endpoint(s) are in connected state. Default true. */
 		void sendReliableOrdered( u8_t packId, const i8_t* data, i32_t len, const ZEndpoint* specific=nullptr, bool exclude=false, u8_t channel=0, bool relay=true, bool requiresConnection=true );
 
 
-		/*	The last message of a certain 'dataId' is guarenteed to arrive. That is, if twice data is send with the same 'dataId' the first one may not arrive.
+		/*	The last message of a certain 'dataId' is guarenteed to arrive. That is, if twice data is sent with the same 'dataId' the first one may not arrive.
 			[packId]	Id of message. Should start from USER_ID_OFFSET, see above.
 			[data]		Actual payload of message.
 			[len]		Length of payload.
 			[groupId]	Identifies the data group we want to update.
-			[groupBit]	Identifies the piece of data in the group we want to update. A maximum of 16 pieces can be set, so bit [0 to 15].
+			[groupBit]	Identifies the piece of data in the group we want to update. A maximum of 16 pieces can be set, bit [0 to 15].
 			[specific]	- If nullptr, message is sent to all connections in node.
-			- If not nullptr and exclude is false, then message is only sent to the specific address.
-			- If not nullptr and exclude is true, then message is sent to all except the specific. 
-			[requiresConnection] If false, the packet is sent regardless of whether the endpoint(s) are in connected state. 
-								 This might prove useful in case you want a connectionless state. */
+						- If not nullptr and exclude is false, then message is only sent to the specific address.
+						- If not nullptr and exclude is true, then message is sent to all except the specific. 
+			[requiresConnection] If false, the packet is sent regardless of whether the endpoint(s) are in connected state. Default true. */
 		void sendReliableNewest( u8_t packId, u32_t groupId, i8_t groupBit, const i8_t* data, i32_t len, const ZEndpoint* specific=nullptr, bool exclude=false, bool requiresConnection=true );
 
 
-		/*	Messages are unreliable (they may not arrive) but older or duplicate packets are ignored. This applies per channel.
+		/*	Messages are unreliable sequenced. This means that packets may not arrive. However, older or duplicate packets are dropped. This applies per channel.
 			[packId]	Id of message. Should start from USER_ID_OFFSET, see above.
 			[data]		Actual payload of message.
 			[len]		Length of payload.
 			[specific]	- If nullptr, message is sent to all connections in node.
 						- If not nullptr and exclude is false, then message is only sent to the specific address.
 						- If not nullptr and exclude is true, then message is sent to all except the specific.
-			[channel]	On what channel to sent the message. Packets are sequenced and ordered per channel. Max of 8 channels.
+			[channel]	On what channel to sent the message. Packets are sequenced and ordered per channel. Max of 8 channels, 0 to 7.
 			[relay]		Whether to relay the message to other connected clients when it arrives. 
-			[requiresConnection] If false, the packet is sent regardless of whether the endpoint(s) are in connected state. 
-								 This might prove useful in case you want a connectionless state. */
+			[requiresConnection] If false, the packet is sent regardless of whether the endpoint(s) are in connected state. Default is true. */
 		void sendUnreliableSequenced( u8_t packId, const i8_t* data, i32_t len, const ZEndpoint* specific=nullptr, bool exclude=false, u8_t channel=0, bool relay=true, bool requiresConnection=true );
 
 		/*	----- Callbacks ----------------------------------------------------------------------------------------------- */
@@ -283,21 +281,23 @@ namespace Zerodelay
 		void bindOnConnectResult( const std::function<void (const ZEndpoint&, EConnectResult)>& cb );
 
 
-		/*	[directLink]	If true, a connection attempt was made to this Znode. 
-							If false, a non directive link such as a remote connection that disconnected from the server.
+		/*	This event occurs when a remote endpoint called 'connect'.
+			[directLink]	If true, a connection attempt was made to this Znode. 
+							If false, a non directive link such as a remote connection that connected to the server.
 							If false, the endpoint will not be found when obtaining a list of open connections through getNumOpenConnections(). 
-			[Zendpoint]		The endpoint, either of our direct link or relayed by eg the server (a remote). */
+			[Zendpoint]		The endpoint, either of our direct link or relayed by eg. a server. */
 		void bindOnNewConnection( const std::function<void (bool directLink, const ZEndpoint&)>& cb );
 
 
-		/*	[directLink]	If true, one of the endpoints that this Znode connected to disconnects our we disconnected.
+		/*	This event occurs when we or a remote endpoint called 'disconnect'.
+			[directLink]	If true, one of the endpoints that this Znode connected to disconnected to us our we disconnected to them.
 							If false, the message is relayed by an authorative node such as the server. 
 							If false, the endpoint will not be found when obtaining a list of open connections through getNumOpenConnections(). 
-			[Zendpoint]		The endpoint, either of our direct link or relayed by eg the server (a remote). */
+			[Zendpoint]		The endpoint, either of our direct link or relayed by eg. the server. */
 		void bindOnDisconnect( const std::function<void (bool directLink, const ZEndpoint&, EDisconnectReason)>& cb );
 
 
-		/*	For all other data that is specific to the application. */
+		/*	For all application specific data that was transmitted with an id >= USER_ID_OFFSET. */
 		void bindOnCustomData( const std::function<void (const ZEndpoint&, u8_t id, const i8_t* data, i32_t length, u8_t channel)>& cb );
 
 
