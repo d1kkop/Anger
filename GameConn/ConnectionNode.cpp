@@ -81,7 +81,7 @@ namespace Zerodelay
 		return EListenCallResult::Succes;
 	}
 
-	EDisconnectCallResult ConnectionNode::disconnect(const EndPoint& endPoint)
+	EDisconnectCallResult ConnectionNode::disconnect(const EndPoint& endPoint, EDisconnectReason reason, EConnectionState newState, bool sendMsg, bool deleteAndRemove)
 	{
 		// check if exists
 		auto& it = m_Connections.find( endPoint );
@@ -89,9 +89,12 @@ namespace Zerodelay
 		{
 			Connection* conn = it->second;
 			EDisconnectCallResult disconResult = (conn->isConnected() ? EDisconnectCallResult::Succes : EDisconnectCallResult::NotConnected);
-			conn->disconnect(true, endPoint, EDisconnectReason::Closed, EConnectionState::Disconnected, true);
-			delete conn;
-			m_Connections.erase(it);
+			conn->disconnect(true, endPoint, reason, newState, sendMsg);
+			if (deleteAndRemove)
+			{
+				delete conn;
+				m_Connections.erase(it);
+			}
 			return disconResult;
 		}
 		return EDisconnectCallResult::UnknownEndpoint;
@@ -106,6 +109,16 @@ namespace Zerodelay
 			delete c;
 		}
 		m_Connections.clear();
+	}
+
+	void ConnectionNode::deleteConnection(const EndPoint& endPoint)
+	{
+		auto& it = m_Connections.find( endPoint );
+		if ( it != m_Connections.end() )
+		{
+			delete it->second;
+			m_Connections.erase(it);
+		}
 	}
 
 	void ConnectionNode::deleteConnections()
@@ -304,7 +317,11 @@ namespace Zerodelay
 			return;
 		}
 		// to all except
-		m_DispatchNode->send( (u8_t)EDataPacketType::RemoteConnected, buff, offs, &etp, true );
+		forConnections(&g->getEndPoint(), true, [&](Connection& c)
+		{
+			if (!c.isConnected()) return;
+			c.getLink()->addToSendQueue( (u8_t)EDataPacketType::RemoteConnected, buff, offs, EHeaderPacketType::Reliable_Ordered, 0, false );
+		});
 	}
 
 	void ConnectionNode::sendRemoteDisconnected(const Connection* g, EDisconnectReason reason)
@@ -327,7 +344,11 @@ namespace Zerodelay
 			return;
 		}
 		// to all except
-		m_DispatchNode->send( (u8_t)EDataPacketType::RemoteDisconnected, buff, offs+1, &etp, true );
+		forConnections(&g->getEndPoint(), true, [&](Connection& c)
+		{
+			if (!c.isConnected()) return; // skip 
+			c.getLink()->addToSendQueue( (u8_t)EDataPacketType::RemoteDisconnected, buff, offs+1, EHeaderPacketType::Reliable_Ordered, 0, false );
+		});
 	}
 
 	void ConnectionNode::sendSystemMessage(RUDPLink& link, EDataPacketType state, const i8_t* payload, i32_t len)
@@ -352,18 +373,18 @@ namespace Zerodelay
 			if (packType == EDataPacketType::ConnectRequest) 
 			{
 				recvConnectPacket(payload, payloadLen, link);
+				return true;
 			}
-			else
-			{
-				// This ensures that the link gets immediately marked for delete so that it will remove itself after linger time.
-				handleInvalidConnectAttempt(EDataPacketType::InvalidConnectPacket, link);
-			}
-			return true; // packet handled
+			// allow packets to be transfered without having a connection such as RPC
+			return false; 
 		}
 		else
 		{
 			switch (packType)
 			{
+			case EDataPacketType::ConnectRequest: // in p2p, there is already a connection for a request
+				recvConnectAccept(g);
+				break;
 			case EDataPacketType::ConnectAccept:
 				recvConnectAccept(g);
 				break;
@@ -518,9 +539,10 @@ namespace Zerodelay
 	{
 		bool bWasConnected = g->isConnected();
 		g->updateKeepAlive();
-		if (bWasConnected && m_RelayConnectAndDisconnect) 
+		if (bWasConnected && !g->isConnected() && m_RelayConnectAndDisconnect) 
 		{
 			sendRemoteDisconnected( g, EDisconnectReason::Lost );
+			deleteConnection(g->getEndPoint());
 		}
 	}
 

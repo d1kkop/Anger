@@ -1,12 +1,466 @@
 --------- NEW SESSION ---------
 -------------------------------
-Sun Aug 20 23:33:39 2017		accepted connection 2.0.105.120:27000
-Sun Aug 20 23:33:39 2017		remote 2.0.220.157:56477 connected
-Sun Aug 20 23:33:39 2017		remote 2.0.220.157:56477 connected
-Sun Aug 20 23:33:39 2017		remote 2.0.220.157:56477 connected
-Sun Aug 20 23:33:39 2017		remote 2.0.220.157:56477 connected
-Sun Aug 20 23:33:45 2017		disconnect received, removing connecting..2.0.220.152:56472
-Sun Aug 20 23:33:45 2017		disconnect received, removing connecting..2.0.220.154:56474
-Sun Aug 20 23:33:46 2017		disconnect received, removing connecting..2.0.220.157:56477
-Sun Aug 20 23:33:46 2017		disconnect received, removing connecting..2.0.220.153:56473
-Sun Aug 20 23:33:46 2017		disconnect received, removing connecting..2.0.220.155:56475
+Sat Dec  2 01:26:23 2017		Received max connections reached for connection 1.0.0.127.
+Sat Dec  2 01:26:23 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:23 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:23 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:23 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:23 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:23 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:23 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:23 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:23 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:23 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:23 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:23 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:23 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:23 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:23 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:23 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:23 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:24 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:24 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:24 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:24 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:24 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:24 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:24 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:24 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:24 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:24 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:24 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:24 2017		Ignoring data for conn 1.0.0.127 as is pending delete... hdrId: 0 data:  dataId: 100, deleted for time 551 ms
+Sat Dec  2 01:26:24 2017		Ignoring data for conn 1.0.0.127 as is pending delete... hdrId: 0 data:  dataId: 100, deleted for time 551 ms
+Sat Dec  2 01:26:24 2017		Ignoring data for conn 1.0.0.127 as is pending delete... hdrId: 0 data:  dataId: 100, deleted for time 551 ms
+Sat Dec  2 01:26:24 2017		Ignoring data for conn 1.0.0.127 as is pending delete... hdrId: 0 data:  dataId: 100, deleted for time 552 ms
+Sat Dec  2 01:26:24 2017		Ignoring data for conn 1.0.0.127 as is pending delete... hdrId: 0 data:  dataId: 100, deleted for time 552 ms
+Sat Dec  2 01:26:24 2017		Ignoring data for conn 1.0.0.127 as is pending delete... hdrId: 0 data:  dataId: 100, deleted for time 552 ms
+Sat Dec  2 01:26:24 2017		Ignoring data for conn 1.0.0.127 as is pending delete... hdrId: 0 data:  dataId: 8, deleted for time 552 ms
+Sat Dec  2 01:26:24 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:24 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:24 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:24 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:24 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:24 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:24 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:24 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:24 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:24 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:24 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:24 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:24 2017		Ignoring data for conn 1.0.0.127 as is pending delete... hdrId: 0 data:  dataId: 100, deleted for time 852 ms
+Sat Dec  2 01:26:24 2017		Ignoring data for conn 1.0.0.127 as is pending delete... hdrId: 0 data:  dataId: 100, deleted for time 853 ms
+Sat Dec  2 01:26:24 2017		Ignoring data for conn 1.0.0.127 as is pending delete... hdrId: 0 data:  dataId: 100, deleted for time 853 ms
+Sat Dec  2 01:26:24 2017		Ignoring data for conn 1.0.0.127 as is pending delete... hdrId: 0 data:  dataId: 100, deleted for time 854 ms
+Sat Dec  2 01:26:24 2017		Ignoring data for conn 1.0.0.127 as is pending delete... hdrId: 0 data:  dataId: 100, deleted for time 854 ms
+Sat Dec  2 01:26:24 2017		Ignoring data for conn 1.0.0.127 as is pending delete... hdrId: 0 data:  dataId: 100, deleted for time 854 ms
+Sat Dec  2 01:26:24 2017		Ignoring data for conn 1.0.0.127 as is pending delete... hdrId: 0 data:  dataId: 8, deleted for time 855 ms
+Sat Dec  2 01:26:35 2017		Disconnect received, removing connection 1.0.0.127.
+Sat Dec  2 01:26:35 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:35 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:35 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:35 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:35 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:35 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:36 2017		WARNING: received disconnect multiple times from: 1.0.0.127
+Sat Dec  2 01:26:36 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:36 2017		Remote 1.0.0.127 disconnected.
+Sat Dec  2 01:26:36 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:36 2017		Remote 1.0.0.127 disconnected.
+Sat Dec  2 01:26:36 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:36 2017		WARNING: received disconnect multiple times from: 1.0.0.127
+Sat Dec  2 01:26:36 2017		WARNING: received disconnect multiple times from: 1.0.0.127
+Sat Dec  2 01:26:36 2017		Remote 1.0.0.127 disconnected.
+Sat Dec  2 01:26:36 2017		Remote 1.0.0.127 disconnected.
+Sat Dec  2 01:26:36 2017		WARNING: received disconnect multiple times from: 1.0.0.127
+Sat Dec  2 01:26:36 2017		WARNING: received disconnect multiple times from: 1.0.0.127
+Sat Dec  2 01:26:36 2017		Remote 1.0.0.127 disconnected.
+Sat Dec  2 01:26:36 2017		Remote 1.0.0.127 disconnected.
+Sat Dec  2 01:26:36 2017		WARNING: received disconnect multiple times from: 1.0.0.127
+Sat Dec  2 01:26:36 2017		Remote 1.0.0.127 disconnected.
+Sat Dec  2 01:26:36 2017		Remote 1.0.0.127 disconnected.
+Sat Dec  2 01:26:36 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:36 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:36 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:36 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:36 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:36 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:36 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:36 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:36 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:36 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:36 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:36 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:36 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:36 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:36 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:36 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:36 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:36 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:36 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:36 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:36 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:36 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:36 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:36 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:36 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:36 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:36 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:36 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:36 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:36 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:36 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:36 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:36 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:36 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:36 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:36 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:36 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:36 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:36 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:36 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:36 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:36 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:36 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:36 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:36 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:36 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:36 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:37 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:37 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:37 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:37 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:37 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:37 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:37 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:37 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:37 2017		Disconnect received, removing connection 1.0.0.127.
+Sat Dec  2 01:26:37 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:37 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:37 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:37 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:37 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:37 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:37 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:37 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:37 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:37 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:37 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:37 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:37 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:37 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:37 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:37 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:37 2017		Remote 1.0.0.127 disconnected.
+Sat Dec  2 01:26:37 2017		WARNING: received disconnect multiple times from: 1.0.0.127
+Sat Dec  2 01:26:37 2017		Remote 1.0.0.127 disconnected.
+Sat Dec  2 01:26:37 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:37 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:37 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:37 2017		WARNING: received disconnect multiple times from: 1.0.0.127
+Sat Dec  2 01:26:37 2017		Remote 1.0.0.127 disconnected.
+Sat Dec  2 01:26:37 2017		Remote 1.0.0.127 disconnected.
+Sat Dec  2 01:26:37 2017		WARNING: received disconnect multiple times from: 1.0.0.127
+Sat Dec  2 01:26:37 2017		Remote 1.0.0.127 disconnected.
+Sat Dec  2 01:26:37 2017		WARNING: received disconnect multiple times from: 1.0.0.127
+Sat Dec  2 01:26:37 2017		Remote 1.0.0.127 disconnected.
+Sat Dec  2 01:26:37 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:37 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:37 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:37 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:37 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:37 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:37 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:37 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:37 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:37 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:37 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:37 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:37 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:37 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:37 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:37 2017		Disconnect received, removing connection 1.0.0.127.
+Sat Dec  2 01:26:37 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:37 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:37 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:37 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:38 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:38 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:38 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:38 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:38 2017		Disconnect received, removing connection 1.0.0.127.
+Sat Dec  2 01:26:38 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:38 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:38 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:38 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:38 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:38 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:38 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:38 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:38 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:38 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:38 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:38 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:38 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:38 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:38 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:38 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:38 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:38 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:38 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:38 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:38 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:38 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:38 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:38 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:38 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:38 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:38 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:38 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:38 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:38 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:38 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:38 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:38 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:38 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:38 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:38 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:38 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:38 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:38 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:38 2017		Remote 1.0.0.127 disconnected.
+Sat Dec  2 01:26:38 2017		Remote 1.0.0.127 disconnected.
+Sat Dec  2 01:26:38 2017		WARNING: received disconnect multiple times from: 1.0.0.127
+Sat Dec  2 01:26:38 2017		Remote 1.0.0.127 disconnected.
+Sat Dec  2 01:26:38 2017		WARNING: received disconnect multiple times from: 1.0.0.127
+Sat Dec  2 01:26:38 2017		Remote 1.0.0.127 disconnected.
+Sat Dec  2 01:26:38 2017		Remote 1.0.0.127 disconnected.
+Sat Dec  2 01:26:38 2017		Remote 1.0.0.127 disconnected.
+Sat Dec  2 01:26:38 2017		WARNING: received disconnect multiple times from: 1.0.0.127
+Sat Dec  2 01:26:38 2017		WARNING: received disconnect multiple times from: 1.0.0.127
+Sat Dec  2 01:26:38 2017		Remote 1.0.0.127 disconnected.
+Sat Dec  2 01:26:38 2017		Remote 1.0.0.127 disconnected.
+Sat Dec  2 01:26:38 2017		WARNING: received disconnect multiple times from: 1.0.0.127
+Sat Dec  2 01:26:38 2017		Remote 1.0.0.127 disconnected.
+Sat Dec  2 01:26:38 2017		WARNING: received disconnect multiple times from: 1.0.0.127
+Sat Dec  2 01:26:38 2017		Remote 1.0.0.127 disconnected.
+Sat Dec  2 01:26:38 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:38 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:38 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:38 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:38 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:38 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:38 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:38 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:38 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:38 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:38 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:38 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:38 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:38 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:38 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:38 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:38 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:38 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:38 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:38 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:38 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:38 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:38 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:38 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:38 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:38 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:38 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:38 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:38 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:38 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:38 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:38 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:38 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:38 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:38 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:38 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:38 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:38 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:38 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:38 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:38 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:38 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:38 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:38 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:38 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:38 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:38 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:38 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:38 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:38 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:38 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:38 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:38 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:38 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:38 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:38 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:38 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:38 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:38 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:38 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:38 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:38 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:38 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:38 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:38 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:38 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:38 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:38 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:38 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:38 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:38 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:38 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:38 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:38 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:38 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:39 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:39 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:39 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:39 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:39 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:39 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:39 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:39 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:39 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:39 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:39 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:39 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:39 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:39 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:39 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:39 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:41 2017		Disconnect received, removing connection 1.0.0.127.
+Sat Dec  2 01:26:41 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:41 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:41 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:41 2017		Remote 1.0.0.127 disconnected.
+Sat Dec  2 01:26:41 2017		Remote 1.0.0.127 disconnected.
+Sat Dec  2 01:26:41 2017		Remote 1.0.0.127 disconnected.
+Sat Dec  2 01:26:41 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:41 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:41 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:41 2017		Remote 1.0.0.127 disconnected.
+Sat Dec  2 01:26:41 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:41 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:41 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:41 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:41 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:41 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:41 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:41 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:41 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:41 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:41 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:41 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:41 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:41 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:41 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:41 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:41 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:41 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:41 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:41 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:41 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:41 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:41 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:41 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:41 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:41 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:42 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:42 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:42 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:50 2017		Disconnect received, removing connection 1.0.0.127.
+Sat Dec  2 01:26:50 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:50 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:50 2017		Remote 1.0.0.127 disconnected.
+Sat Dec  2 01:26:50 2017		WARNING: received disconnect multiple times from: 1.0.0.127
+Sat Dec  2 01:26:50 2017		Remote 1.0.0.127 disconnected.
+Sat Dec  2 01:26:50 2017		Remote 1.0.0.127 disconnected.
+Sat Dec  2 01:26:50 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:50 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:50 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:50 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:50 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:50 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:50 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:50 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:50 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:51 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:51 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:51 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:51 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:51 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:51 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:51 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:51 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:51 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:51 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:51 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:51 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:51 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:51 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:51 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:51 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:51 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:51 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:51 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:51 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:51 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:51 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:52 2017		Disconnect received, removing connection 1.0.0.127.
+Sat Dec  2 01:26:52 2017		Remote 1.0.0.127 disconnected.
+Sat Dec  2 01:26:52 2017		Remote 1.0.0.127 disconnected.
+Sat Dec  2 01:26:52 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:52 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:52 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:52 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:52 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:52 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:53 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:53 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:53 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:53 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:53 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:53 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:53 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:53 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:53 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:53 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:53 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:53 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:53 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:53 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:53 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:53 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:53 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:53 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:53 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:53 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:53 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:53 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:26:53 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:27:06 2017		Disconnect received, removing connection 1.0.0.127.
+Sat Dec  2 01:27:06 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:27:06 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:27:06 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:27:06 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:27:06 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:27:06 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:27:06 2017		WARNING: received disconnect multiple times from: 1.0.0.127
+Sat Dec  2 01:27:06 2017		Remote 1.0.0.127 disconnected.
+Sat Dec  2 01:27:07 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:27:07 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:27:07 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:27:07 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:27:07 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:27:07 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:27:07 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:27:07 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:27:07 2017		WARNING: Trying to send 0 while send is blocked.
+Sat Dec  2 01:27:10 2017		Disconnect received, removing connection 1.0.0.127.

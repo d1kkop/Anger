@@ -43,7 +43,7 @@ namespace __sr
 
 #define RPC_SEND(len) \
 	assert(len <= RPC_DATA_MAX); \
-	gn->sendReliableOrdered((u8_t)EDataPacketType::Rpc, data, (i32_t)(len), specific, exclude, channel, relay)
+	gn->sendReliableOrdered((u8_t)EDataPacketType::Rpc, data, (i32_t)(len), specific, exclude, channel, relay, true)
 
 
 #define RPC_FUNC_0( name ) \

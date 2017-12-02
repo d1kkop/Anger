@@ -77,18 +77,30 @@ namespace Zerodelay
 			m_CoreNode->setCriticalError(ECriticalError::InvalidLogic, ZERODELAY_FUNCTION);
 			return;
 		}
+		bool bWasSent = false;
 		forEachLink( specific, exclude, true, [&] (RUDPLink* link)
 		{
 			link->addToSendQueue( id, data, len, type, channel, relay );
+			bWasSent = true;
 		});
+		if (!bWasSent)
+		{
+			Platform::log("WARNING: data with id %d was not sent to anyone.", id);
+		}
 	}
 
 	void RecvNode::sendReliableNewest(u8_t id, u32_t groupId, i8_t groupBit, const i8_t* data, i32_t len, const EndPoint* specific, bool exclude)
 	{
+		bool bWasSent = false;
 		forEachLink( specific, exclude, true, [&] (RUDPLink* link)
 		{
 			link->addReliableNewest( id, data, len, groupId, groupBit );
+			bWasSent = true;
 		});
+		if (!bWasSent)
+		{
+			Platform::log("WARNING: reliable newest data with id %d, group id %d and groupBit %d was not sent to anyone.", id, groupId, groupBit);
+		}
 	}
 
 	RUDPLink* RecvNode::getLinkAndPinIt(u32_t idx)

@@ -11,6 +11,7 @@ namespace Zerodelay
 		EndPoint( const std::string& service, u16_t port );
 		bool operator==(const EndPoint& other) const;
 		bool operator!=(const EndPoint& other) const { return !(*this == other); }
+		bool equal(const EndPoint& other) const;
 
 		// Use to see if a host can be connected to. If false is erturned, use getLastError to obtain more info.
 		bool resolve( const std::string& name, u16_t port );

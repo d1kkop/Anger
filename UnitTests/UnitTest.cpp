@@ -380,7 +380,11 @@ namespace UnitTests
 	/// RPC
 	//////////////////////////////////////////////////////////////////////////
 
+#if _DEBUG
 	constexpr int nRpcs=10000;
+#else
+	constexpr int nRpcs=1000000;
+#endif
 	int __high[nRpcs];				int hR=0, hS=0;
 	float __fltMax[nRpcs];			int hR1=0, hS1=0;
 	float __fltMin[nRpcs];			int hR2=0, hS2=0;
@@ -580,6 +584,8 @@ namespace UnitTests
 			}
 		});
 
+		// wait to be connected
+		std::this_thread::sleep_for(1000ms);
 
 		int k = 0; 
 		int p = nRpcs;
@@ -596,10 +602,17 @@ namespace UnitTests
 			rpc_unitRpcTest7( g1, __high[hS6], __fltMax[hS6], __dblMax[hS6], __llong[hS6], __bb[hS6], __dblMin[hS6], __sk[hS6], false, nullptr, false, rpcChan ); hS6++;
 			rpc_unitRpcTest8( g1, __high[hS7], __fltMax[hS7], __dblMax[hS7], __llong[hS7], __bb[hS7], __dblMin[hS7], __sk[hS7], __fltMin[hS7], false, nullptr, false, rpcChan ); hS7++;
 			rpc_unitRpcTest9( g1, __high[hS8], __fltMax[hS8], __dblMax[hS8], __llong[hS8], __bb[hS8], __dblMin[hS8], __sk[hS8], __fltMin[hS8], __dblMax[hS8], false, nullptr, false, rpcChan ); hS8++;
-			//std::this_thread::sleep_for(1ms);
+		//	std::this_thread::sleep_for(1ms);
 		}
 
-		std::this_thread::sleep_for(300ms);
+		while (g1->hasPendingData() || g2->hasPendingData())
+		{
+			std::this_thread::sleep_for(2ms);
+		}
+
+		g1->disconnect();
+		g2->disconnect();
+		
 		bThreadClose = true;
 
 		if ( t.joinable() )

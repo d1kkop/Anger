@@ -2,6 +2,7 @@
 
 #include "Zerodelay.h"
 #include "EndPoint.h"
+#include "Connection.h"
 #include "Util.h"
 
 #include <cassert>
@@ -28,8 +29,9 @@ namespace Zerodelay
 		EConnectCallResult connect( const EndPoint& endPoint, const std::string& pw="", i32_t timeoutSeconds=8, bool sendRequest=true );
 		EConnectCallResult connect( const std::string& name, i32_t port, const std::string& pw="", i32_t timeoutSeconds=8, bool sendRequest=true );
 		EListenCallResult listenOn( i32_t port );
-		EDisconnectCallResult disconnect( const EndPoint& endPoint );
+		EDisconnectCallResult disconnect(const EndPoint& endPoint, EDisconnectReason reason, EConnectionState newState, bool sendMsg, bool deleteAndRemove);
 		void disconnectAll();
+		void deleteConnection(const EndPoint& endPoint);
 		void deleteConnections();
 		i32_t getNumOpenConnections() const;
 		bool isInConnectionList(const ZEndpoint& ztp) const;

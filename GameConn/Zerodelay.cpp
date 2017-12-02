@@ -137,7 +137,7 @@ namespace Zerodelay
 
 	EDisconnectCallResult ZNode::disconnect(const ZEndpoint& endPoint)
 	{
-		return C->cn()->disconnect( toEtp( endPoint ) );
+		return C->cn()->disconnect( toEtp(endPoint), EDisconnectReason::Closed, EConnectionState::Disconnected, true, true );
 	}
 
 	EListenCallResult ZNode::listen(i32_t port, const std::string& pw, i32_t maxConnections)

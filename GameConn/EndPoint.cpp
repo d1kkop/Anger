@@ -7,8 +7,12 @@
 
 namespace Zerodelay
 {
-
 	bool EndPoint::operator==(const EndPoint& other) const
+	{
+		return equal(other);
+	}
+
+	bool EndPoint::equal(const EndPoint& other) const
 	{
 		return compareLess(*this, other) == 0;
 	}
@@ -39,7 +43,7 @@ namespace Zerodelay
 		resolve(service, port);
 	}
 
-	bool EndPoint::resolve(const std::string& name, u16_t port)
+	bool EndPoint::resolve(const std::string& name,u16_t port)
 	{
 	#if ZERODELAY_WIN32SOCKET
 		addrinfo hints;
