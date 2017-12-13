@@ -19,8 +19,6 @@ namespace Zerodelay
 
 	std::string EndPoint::asString() const
 	{
-		Platform::initialize();
-
 	#if ZERODELAY_WIN32SOCKET
 		// Ip
 		i8_t ipBuff[128] = { 0 };
@@ -40,6 +38,7 @@ namespace Zerodelay
 
 	EndPoint::EndPoint(const std::string& service, u16_t port)
 	{
+		Platform::initialize();
 		resolve(service, port);
 	}
 

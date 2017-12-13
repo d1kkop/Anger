@@ -35,3 +35,8 @@
 >>>>>>> 612db85aa653c8a3731a85938a87fe9817ea5d46
 x64/Debug/lnk{7BD6B1B9-892B-4390-8738-DB161F744463}.tmp
 *.tmp
+/x64/Debug/Chat.exe
+/x64/Debug/GameConn.dll
+/x64/Debug/GameConn.lib
+/x64/Debug/UnitTests.exe
+/x64/Debug/UnitTests.lib

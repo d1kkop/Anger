@@ -24,11 +24,12 @@ namespace Zerodelay
 
 	RecvNode::~RecvNode()
 	{
-		clean();
+		reset();
 	}
 
-	void RecvNode::clean()
+	void RecvNode::reset()
 	{
+		// destruct memory
 		m_IsClosing = true;
 		if ( m_Socket )
 		{
@@ -49,11 +50,20 @@ namespace Zerodelay
 			delete kvp.second;
 		}
 		delete m_Socket;
+		// reset state
+		Platform::log("RecvNode reset called, num links %d.", (i32_t)m_OpenLinksMap.size());
 		m_RecvThread = nullptr;
 		m_SendThread = nullptr;
 		m_OpenLinksMap.clear();
 		m_OpenLinksList.clear();
 		m_Socket = nullptr;
+		m_ListPinned = false;
+		m_IsClosing  = false;
+		//
+		// !! ptrs to other managers can be left in tact as well as user settings !!
+		//
+		// class CoreNode* m_CoreNode;
+		// class ConnectionNode* m_ConnectionNode;
 	}
 
 	void RecvNode::postInitialize(CoreNode* coreNode)
@@ -201,7 +211,7 @@ namespace Zerodelay
 					i32_t err = m_Socket->getUnderlayingSocketError();
 					if ( err != 0 )
 					{
-						Platform::log("WARNING: Socket error in recvPoint %d\n", err);
+						Platform::log("WARNING: Socket error in recvPoint %d.", err);
 					}
 				}
 				continue;
@@ -221,7 +231,7 @@ namespace Zerodelay
 					{
 						norm_id = buff[RUDPLink::off_Norm_Id];
 					}
-					Platform::log("Ignoring data for conn %s as is pending delete... hdrId: %d data: %s dataId: %d, deleted for time %d ms", link->getEndPoint().asString().c_str(), buff[0], buff, norm_id, timeSincePenDelete);
+					Platform::log("Ignoring data for conn %s as is pending delete... hdrId: %d data: %s dataId: %d, deleted for time %d ms.", link->getEndPoint().asString().c_str(), buff[0], buff, norm_id, timeSincePenDelete);
 				}
 				continue;
 			}
@@ -280,6 +290,7 @@ namespace Zerodelay
 			if ( link->getTimeSincePendingDelete() > RUDPLink::sm_MaxLingerTimeMs*2 )
 			{
 				// Actually delete the connection
+				Platform::log("Link to %s deleted.", link->getEndPoint().asString().c_str());
 				m_OpenLinksMap.erase(link->getEndPoint());
 				delete link;
 				it = m_OpenLinksList.erase(it);
@@ -308,6 +319,7 @@ namespace Zerodelay
 		auto it = m_OpenLinksMap.find( endPoint );
 		if ( it == m_OpenLinksMap.end() )
 		{
+			Platform::log("Link to %s added.", endPoint.asString().c_str());
 			RUDPLink* link = new RUDPLink( this, endPoint );
 			m_OpenLinksMap.insert( std::make_pair( endPoint, link ) );
 			m_OpenLinksList.emplace_back( link );

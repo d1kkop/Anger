@@ -37,6 +37,8 @@ namespace Zerodelay
 	public:
 		CoreNode(class ZNode* zn, class RecvNode* rn, class ConnectionNode* cn, class VariableGroupNode* vgn);
 		~CoreNode();
+		void reset();
+
 		void bindOnCustomData(const CustomDataCallback& cb)				{ Util::bindCallback(m_CustomDataCallbacks, cb); }
 
 		// Packets whose handle location is not really clear such as RPC and User data.

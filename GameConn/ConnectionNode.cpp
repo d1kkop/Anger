@@ -25,7 +25,35 @@ namespace Zerodelay
 
 	ConnectionNode::~ConnectionNode()
 	{
-		deleteConnections();
+		disconnect();
+	}
+
+	// Synonym for 'reset' in the ConnectionNode
+	void ConnectionNode::disconnect()
+	{
+		Platform::log("Disconnect called, num connections %d.", (i32_t)m_Connections.size());
+		// destruct memory
+		for ( auto& kvp : m_Connections )
+		{
+			Connection* c = kvp.second;
+			c->disconnect(true, c->getEndPoint(), EDisconnectReason::Closed, EConnectionState::Disconnected, true);
+			delete c;
+		}
+		// reset state
+		m_Connections.clear();
+		m_ProcessingConnection = nullptr;
+		//
+		//  !! leave user specified settings such as keep alive interval and max connections and callbacks in tact !!
+		//
+		//bool m_RelayConnectAndDisconnect;
+		//i32_t m_KeepAliveIntervalSeconds;
+		//i32_t m_MaxIncomingConnections;
+		//std::string m_Password;
+		//class Connection* m_ProcessingConnection;
+		//std::map<EndPoint, class Connection*, EndPoint::STLCompare> m_Connections;
+		//std::vector<ConnectResultCallback>	m_ConnectResultCallbacks;
+		//std::vector<DisconnectCallback>		m_DisconnectCallbacks;
+		//std::vector<NewConnectionCallback>	m_NewConnectionCallbacks;
 	}
 
 	void ConnectionNode::postInitialize(CoreNode* coreNode)
@@ -101,31 +129,6 @@ namespace Zerodelay
 		return EDisconnectCallResult::UnknownEndpoint;
 	}
 
-	void ConnectionNode::disconnectAll(u32_t lingerTimeMs)
-	{
-		for ( auto& kvp : m_Connections )
-		{
-			Connection* c = kvp.second;
-			c->disconnect(true, c->getEndPoint(), EDisconnectReason::Closed, EConnectionState::Disconnected, true);
-			delete c;
-		}
-		m_Connections.clear();
-		// Wait so that outgoing disconnect packets have a chance to dispatch.
-		if (lingerTimeMs)
-		{
-			std::this_thread::sleep_for(std::chrono::milliseconds(lingerTimeMs));
-		}
-	}
-
-	void ConnectionNode::deleteConnections()
-	{
-		for ( auto& kvp : m_Connections )
-		{
-			delete kvp.second;
-		}
-		m_Connections.clear();
-	}
-
 	i32_t ConnectionNode::getNumOpenConnections() const
 	{
 		i32_t num = 0;
@@ -167,6 +170,7 @@ namespace Zerodelay
 			EConnectionState state = c->getState();
 			if ( !(state == EConnectionState::Connected || state == EConnectionState::Connecting) )
 			{
+				Platform::log("Deleted connection to %s. Num remaining connections before delete %d.", c->getEndPoint().asString().c_str(), (i32_t)m_Connections.size());
 				delete c;
 				it = m_Connections.erase( it );
 				continue;

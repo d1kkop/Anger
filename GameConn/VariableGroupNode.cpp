@@ -27,10 +27,19 @@ namespace Zerodelay
 
 	VariableGroupNode::~VariableGroupNode() 
 	{
+		reset();
+	}
+
+	void VariableGroupNode::reset()
+	{
+		// destruct memory
+		Platform::log("VariableGroupNode reset called, num local groups %d, num remote endpoints %d.", 
+					  (i32_t)m_VariableGroups.size(), (i32_t)m_RemoteVariableGroups.size());
 		for ( auto& kvp : m_VariableGroups )
 		{
 			delete kvp.second;
 		}
+		m_VariableGroups.clear();
 		for ( auto& kvp : m_RemoteVariableGroups )
 		{
 			for ( auto& kvp2 : kvp.second )
@@ -38,6 +47,20 @@ namespace Zerodelay
 				delete kvp2.second;
 			}
 		}
+		m_RemoteVariableGroups.clear();
+		// reset state
+		m_UniqueIds.clear();
+		m_PendingGroups.clear();
+		m_LastIdPackRequestTS = -1;
+		m_UniqueIdCounter = 1;
+		// 
+		// !! leave ptrs to other managers and user specified settings (callbacks etc) in tact !!
+		//
+		// m_IsNetworkIdProvider = false;
+		// m_RelayVariableGroupEvents = false;
+		// class CoreNode* m_CoreNode;
+		// class ZNode* m_ZNode;
+		// class ConnectionNode* m_ConnectionNode;
 	}
 
 	void VariableGroupNode::postInitialize(CoreNode* coreNode)

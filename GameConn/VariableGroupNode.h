@@ -47,6 +47,8 @@ namespace Zerodelay
 	public:
 		VariableGroupNode();
 		~VariableGroupNode();
+		void reset();
+
 		void postInitialize(class CoreNode* coreNode);
 		void setupConnectionCallbacks();
 

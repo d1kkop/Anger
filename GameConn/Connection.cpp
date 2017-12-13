@@ -44,6 +44,7 @@ namespace Zerodelay
 	{
 		if (m_Link)
 		{
+			Platform::log("Clean link called on connection to %s.", m_Endpoint.asString().c_str());
 			m_Link->blockAllUpcomingSends();
 			m_Link->markPendingDelete();
 			m_Link = nullptr; // link itself is deleted from sendThread in receive/dispather node

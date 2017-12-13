@@ -18,12 +18,12 @@ namespace Zerodelay
 		m_IsP2P(false),
 		m_IsListening(false),
 		m_IsSuperPeer(false),
+		m_CriticalErrors(0),
 		m_ZNode(zn),
 		m_RecvNode(rn), 
 		m_ConnectionNode(cn),
 		m_VariableGroupNode(vgn)
 	{
-		m_CriticalErrors = 0;
 		assert(m_ZNode && m_RecvNode && m_ConnectionNode && m_VariableGroupNode && "Not all Ptrs set");
 		m_RecvNode->postInitialize(this);
 		m_ConnectionNode->postInitialize(this);
@@ -35,6 +35,17 @@ namespace Zerodelay
 		delete m_ConnectionNode;
 		delete m_VariableGroupNode;
 		delete m_RecvNode;
+	}
+
+	void CoreNode::reset()
+	{
+		m_CriticalErrors  = 0;
+		m_FunctionInError = "";
+		m_IsP2P = false;
+		m_IsListening = false;
+		m_IsSuperPeer = false;
+		// Leave userPtr in tact on disconnect. Also leave ptrs and callbacks.
+		Platform::log("CoreNode reset called.");
 	}
 
 	void CoreNode::recvRpcPacket(const i8_t* payload, i32_t len, const EndPoint& etp)

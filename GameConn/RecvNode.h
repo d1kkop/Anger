@@ -28,11 +28,12 @@ namespace Zerodelay
 	public:
 		RecvNode(i32_t resendIntervalMs=20);
 		virtual ~RecvNode();
+		void reset();
+
 		void postInitialize(class CoreNode* coreNode);
 		bool openSocketOnPort(u16_t port);
 
 	public:
-		void clean();
 		void send( u8_t id, const i8_t* data, i32_t len, const EndPoint* specific=nullptr, bool exclude=false, 
 				   EHeaderPacketType type=EHeaderPacketType::Reliable_Ordered, u8_t channel=0, bool relay=true );
 		void sendReliableNewest( u8_t id, u32_t groupId, i8_t groupBit, const i8_t* data, i32_t len, const EndPoint* specific=nullptr, bool exclude=false );
@@ -75,7 +76,7 @@ namespace Zerodelay
 		// Currently opened links are put in a list so that reopend links on same address can not depend on a previously opened session
 		std::map<EndPoint, class RUDPLink*, EndPoint::STLCompare> m_OpenLinksMap;
 		std::vector<class RUDPLink*> m_OpenLinksList;
-		bool m_ListPinned;
+		volatile bool m_ListPinned;
 		// -- Ptrs to other managers
 		class CoreNode* m_CoreNode;
 		class ConnectionNode* m_ConnectionNode;

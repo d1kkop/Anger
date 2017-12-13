@@ -6,7 +6,6 @@
 
 namespace Zerodelay
 {
-
 	ISocket::ISocket():
 		m_Open(false),
 		m_Bound(false),

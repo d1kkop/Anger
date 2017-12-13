@@ -132,9 +132,13 @@ namespace Zerodelay
 
 	void ZNode::disconnect(u32_t lingerTimeMs)
 	{
-		C->cn()->disconnectAll(lingerTimeMs);
-		C->rn()->clean();
-		C->setIsListening(false);
+		C->cn()->disconnect(); // synonym for reset in ConnectionNode
+		if (lingerTimeMs > 0)
+		{
+			std::this_thread::sleep_for(std::chrono::milliseconds(lingerTimeMs));
+		}
+		C->rn()->reset();
+		C->vgn()->reset();
 	}
 
 	EDisconnectCallResult ZNode::disconnect(const ZEndpoint& endPoint)
@@ -177,7 +181,8 @@ namespace Zerodelay
 
 	bool ZNode::isConnectionKnown(const ZEndpoint& ztp) const
 	{
-		bool res = (C->cn()->isInConnectionList(ztp) || C->rn()->getLink(toEtp(ztp), true) != nullptr);
+		auto res = C->rn()->getLink(toEtp(ztp), true) != nullptr;
+		//bool res = (C->cn()->isInConnectionList(ztp) || C->rn()->getLink(toEtp(ztp), true) != nullptr);
 		return res;
 	}
 

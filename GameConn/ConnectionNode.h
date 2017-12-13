@@ -23,6 +23,8 @@ namespace Zerodelay
 	public:
 		ConnectionNode(i32_t keepAliveIntervalSeconds=8);
 		~ConnectionNode();
+		void disconnect(); // synonym for 'reset' in the ConnectionNode
+
 		void postInitialize(class CoreNode* coreNode);
 
 		// state
@@ -30,8 +32,6 @@ namespace Zerodelay
 		EConnectCallResult connect( const std::string& name, i32_t port, const std::string& pw="", i32_t timeoutSeconds=8, bool sendRequest=true );
 		EListenCallResult listenOn( i32_t port );
 		EDisconnectCallResult disconnect(const EndPoint& endPoint, EDisconnectReason reason, EConnectionState newState, bool sendMsg, bool deleteAndRemove);
-		void disconnectAll(u32_t lingerTimeMs);
-		void deleteConnections();
 		i32_t getNumOpenConnections() const;
 		bool isInConnectionList(const ZEndpoint& ztp) const;
 		Connection* getConnection(const ZEndpoint& ztp) const;
