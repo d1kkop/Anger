@@ -56,16 +56,17 @@ namespace Zerodelay
 		{
 			return EConnectCallResult::AlreadyExists;
 		}
-		RUDPLink* link = m_DispatchNode->getOrAddLink( endPoint, false );
-		if (!link) // is nullptr if is pending delete
+		// add link fails if a previous already exists
+		RUDPLink* link = m_DispatchNode->addLink( endPoint );
+		if (!link)
 		{
 			return EConnectCallResult::AlreadyExists;
 		}
+		Connection* g = new Connection( this, true, link, timeoutSeconds, m_KeepAliveIntervalSeconds );
+		m_Connections.insert( std::make_pair( endPoint, g ) );
 		m_DispatchNode->startThreads(); // start after socket is opened
 		if ( sendRequest )
 		{
-			Connection* g = new Connection( this, true, link, timeoutSeconds, m_KeepAliveIntervalSeconds );
-			m_Connections.insert( std::make_pair( endPoint, g ) );
 			g->sendConnectRequest( pw );
 		}
 		return EConnectCallResult::Succes;
@@ -100,7 +101,7 @@ namespace Zerodelay
 		return EDisconnectCallResult::UnknownEndpoint;
 	}
 
-	void ConnectionNode::disconnectAll()
+	void ConnectionNode::disconnectAll(u32_t lingerTimeMs)
 	{
 		for ( auto& kvp : m_Connections )
 		{
@@ -109,15 +110,10 @@ namespace Zerodelay
 			delete c;
 		}
 		m_Connections.clear();
-	}
-
-	void ConnectionNode::deleteConnection(const EndPoint& endPoint)
-	{
-		auto& it = m_Connections.find( endPoint );
-		if ( it != m_Connections.end() )
+		// Wait so that outgoing disconnect packets have a chance to dispatch.
+		if (lingerTimeMs)
 		{
-			delete it->second;
-			m_Connections.erase(it);
+			std::this_thread::sleep_for(std::chrono::milliseconds(lingerTimeMs));
 		}
 	}
 
@@ -148,6 +144,14 @@ namespace Zerodelay
 	{
 		EndPoint etp = toEtp(ztp);
 		return m_Connections.count(etp) != 0;
+	}
+
+	Zerodelay::Connection* ConnectionNode::getConnection(const ZEndpoint& ztp) const
+	{
+		EndPoint etp = toEtp(ztp);
+		auto it = m_Connections.find(etp);
+		if (it != m_Connections.end()) return it->second;
+		return nullptr;
 	}
 
 	void ConnectionNode::update()
@@ -373,17 +377,20 @@ namespace Zerodelay
 			if (packType == EDataPacketType::ConnectRequest) 
 			{
 				recvConnectPacket(payload, payloadLen, link);
-				return true;
 			}
-			// allow packets to be transfered without having a connection such as RPC
-			return false; 
+			else
+			{
+				// for now, only allow other packets when having a connectin, so if not, remove the link
+				handleInvalidConnectAttempt(EDataPacketType::InvalidConnectPacket, link);
+			}
+			return true;
 		}
 		else
 		{
 			switch (packType)
 			{
 			case EDataPacketType::ConnectRequest: // in p2p, there is already a connection for a request
-				recvConnectAccept(g);
+				recvConnectPacket(payload, payloadLen, link);
 				break;
 			case EDataPacketType::ConnectAccept:
 				recvConnectAccept(g);
@@ -542,7 +549,6 @@ namespace Zerodelay
 		if (bWasConnected && !g->isConnected() && m_RelayConnectAndDisconnect) 
 		{
 			sendRemoteDisconnected( g, EDisconnectReason::Lost );
-			deleteConnection(g->getEndPoint());
 		}
 	}
 

@@ -130,9 +130,11 @@ namespace Zerodelay
 		return C->cn()->connect( name, port, pw, timeoutSeconds, sendRequest );
 	}
 
-	void ZNode::disconnect()
+	void ZNode::disconnect(u32_t lingerTimeMs)
 	{
-		C->cn()->disconnectAll();
+		C->cn()->disconnectAll(lingerTimeMs);
+		C->rn()->clean();
+		C->setIsListening(false);
 	}
 
 	EDisconnectCallResult ZNode::disconnect(const ZEndpoint& endPoint)
@@ -167,9 +169,16 @@ namespace Zerodelay
 		return C->rn()->getNumOpenLinks();
 	}
 
+	bool ZNode::isConnectedTo(const ZEndpoint& ztp) const
+	{
+		Connection* c = C->cn()->getConnection(ztp);
+		return c && c->isConnected();
+	}
+
 	bool ZNode::isConnectionKnown(const ZEndpoint& ztp) const
 	{
-		return C->cn()->isInConnectionList(ztp) || C->rn()->getLink(toEtp(ztp), true)!=nullptr;
+		bool res = (C->cn()->isInConnectionList(ztp) || C->rn()->getLink(toEtp(ztp), true) != nullptr);
+		return res;
 	}
 
 	bool ZNode::hasPendingData() const

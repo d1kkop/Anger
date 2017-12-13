@@ -54,7 +54,6 @@ namespace Zerodelay
 	{
 		if (m_DisconnectCalled)
 			return;
-
 		m_DisconnectCalled = true;
 		m_DisconnectTS = ::clock();
 		if ( m_State == EConnectionState::Connected ) 

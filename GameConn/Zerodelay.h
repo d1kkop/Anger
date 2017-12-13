@@ -89,16 +89,6 @@ namespace Zerodelay
 		Lost
 	};
 
-	// Not be confused with EDataPacketType
-	enum class EHeaderPacketType : u8_t
-	{
-		Reliable_Ordered,
-		Unreliable_Sequenced,
-		Reliable_Newest,
-		Ack,
-		Ack_Reliable_Newest
-	};
-
 
 	/** ---------------------------------------------------------------------------------------------------------------------------------
 		ZEndpoint is analogical to an address. It is either an Ipv4 or Ipv6 address.
@@ -161,8 +151,9 @@ namespace Zerodelay
 		EConnectCallResult connect( const std::string& name, i32_t port, const std::string& pw="", i32_t timeoutSeconds=8, bool sendConnectRequest=true );
 
 
-		/*	Calls disconnect on each connection in the node. New incoming connections can still connect. */
-		void disconnect();
+		/*	Calls disconnect on each connection in the node and stops listening for incoming connections. 
+			[lingerTimeMs]	Is time in millisecond to wait so that disconnect packets have a chance to dispatch. */
+		void disconnect(u32_t lingerTimeMs = 300);
 
 
 		/*	Disconnect a specific endpoint. */
@@ -179,28 +170,32 @@ namespace Zerodelay
 		EListenCallResult listen( i32_t port, const std::string& pw="", i32_t maxConnections=32 );
 
 
-		/*	Returns the number of connections that are not in a connecting or disconnecting state,
-			that is, connections that are fully operatable. 
-			If only a single connection is used to connect to a server, this function
-			can be queried to see if the connection attempt was succesful.
-			However, the recommended way is to bind a callback to: 'bindOnConnectResult', see below. */
+		/*	Returns the number of connected connections. Connections that are
+			in connected state or disconnected are not counted. */
 		i32_t getNumOpenConnections() const;
 
 
+		/*	Fills the vector with all connected connections. Connection in connecting or disconnected state are not copied into the list. */
+		void getConnectionListCopy( std::vector<ZEndpoint>& listOut );
+
+
 		/*	Returns number of open links. A link is a connection in any state, not only 'Connected'.
-			To obtain the number of links that are actually 'Connected' use: 'getNumOpenConnections(..)'.
+			To obtain the number of links that are actually 'Connected' use: 'getNumOpenConnections()'.
 			A link can be in many states such as a 'pending delete' or a 'timed out connection attempt'.  */
 		i32_t getNumOpenLinks() const;
 
 
+		/*	Returns true if the connection is in connected state only. Connecting or disconnected
+			connections will return false. */
+		bool isConnectedTo( const ZEndpoint& ztp ) const;
+
+
 		/*	Returns true if a connection to this endpoint is known.
-			That is, the connection may be in any state.
-			For instance, the state could be 'Connecting, Connected, Disconnecting, etc.
-			A connection is automatically cleaned up when a connection attempt failed or
-			if the connection was closed (may it be ungraceful).
-			This method could be used to periodically check if a connection is no longer known
-			and reconnect as such if desired. */
-		bool isConnectionKnown(const ZEndpoint& ztp) const;
+			This information is useful if you want to reconnect to the same service just after disconecting.
+			When you disconnect and immediately try to reconnect it will fail because the
+			previous connection to the same endpoint is still lingering to handle disconnect messages.
+			To make sure a previous connection is completely forgotten call this function. */
+		bool isConnectionKnown( const ZEndpoint& ztp ) const;
 
 
 		/*	Returns true if there is at least one connection that has pending data to be processed. */
@@ -218,14 +213,8 @@ namespace Zerodelay
 
 
 		/*	Max number of incoming connections this node will accept. 
-			This excludes connections created with 'connect'. 
 			Default is 32. */
 		void setMaxIncomingConnections( i32_t maxNumConnections );
-
-
-		/*	Fills the vector with all fully connected connections, that is all connections which are not in an any other state than
-			connected. Therefore, connections in connecting state or disconnecting state are discarded. */
-		void getConnectionListCopy( std::vector<ZEndpoint>& listOut );
 
 
 		/*	Returns ture if is server in client-server architecture or if is the authorative peer in a p2p network. */
@@ -240,7 +229,7 @@ namespace Zerodelay
 		/*	Messages are guarenteed to arrive and also in the order they were sent. This applies per channel.
 			[packId]	Id of message. Should start from USER_ID_OFFSET, see above.
 			[data]		Actual payload of message.
-			[len]		Length of payload.
+			[len]		Length of payload (bytes).
 			[specific]	- If nullptr, message is sent to all connections in node.
 						- If not nullptr and exclude is false, then message is only sent to the specific address.
 						- If not nullptr and exclude is true, then message is sent to all except the specific.
@@ -266,7 +255,7 @@ namespace Zerodelay
 		/*	Messages are unreliable sequenced. This means that packets may not arrive. However, older or duplicate packets are dropped. This applies per channel.
 			[packId]	Id of message. Should start from USER_ID_OFFSET, see above.
 			[data]		Actual payload of message.
-			[len]		Length of payload.
+			[len]		Length of payload (bytes).
 			[specific]	- If nullptr, message is sent to all connections in node.
 						- If not nullptr and exclude is false, then message is only sent to the specific address.
 						- If not nullptr and exclude is true, then message is sent to all except the specific.
@@ -283,16 +272,16 @@ namespace Zerodelay
 
 		/*	This event occurs when a remote endpoint called 'connect'.
 			[directLink]	If true, a connection attempt was made to this Znode. 
-							If false, a non directive link such as a remote connection that connected to the server.
-							If false, the endpoint will not be found when obtaining a list of open connections through getNumOpenConnections(). 
+							If false, a non directive link such as a remote connection that connected to the server and
+							the endpoint will not be found when obtaining a list of open connections through getNumOpenConnections(). 
 			[Zendpoint]		The endpoint, either of our direct link or relayed by eg. a server. */
 		void bindOnNewConnection( const std::function<void (bool directLink, const ZEndpoint&)>& cb );
 
 
 		/*	This event occurs when we or a remote endpoint called 'disconnect'.
 			[directLink]	If true, one of the endpoints that this Znode connected to disconnected to us our we disconnected to them.
-							If false, the message is relayed by an authorative node such as the server. 
-							If false, the endpoint will not be found when obtaining a list of open connections through getNumOpenConnections(). 
+							If false, the message is relayed by an authorative node such as the server and
+							the endpoint will not be found when obtaining a list of open connections through getNumOpenConnections(). 
 			[Zendpoint]		The endpoint, either of our direct link or relayed by eg. the server. */
 		void bindOnDisconnect( const std::function<void (bool directLink, const ZEndpoint&, EDisconnectReason)>& cb );
 

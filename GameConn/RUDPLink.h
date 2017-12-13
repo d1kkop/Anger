@@ -159,7 +159,7 @@ namespace Zerodelay
 		uint32_t m_PinnedCount;
 		// on delete
 		std::mutex m_PendingDeleteMutex;
-		std::atomic_bool m_IsPendingDelete; // Set from main thread, queried by recv thread
+		volatile bool m_IsPendingDelete; // Set from main thread, queried by recv thread
 		clock_t m_MarkDeleteTS;
 
 		friend class RecvNode;

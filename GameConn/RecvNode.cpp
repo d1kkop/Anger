@@ -12,10 +12,9 @@
 namespace Zerodelay
 {
 	RecvNode::RecvNode(i32_t resendIntervalMs):
-		m_SocketOpened(false),
 		m_IsClosing(false),
 		m_ResendIntervalMs(resendIntervalMs),
-		m_Socket(ISocket::create()),
+		m_Socket(nullptr),
 		m_RecvThread(nullptr),
 		m_SendThread(nullptr),
 		m_ListPinned(false)
@@ -25,11 +24,15 @@ namespace Zerodelay
 
 	RecvNode::~RecvNode()
 	{
+		clean();
+	}
+
+	void RecvNode::clean()
+	{
 		m_IsClosing = true;
 		if ( m_Socket )
 		{
 			m_Socket->close();
-			m_SocketOpened = false;
 		}
 		if ( m_RecvThread && m_RecvThread->joinable() )
 		{
@@ -46,6 +49,11 @@ namespace Zerodelay
 			delete kvp.second;
 		}
 		delete m_Socket;
+		m_RecvThread = nullptr;
+		m_SendThread = nullptr;
+		m_OpenLinksMap.clear();
+		m_OpenLinksList.clear();
+		m_Socket = nullptr;
 	}
 
 	void RecvNode::postInitialize(CoreNode* coreNode)
@@ -57,19 +65,20 @@ namespace Zerodelay
 
 	bool RecvNode::openSocketOnPort(u16_t port)
 	{
-		if(m_SocketOpened)
-			return true;
-
+		if (m_Socket)
+			return true; // already opened
+		if (!m_Socket) 
+			m_Socket = ISocket::create();
+		if (!m_Socket)
+			return false;
 		if (!m_Socket->open())
 			return false;
 		if (!m_Socket->bind(port))
 			return false;
-
-		m_SocketOpened = true;
 		return true;
 	}
 
-	void RecvNode::send(u8_t id, const i8_t* data, i32_t len, const EndPoint* specific, bool exclude, EHeaderPacketType type, u8_t channel, bool relay)
+	void RecvNode::send(u8_t id,const i8_t* data,i32_t len,const EndPoint* specific,bool exclude,EHeaderPacketType type,u8_t channel,bool relay)
 	{
 		assert( type == EHeaderPacketType::Reliable_Ordered || type == EHeaderPacketType::Unreliable_Sequenced );
 		if ( !(type == EHeaderPacketType::Reliable_Ordered || type == EHeaderPacketType::Unreliable_Sequenced) )
@@ -198,11 +207,8 @@ namespace Zerodelay
 				continue;
 			}
 
-			RUDPLink* link = getOrAddLink( endPoint, true );
-			if ( !link )
-				continue;
-
-			if ( link->isPendingDelete() )
+			RUDPLink* link = getLink(endPoint, true);
+			if ( link && link->isPendingDelete() )
 			{
 				// Only report messages after the link has stopped lingering, otherwise we may end up with many messages that were just send after disconnect
 				// or if disconnect is re-transmitted very often due to high retransmission rate in reliable ordered protocol.
@@ -220,8 +226,16 @@ namespace Zerodelay
 				continue;
 			}
 		
-			assert(link);
-			link->recvData( buff, rawSize );	
+			if (!link) // try add
+			{
+				// add fails of previous already exists
+				link = addLink(endPoint);
+			}
+			
+			if (link) 
+			{
+				link->recvData( buff, rawSize );	
+			}
 		}
 	}
 
@@ -256,7 +270,7 @@ namespace Zerodelay
 
 			// When a link is placed in pending delete state, keep it in that for some time to ignore all remaining data that was still underway
 			// and discard it silently without throwing warnings that it it received data for a connection that is already deleted or not connected.
-			if ( !link->isPendingDelete() || link->isPinned() )
+			if ( link->isPinned() || !link->isPendingDelete() )
 			{
 				it++;
 				continue;
@@ -288,7 +302,7 @@ namespace Zerodelay
 		return nullptr;
 	}
 
-	RUDPLink* RecvNode::getOrAddLink(const EndPoint& endPoint, bool getIfIsPendingDelete)
+	class RUDPLink* RecvNode::addLink(const EndPoint& endPoint)
 	{
 		std::lock_guard<std::mutex> lock(m_OpenLinksMutex);
 		auto it = m_OpenLinksMap.find( endPoint );
@@ -298,10 +312,6 @@ namespace Zerodelay
 			m_OpenLinksMap.insert( std::make_pair( endPoint, link ) );
 			m_OpenLinksList.emplace_back( link );
 			return link;
-		}
-		else if ( getIfIsPendingDelete || !it->second->isPendingDelete() )
-		{
-			return it->second;
 		}
 		return nullptr;
 	}

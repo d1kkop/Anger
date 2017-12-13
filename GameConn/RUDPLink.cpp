@@ -44,8 +44,8 @@ namespace Zerodelay
 	void RUDPLink::addToSendQueue(u8_t id, const i8_t* data, i32_t len, EHeaderPacketType packetType, u8_t channel, bool relay)
 	{
 		if ( m_BlockNewSends ) // discard new packets in this case
-		{
-			Platform::log("WARNING: Trying to send %d while send is blocked.", (u32_t)packetType);
+		{ 
+			Platform::log("WARNING: Trying to send id %d with sendType %d while send is blocked.", id, (u32_t)packetType);
 			return; 
 		}
 		// user not allowed to send acks

@@ -30,11 +30,11 @@ namespace Zerodelay
 		EConnectCallResult connect( const std::string& name, i32_t port, const std::string& pw="", i32_t timeoutSeconds=8, bool sendRequest=true );
 		EListenCallResult listenOn( i32_t port );
 		EDisconnectCallResult disconnect(const EndPoint& endPoint, EDisconnectReason reason, EConnectionState newState, bool sendMsg, bool deleteAndRemove);
-		void disconnectAll();
-		void deleteConnection(const EndPoint& endPoint);
+		void disconnectAll(u32_t lingerTimeMs);
 		void deleteConnections();
 		i32_t getNumOpenConnections() const;
 		bool isInConnectionList(const ZEndpoint& ztp) const;
+		Connection* getConnection(const ZEndpoint& ztp) const;
 		// flow
 		void update();
 		void beginProcessPacketsFor(const EndPoint& endPoint);					// returns true if is known connection

@@ -18,6 +18,16 @@ namespace Zerodelay
 		InvalidLogic = 16
 	};
 
+	// Not be confused with EDataPacketType
+	enum class EHeaderPacketType : u8_t
+	{
+		Reliable_Ordered,
+		Unreliable_Sequenced,
+		Reliable_Newest,
+		Ack,
+		Ack_Reliable_Newest
+	};
+
 
 	class CoreNode
 	{

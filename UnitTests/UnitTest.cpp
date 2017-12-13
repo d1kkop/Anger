@@ -71,16 +71,20 @@ namespace UnitTests
 		g1->bindOnDisconnect( discLamda );
 		g2->bindOnDisconnect( discLamda );
 		ZEndpoint ztp;
-		bool bResolve = ztp.resolve("localhost", 27000);
+		bool bResolve = ztp.resolve("localhost", 27001);
 		assert(bResolve);
-		auto res = g1->connect( ztp, "lala" );
+		printf("deliberately connecting with wrong pw..\n");
+		auto res = g1->connect( ztp, "lala2" );
 		assert(res == EConnectCallResult::Succes);
-		res = g1->connect("localhost",27000,"lala");
+		res = g1->connect("localhost",27001,"lala");
 		assert(res == EConnectCallResult::AlreadyExists);
 		g2->setMaxIncomingConnections(-1);
 		g2->setMaxIncomingConnections(1);
-		g2->listen(27000, "lala");
+		g2->listen(27001, "lala");
 
+		ZEndpoint ztp2("127.0.0.1", 27001);
+		ZEndpoint ztp3("localhost", 27001);
+		assert(ztp2 == ztp3);
 		volatile bool bClose = false;
 		std::thread t( [&] () {
 			while  ( !bClose )
@@ -88,7 +92,7 @@ namespace UnitTests
 				g1->update();
 				g2->update();
 				std::this_thread::sleep_for(10ms);
-				if ( !g1->isConnectionKnown(ztp) )
+				if ( !g1->isConnectionKnown(ztp2) )
 				{
 					printf("Trying connect with correct pw...\n");
 					res = g1->connect("127.0.0.1", 27000, "lala");
@@ -98,10 +102,11 @@ namespace UnitTests
 		});
 
 		std::this_thread::sleep_for(5000ms);
+		Result = g1->isConnectedTo(ztp2);
 		bClose = true;
 		if ( t.joinable() )
 			t.join();
-		Result = (foundNewConn);
+		Result = Result && (foundNewConn);
 
 		g1->disconnect();
 	//	g2->disconnect();
@@ -1047,10 +1052,10 @@ namespace UnitTests
 		std::vector<BaseTest*> tests;
 
 		// add tests
-	//	tests.emplace_back( new ConnectionLayerTest );
+		tests.emplace_back( new ConnectionLayerTest );
 	//	tests.emplace_back( new MassConnectTest );
 	//	tests.emplace_back( new ReliableOrderTest );
-		tests.emplace_back( new RpcTest );
+	//	tests.emplace_back( new RpcTest );
 	//	tests.emplace_back( new SyncGroupTest );
 			
 		// run them

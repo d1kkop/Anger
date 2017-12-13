@@ -1,6 +1,7 @@
 #pragma once
 
 #include "EndPoint.h"
+#include "CoreNode.h"
 
 #include <cstring>
 #include <mutex>
@@ -31,6 +32,7 @@ namespace Zerodelay
 		bool openSocketOnPort(u16_t port);
 
 	public:
+		void clean();
 		void send( u8_t id, const i8_t* data, i32_t len, const EndPoint* specific=nullptr, bool exclude=false, 
 				   EHeaderPacketType type=EHeaderPacketType::Reliable_Ordered, u8_t channel=0, bool relay=true );
 		void sendReliableNewest( u8_t id, u32_t groupId, i8_t groupBit, const i8_t* data, i32_t len, const EndPoint* specific=nullptr, bool exclude=false );
@@ -47,7 +49,7 @@ namespace Zerodelay
 		class ISocket* getSocket() const { return m_Socket; }
 
 		class RUDPLink* getLink( const EndPoint& endPoint, bool getIfIsPendingDelete ) const;
-		class RUDPLink* getOrAddLink( const EndPoint& endPoint, bool getIfIsPendingDelete ); // returns nullptr if is pending delete
+		class RUDPLink* addLink( const EndPoint& endPoint ); // returns nullptr if already exists
 		void startThreads();
 
 		i32_t getNumOpenLinks() const;
@@ -62,7 +64,6 @@ namespace Zerodelay
 		template <typename Callback>
 		void forEachLink( const EndPoint* specific, bool exclude, bool connected, const Callback& cb );
 
-		bool m_SocketOpened;
 		volatile bool m_IsClosing;
 		class ISocket* m_Socket;
 		bool   m_CaptureSocketErrors;
