@@ -7,9 +7,9 @@ namespace Zerodelay
 {
 	enum class EVarControl
 	{
-		Full,		// The variable is controlled at this machine. A change to it will be broadcasted to others.
-		Semi,		// The variable is partially controlled on this machine. A change will be broadcasted, but it may be overwritten later by the authoritive node if it did not agree on the change.
-		Remote		// The variable is controlled remotely. Any change to it on this machine is unsafe and will be overwritten.
+		Full,		// The variable is controlled at this Znode. A change to it will be broadcasted to others.
+		Semi,		// The variable is partially controlled on this Znode. A change will be broadcasted, but it may be overwritten later by an authoritive node if it did not agree on the change.
+		Remote		// The variable is controlled remotely. Any change to it on this Znode is 'unsafe' and will be overwritten.
 	};
 
 
