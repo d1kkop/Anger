@@ -17,7 +17,7 @@ namespace Zerodelay
 		return compareLess(*this, other) == 0;
 	}
 
-	std::string EndPoint::asString() const
+	std::string EndPoint::toIpAndPort() const
 	{
 	#if ZERODELAY_WIN32SOCKET
 		// Ip
@@ -30,7 +30,12 @@ namespace Zerodelay
 		IPaddress iph;
 		iph.host = Util::swap32(m_IpAddress.host);
 		iph.port = Util::swap16(m_IpAddress.port);
-		return  SDLNet_ResolveIP(&iph); // expects in host form
+		u8_t* ip = (u8_t*)&iph.host;
+		//std::string ip = SDLNet_ResolveIP(&iph); // expects in host form <-- is superrrr slow function
+		char buff[1024];
+		// todo big endian order on big endian machine
+		Platform::formatPrint(buff, 1024, "%d.%d.%d.%d:%d", ip[3], ip[2], ip[1], ip[0], iph.port);
+		return std::string(buff);
 	#endif
 
 		return "";
@@ -42,7 +47,7 @@ namespace Zerodelay
 		resolve(service, port);
 	}
 
-	bool EndPoint::resolve(const std::string& name,u16_t port)
+	bool EndPoint::resolve(const std::string& name, u16_t port)
 	{
 	#if ZERODELAY_WIN32SOCKET
 		addrinfo hints;

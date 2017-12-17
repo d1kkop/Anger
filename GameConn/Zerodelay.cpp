@@ -82,16 +82,15 @@ namespace Zerodelay
 		return false;
 	}
 
-	std::string ZEndpoint::asString() const
+	std::string ZEndpoint::toIpAndPort() const
 	{
-		return asEpt(this)->asString();
+		return asEpt(this)->toIpAndPort();
 	}
 
 	i32_t ZEndpoint::getLastError() const
 	{
 		return asEpt(this)->getLastError();
 	}
-
 
 	bool ZEndpoint::isZero() const
 	{

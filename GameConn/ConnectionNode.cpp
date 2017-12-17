@@ -170,7 +170,7 @@ namespace Zerodelay
 			EConnectionState state = c->getState();
 			if ( !(state == EConnectionState::Connected || state == EConnectionState::Connecting) )
 			{
-				Platform::log("Deleted connection to %s. Num remaining connections before delete %d.", c->getEndPoint().asString().c_str(), (i32_t)m_Connections.size());
+				Platform::log("Deleted connection to %s. Num remaining connections before delete %d.", c->getEndPoint().toIpAndPort().c_str(), (i32_t)m_Connections.size());
 				delete c;
 				it = m_Connections.erase( it );
 				continue;
@@ -268,7 +268,7 @@ namespace Zerodelay
 				}
 				else
 				{
-					Platform::log("WARNING: Trying to send to specific endpoint %s which is not in the list of connections.", specific->asString().c_str());
+					Platform::log("WARNING: Trying to send to specific endpoint %s which is not in the list of connections.", specific->toIpAndPort().c_str());
 				}
 			}
 		}
@@ -474,7 +474,7 @@ namespace Zerodelay
 		m_Connections.insert( std::make_pair(link.getEndPoint(), g) );
 		doNewIncomingConnectionCallbacks(true, link.getEndPoint());
 		if (m_RelayConnectAndDisconnect) sendRemoteConnected( g );
-		Platform::log( "New incoming connection %s.", g->getEndPoint().asString().c_str() );
+		Platform::log( "New incoming connection %s.", g->getEndPoint().toIpAndPort().c_str() );
 	}
 
 	void ConnectionNode::recvConnectAccept(class Connection* g)
@@ -485,7 +485,7 @@ namespace Zerodelay
 	void ConnectionNode::recvDisconnectPacket(const i8_t* payload, i32_t len, class Connection* g)
 	{
 		bool bWasConnected = (g->getState() == EConnectionState::Connected);
-		g->acceptDisconnect();
+		g->onReceiveDisconnect();
 		if (bWasConnected && m_RelayConnectAndDisconnect)
 		{
 			sendRemoteDisconnected( g, EDisconnectReason::Closed );
@@ -507,7 +507,7 @@ namespace Zerodelay
 			return;
 		}
 		doNewIncomingConnectionCallbacks(false, etp);
-		Platform::log( "Remote %s connected.", etp.asString().c_str() );
+		Platform::log( "Remote %s connected.", etp.toIpAndPort().c_str() );
 	}
 
 	void ConnectionNode::recvRemoteDisconnected(class Connection* g, const i8_t* data, i32_t len)
@@ -528,7 +528,7 @@ namespace Zerodelay
 		}
 		reason = (EDisconnectReason)data[offs];
 		doDisconnectCallbacks(false, etp, reason);
-		Platform::log( "Remote %s disconnected.", etp.asString().c_str() );
+		Platform::log( "Remote %s disconnected.", etp.toIpAndPort().c_str() );
 	}
 
 	void ConnectionNode::recvAlreadyConnected(class Connection* g, const i8_t* payload, i32_t payloadLen)

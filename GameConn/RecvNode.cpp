@@ -231,7 +231,7 @@ namespace Zerodelay
 					{
 						norm_id = buff[RUDPLink::off_Norm_Id];
 					}
-					Platform::log("Ignoring data for conn %s as is pending delete... hdrId: %d data: %s dataId: %d, deleted for time %d ms.", link->getEndPoint().asString().c_str(), buff[0], buff, norm_id, timeSincePenDelete);
+					Platform::log("Ignoring data for conn %s as is pending delete... hdrId: %d data: %s dataId: %d, deleted for time %d ms.", link->getEndPoint().toIpAndPort().c_str(), buff[0], buff, norm_id, timeSincePenDelete);
 				}
 				continue;
 			}
@@ -290,7 +290,7 @@ namespace Zerodelay
 			if ( link->getTimeSincePendingDelete() > RUDPLink::sm_MaxLingerTimeMs*2 )
 			{
 				// Actually delete the connection
-				Platform::log("Link to %s deleted.", link->getEndPoint().asString().c_str());
+				Platform::log("Link to %s deleted.", link->getEndPoint().toIpAndPort().c_str());
 				m_OpenLinksMap.erase(link->getEndPoint());
 				delete link;
 				it = m_OpenLinksList.erase(it);
@@ -319,7 +319,7 @@ namespace Zerodelay
 		auto it = m_OpenLinksMap.find( endPoint );
 		if ( it == m_OpenLinksMap.end() )
 		{
-			Platform::log("Link to %s added.", endPoint.asString().c_str());
+			Platform::log("Link to %s added.", endPoint.toIpAndPort().c_str());
 			RUDPLink* link = new RUDPLink( this, endPoint );
 			m_OpenLinksMap.insert( std::make_pair( endPoint, link ) );
 			m_OpenLinksList.emplace_back( link );

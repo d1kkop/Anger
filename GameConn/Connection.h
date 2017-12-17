@@ -32,7 +32,6 @@ namespace Zerodelay
 		void cleanLink();
 		void disconnect(bool isDirectLink, const EndPoint& directOrRemoteEndpoint, EDisconnectReason reason, EConnectionState newState, bool sendMsg);
 		// -- connect result events --
-		void acceptDisconnect();
 		void setInvalidPassword();
 		void setMaxConnectionsReached();
 		void setInvalidConnectPacket();
@@ -43,6 +42,7 @@ namespace Zerodelay
 		void sendKeepAliveAnswer();
 		// -- receives
 		void onReceiveConnectAccept();
+		void onReceiveDisconnect();
 		void onReceiveKeepAliveRequest();
 		void onReceiveKeepAliveAnswer();
 		// -- updates

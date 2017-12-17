@@ -141,16 +141,16 @@ void InitNetwork(bool isServ)
 		switch ( res )
 		{
 		case EConnectResult::Succes:
-			g_lines.emplace_back( "connection: " + etp.asString() + " connected succesful" );
+			g_lines.emplace_back( "connection: " + etp.toIpAndPort() + " connected succesful" );
 			break;
 		case EConnectResult::Timedout:
-			g_lines.emplace_back( "connection: " + etp.asString() + " connecting timed out" );
+			g_lines.emplace_back( "connection: " + etp.toIpAndPort() + " connecting timed out" );
 			break;
 		case EConnectResult::InvalidPassword:
-			g_lines.emplace_back( "connection: " + etp.asString() + " connecting invalid pw" );
+			g_lines.emplace_back( "connection: " + etp.toIpAndPort() + " connecting invalid pw" );
 			break;
 		case EConnectResult::MaxConnectionsReached:
-			g_lines.emplace_back( "connection: " + etp.asString() + " connecting max conns reached" );
+			g_lines.emplace_back( "connection: " + etp.toIpAndPort() + " connecting max conns reached" );
 			break;
 		}
 		RefreshTextField();
@@ -182,18 +182,18 @@ void InitNetwork(bool isServ)
 	{
 		if ( reason == EDisconnectReason::Lost )
 		{
-			g_lines.emplace_back( "connection " + etp.asString() + " lost connection" );
+			g_lines.emplace_back( "connection " + etp.toIpAndPort() + " lost connection" );
 		}
 		else
 		{
-			g_lines.emplace_back( "connection " + etp.asString() + " closed connection" );
+			g_lines.emplace_back( "connection " + etp.toIpAndPort() + " closed connection" );
 		}
 		if ( isServ )
 		{
 			g_NumClients--;
 			for (int i = 0; i < g_MaxNames; i++)
 			{
-				if ( strcmp( g_lobby.name[i], etp.asString().c_str() ) == 0)
+				if ( strcmp( g_lobby.name[i], etp.toIpAndPort().c_str() ) == 0)
 				{
 					g_lobby.name[i][0] = '\0';
 					break;
@@ -211,12 +211,12 @@ void InitNetwork(bool isServ)
 			{
 				if ( g_lobby.name[i][0] == '\0' )
 				{
-					strcpy_s( g_lobby.name[i], 64, etp.asString().c_str());
+					strcpy_s( g_lobby.name[i], 64, etp.toIpAndPort().c_str());
 					break;
 				}
 			}
 		}
-		g_lines.emplace_back(" new connection: " + etp.asString() );
+		g_lines.emplace_back(" new connection: " + etp.toIpAndPort() );
 		RefreshTextField();
 	});
 

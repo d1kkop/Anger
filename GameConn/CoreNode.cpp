@@ -106,7 +106,7 @@ namespace Zerodelay
 			recvRpcPacket(payload, payloadLen, etp);
 			break;
 		default:
-			Platform::log("Received unhandled packet from: %s", etp.asString());	
+			Platform::log("Received unhandled packet from: %s", etp.toIpAndPort());	
 			break;
 		}
 	}

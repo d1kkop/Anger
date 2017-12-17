@@ -114,8 +114,8 @@ namespace Zerodelay
 		bool resolve( const std::string& name, u16_t port );
 
 
-		/*	Returns canonical form of endpoint, eg: 73.123.24.18. */
-		std::string asString() const;
+		/*	Returns canonical form of endpoint, eg: 73.123.24.18:12203 */
+		std::string toIpAndPort() const;
 
 
 		/*	Returns the last underlaying socket error. Returns 0 on no error. */

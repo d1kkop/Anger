@@ -17,13 +17,13 @@ namespace Zerodelay
 		bool resolve( const std::string& name, u16_t port );
 
 		// Return in canonical form.
-		std::string asString() const;
+		std::string toIpAndPort() const;
 
 		u16_t getPortHostOrder() const;
 		u16_t getPortNetworkOrder() const;
 		u32_t getIpv4HostOrder() const;
 		u32_t getIpv4NetworkOrder() const;
-		i32_t  getLastError() const { return m_LastError; }
+		i32_t getLastError() const { return m_LastError; }
 
 		// Returns ptr to actual host data
 		const void* getLowLevelAddr() const;

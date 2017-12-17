@@ -84,7 +84,7 @@ namespace Zerodelay
 			}
 			else
 			{
-				Platform::log("WARNING: received on new connection multiple times from %s", etp.asString().c_str());
+				Platform::log("WARNING: received on new connection multiple times from %s", etp.toIpAndPort().c_str());
 			}
 		});
 
@@ -107,7 +107,7 @@ namespace Zerodelay
 			}
 			else
 			{
-				Platform::log("WARNING: received disconnect multiple times from: %s", etp.asString().c_str());
+				Platform::log("WARNING: received disconnect multiple times from: %s", etp.toIpAndPort().c_str());
 			}
 		});
 	}
@@ -190,7 +190,7 @@ namespace Zerodelay
 			}
 			else // discards any creation before connection was established or after was disconnected/lost
 			{
-				Platform::log("INFO: Discarding remote group creation from %s, as it was not connected or already disconnected\n", ztp->asString().c_str());
+				Platform::log("INFO: Discarding remote group creation from %s, as it was not connected or already disconnected\n", ztp->toIpAndPort().c_str());
 			}
 		}
 		else
@@ -239,7 +239,7 @@ namespace Zerodelay
 		{
 			m_UniqueIds.emplace_back( ids[i] );
 		}
-		Platform::log("Received %d new Ids from %s", sm_AvailableIds, etp.asString().c_str());
+		Platform::log("Received %d new Ids from %s", sm_AvailableIds, etp.toIpAndPort().c_str());
 	}
 
 	void VariableGroupNode::recvVariableGroupCreate(const Packet& pack, const EndPoint& etp)

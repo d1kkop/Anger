@@ -75,7 +75,7 @@ public:
 				printf( "%s connect call result succesful \n", m_Name.c_str() );
 				break;
 			case EConnectCallResult::AlreadyExists:
-				printf( "%s connect to %s already exists\n", m_Name.c_str(), ept.asString().c_str() );
+				printf( "%s connect to %s already exists\n", m_Name.c_str(), ept.toIpAndPort().c_str() );
 			}
 		}
 	}
@@ -110,12 +110,12 @@ public:
 		switch ( connResult )
 		{
 			case EConnectResult::Succes:
-				printf ("%s conn %s connected succesfully\n", m_Name.c_str(), etp.asString().c_str());
+				printf ("%s conn %s connected succesfully\n", m_Name.c_str(), etp.toIpAndPort().c_str());
 				this->m_RemoteEpt =etp;
 				break;
 
 			case EConnectResult::Timedout:
-				printf ("%s conn %s could not connect (timed out)\n", m_Name.c_str(), etp.asString().c_str());
+				printf ("%s conn %s could not connect (timed out)\n", m_Name.c_str(), etp.toIpAndPort().c_str());
 				break;
 		}
 	}
@@ -125,18 +125,18 @@ public:
 		switch ( reason )
 		{
 			case EDisconnectReason::Closed:
-				printf ("%s conn %s closed\n", m_Name.c_str(), etp.asString().c_str());
+				printf ("%s conn %s closed\n", m_Name.c_str(), etp.toIpAndPort().c_str());
 				break;
 
 			case EDisconnectReason::Lost:
-				printf ("%s conn %s lost us... :-( \n", m_Name.c_str(), etp.asString().c_str());
+				printf ("%s conn %s lost us... :-( \n", m_Name.c_str(), etp.toIpAndPort().c_str());
 				break;
 		};
 	}
 
 	void onNewConnection( const EndPoint& etp )
 	{
-		printf("%s new connection %s\n", m_Name.c_str(), etp.asString().c_str());
+		printf("%s new connection %s\n", m_Name.c_str(), etp.toIpAndPort().c_str());
 	}
 
 public:
