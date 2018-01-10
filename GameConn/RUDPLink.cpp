@@ -274,7 +274,7 @@ namespace Zerodelay
 	void RUDPLink::dispatchReliableNewestQueue(ISocket* socket)
 	{
 		// format per entry: groupId(4bytes) | groupBits( (items.size()+7)/8 bytes ) | n x groupData (sum( item_data_size, n ) bytes )
-		i8_t dataBuffer[ISocket::sm_MaxRecvBuffSize]; // decl buffer
+		i8_t dataBuffer[ZERODELAY_BUFF_RECV_SIZE]; // decl buffer
 		dataBuffer[off_Type] = (i8_t)EHeaderPacketType::Reliable_Newest; // start with type
 		*(u32_t*)(dataBuffer + off_RelNew_Seq) = m_SendSeq_reliable_newest; // followed by sequence number
 		i32_t kNumGroupsWritten = 0;  // keeps track of num groups as is not know yet
@@ -301,8 +301,8 @@ namespace Zerodelay
 				if (isSequenceNewerGroupItem(item.localRevision, item.remoteRevision)) // variable is changed compared to last acked revision
 				{
 					groupBits |= (1 << kBit);
-					assert(kBytesWritten + item.dataLen <= ISocket::sm_MaxRecvBuffSize); 
-					if ( kBytesWritten + item.dataLen > ISocket::sm_MaxRecvBuffSize )
+					assert(kBytesWritten + item.dataLen <= ZERODELAY_BUFF_SIZE); 
+					if ( kBytesWritten + item.dataLen > ZERODELAY_BUFF_SIZE )
 					{
 						Platform::log("CRITICAL buffer overrun detected in %s", ZERODELAY_FUNCTION );
 						m_RecvNode->getCoreNode()->setCriticalError( ECriticalError::TooMuchDataToSend, ZERODELAY_FUNCTION );
@@ -327,7 +327,7 @@ namespace Zerodelay
 			// write skip bytes in case recipient does not know the group yet
 			*(u16_t*)(groupSkipPtr) = (kBytesWritten - kBytesWrittenBeforeGroup);
 			// quit loop if exceeding max send size
-			if ( kBytesWritten >= ISocket::sm_MaxSendSize )
+			if ( kBytesWritten >= ZERODELAY_BUFF_SIZE )
 				break;
 		}
 		// as group count is know now, write it
@@ -344,14 +344,14 @@ namespace Zerodelay
 		std::lock_guard<std::mutex> lock(m_AckMutex);
 		for (i32_t i=0; i<sm_NumChannels; ++i)
 		{
-			i8_t buff[ISocket::sm_MaxRecvBuffSize];
+			i8_t buff[ZERODELAY_BUFF_RECV_SIZE]; // recv buff size correct
 			i32_t  kSizeWritten = 0;
 			for (auto& it : m_AckQueue[i])
 			{
 				u32_t seq = it;
 				*(u32_t*)&buff[kSizeWritten + off_Ack_Payload] = seq;
 				kSizeWritten += 4;
-				if (kSizeWritten >= ISocket::sm_MaxSendSize)
+				if (kSizeWritten >= ZERODELAY_BUFF_SIZE) // send when send buff size is exceeded
 					break;
 			}
 			m_AckQueue[i].clear();

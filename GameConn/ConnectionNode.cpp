@@ -63,17 +63,21 @@ namespace Zerodelay
 		m_DispatchNode = coreNode->rn();
 	}
 
-	EConnectCallResult ConnectionNode::connect(const std::string& name, i32_t port, const std::string& pw, i32_t timeoutSeconds, bool sendRequest)
+	EConnectCallResult ConnectionNode::connect(const std::string& name, i32_t port, const std::string& pw, 
+											   i32_t timeoutSeconds, bool sendRequest,
+											   const std::map<std::string, std::string>& additionalData)
 	{
 		EndPoint endPoint;
 		if ( !endPoint.resolve( name, port ) )
 		{
 			return EConnectCallResult::CannotResolveHost;
 		}
-		return connect( endPoint, pw, timeoutSeconds, sendRequest );
+		return connect( endPoint, pw, timeoutSeconds, sendRequest, additionalData );
 	}
 
-	EConnectCallResult ConnectionNode::connect(const EndPoint& endPoint, const std::string& pw, i32_t timeoutSeconds, bool sendRequest)
+	EConnectCallResult ConnectionNode::connect(const EndPoint& endPoint, const std::string& pw, 
+											   i32_t timeoutSeconds, bool sendRequest,
+											   const std::map<std::string, std::string>& additionalData)
 	{
 		// For p2p, the socket is already listening on a specific port, the function will return true
 		if ( !m_DispatchNode->openSocketOnPort(0) )
@@ -95,7 +99,10 @@ namespace Zerodelay
 		m_DispatchNode->startThreads(); // start after socket is opened
 		if ( sendRequest )
 		{
-			g->sendConnectRequest( pw );
+			if (!g->sendConnectRequest( pw, additionalData ))
+			{
+				return EConnectCallResult::TooMuchAdditionalData;
+			}
 		}
 		return EConnectCallResult::Succes;
 	}
@@ -300,12 +307,12 @@ namespace Zerodelay
 		});
 	}
 
-	void ConnectionNode::doNewIncomingConnectionCallbacks(bool directLink, const EndPoint& remote)
+	void ConnectionNode::doNewIncomingConnectionCallbacks(bool directLink, const EndPoint& remote, const std::map<std::string, std::string>& additionalData)
 	{
 		ZEndpoint ztp = toZpt(remote);
 		Util::forEachCallback(m_NewConnectionCallbacks,[&](const NewConnectionCallback& ncb)
 		{
-			(ncb)(directLink, ztp);
+			(ncb)(directLink, ztp, additionalData);
 		});
 	}
 
@@ -450,9 +457,10 @@ namespace Zerodelay
 			return;
 		}
 		// Check password
-		static const i32_t kBuffSize=1024;
+		static const i32_t kBuffSize=ZERODELAY_BUFF_RECV_SIZE;
 		i8_t pw[kBuffSize];
-		if ( Util::readString( pw, kBuffSize, payload, payloadLen ) < 0 )
+		i32_t readBytes = Util::readString( pw, kBuffSize, payload, payloadLen );
+		if ( readBytes < 0 )
 		{
 			m_CoreNode->setCriticalError(ECriticalError::SerializationError, ZERODELAY_FUNCTION);
 			return; // invalid serialization
@@ -468,11 +476,35 @@ namespace Zerodelay
 			handleInvalidConnectAttempt( EDataPacketType::MaxConnectionsReached, link );
 			return;
 		}
+		// read zero terminating str
+		readBytes += 1;
+		// read additional data
+		std::map<std::string, std::string> additionalData;
+		while (readBytes != payloadLen)
+		{
+			// read key
+			i8_t key[kBuffSize];
+			i32_t res = Util::readString( key, kBuffSize, payload + readBytes, payloadLen ) + 1;
+			if (res < 0 )
+			{
+				m_CoreNode->setCriticalError(ECriticalError::SerializationError, ZERODELAY_FUNCTION);
+				return; // invalid serialization
+			}
+			// read value
+			i8_t value[kBuffSize];
+			res = Util::readString( value, kBuffSize, payload + readBytes, payloadLen ) + 1;
+			if (res < 0 )
+			{
+				m_CoreNode->setCriticalError(ECriticalError::SerializationError, ZERODELAY_FUNCTION);
+				return; // invalid serialization
+			}
+			additionalData.insert(std::make_pair(key, value));
+		}
 		// All fine..
 		Connection* g = new Connection( this, false, &link );
 		g->sendConnectAccept();
 		m_Connections.insert( std::make_pair(link.getEndPoint(), g) );
-		doNewIncomingConnectionCallbacks(true, link.getEndPoint());
+		doNewIncomingConnectionCallbacks(true, link.getEndPoint(), additionalData);
 		if (m_RelayConnectAndDisconnect) sendRemoteConnected( g );
 		Platform::log( "New incoming connection %s.", g->getEndPoint().toIpAndPort().c_str() );
 	}
@@ -506,7 +538,7 @@ namespace Zerodelay
 			m_CoreNode->setCriticalError(ECriticalError::SerializationError, ZERODELAY_FUNCTION);
 			return;
 		}
-		doNewIncomingConnectionCallbacks(false, etp);
+		doNewIncomingConnectionCallbacks(false, etp, std::map<std::string, std::string>()); // TODO
 		Platform::log( "Remote %s connected.", etp.toIpAndPort().c_str() );
 	}
 

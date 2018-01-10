@@ -30,6 +30,7 @@ namespace Zerodelay
 		m_KeepAliveIntervalMs(keepAliveIntervalSeconds*1000),
 		m_StartConnectingTS(-1),
 		m_KeepAliveTS(-1),
+		m_connectId(0),
 		m_IsWaitingForKeepAlive(false),
 		m_State(EConnectionState::Idle)
 	{
@@ -90,12 +91,26 @@ namespace Zerodelay
 		Platform::log("Received invalid connect packet for connection %s.", getEndPoint().toIpAndPort().c_str());
 	}
 
-	void Connection::sendConnectRequest(const std::string& pw)
+	bool Connection::sendConnectRequest(const std::string& pw, const std::map<std::string, std::string>& additionalData)
 	{
 		assert( m_State == EConnectionState::Idle ); // just called after creation
 		m_State = EConnectionState::Connecting;
 		m_StartConnectingTS = ::clock();
-		sendSystemMessage( EDataPacketType::ConnectRequest, pw.c_str(), (i32_t)pw.size()+1 );
+		m_connectId = ::rand();
+		i32_t dstSize = ZERODELAY_BUFF_SIZE;
+		i8_t mapBuffer[ZERODELAY_BUFF_RECV_SIZE]; // deliberately bigger than dstSize
+		i8_t* ptr = mapBuffer;
+		bool bSucces = false;
+		ptr = Util::appendString2( ptr, dstSize, pw.c_str(), bSucces );
+		for (auto& kvp : additionalData)
+		{
+			ptr = Util::appendString2( ptr, dstSize, kvp.first.c_str(), bSucces );
+			if (!bSucces) return false;
+			ptr = Util::appendString2( ptr, dstSize, kvp.second.c_str(), bSucces );
+			if (!bSucces) return false;
+		}
+		sendSystemMessage( EDataPacketType::ConnectRequest, ptr, ZERODELAY_BUFF_SIZE-dstSize );
+		return true;
 	}
 
 	void Connection::sendConnectAccept()

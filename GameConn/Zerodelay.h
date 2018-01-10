@@ -12,6 +12,7 @@
 #endif
 
 
+#include <map>
 #include <functional>
 #include <string>
 #include <vector>
@@ -56,6 +57,7 @@ namespace Zerodelay
 		Succes,
 		CannotResolveHost,
 		AlreadyExists,
+		TooMuchAdditionalData,
 		SocketError
 	};
 
@@ -145,10 +147,9 @@ namespace Zerodelay
 
 		/*	Connect  to specific endpoint. 
 			A succesful call does not mean a connection is established.
-			To know if a connection is established, bindOnConnectResult. 
-			Port must be in native machine order. No conversion to network order necessary. */
-		EConnectCallResult connect( const ZEndpoint& endPoint, const std::string& pw="", i32_t timeoutSeconds=8, bool sendConnectRequest=true );
-		EConnectCallResult connect( const std::string& name, i32_t port, const std::string& pw="", i32_t timeoutSeconds=8, bool sendConnectRequest=true );
+			To know if a connection is established, bindOnConnectResult. */
+		EConnectCallResult connect( const ZEndpoint& endPoint, const std::string& pw="", i32_t timeoutSeconds=8, const std::map<std::string, std::string>& additionalData=std::map<std::string, std::string>(), bool sendConnectRequest=true );
+		EConnectCallResult connect( const std::string& name, i32_t port, const std::string& pw="", i32_t timeoutSeconds=8, const std::map<std::string, std::string>& additionalData=std::map<std::string, std::string>(), bool sendConnectRequest=true );
 
 
 		/*	Calls disconnect on each connection in the node and stops listening for incoming connections. 
@@ -275,7 +276,7 @@ namespace Zerodelay
 							If false, a non directive link such as a remote connection that connected to the server and
 							the endpoint will not be found when obtaining a list of open connections through getNumOpenConnections(). 
 			[Zendpoint]		The endpoint, either of our direct link or relayed by eg. a server. */
-		void bindOnNewConnection( const std::function<void (bool directLink, const ZEndpoint&)>& cb );
+		void bindOnNewConnection( const std::function<void (bool directLink, const ZEndpoint&, const std::map<std::string, std::string>&)>& cb );
 
 
 		/*	This event occurs when we or a remote endpoint called 'disconnect'.

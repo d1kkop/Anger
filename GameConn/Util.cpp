@@ -6,6 +6,24 @@
 namespace Zerodelay
 {
 
+	i8_t* Util::appendString2(i8_t* dst, i32_t& dstSize, const i8_t* src, bool& bSucces)
+	{
+		bSucces = true;
+		i32_t k = 0;
+		for (; src[k]!='\0'; ++k) 
+		{
+			if ( k>=(dstSize-1) )
+			{
+				bSucces = false;
+				break;
+			}
+			dst[k] = src[k];
+		}
+		if (dstSize > 0) dst[k++]='\0';
+		dstSize -= k;
+		return dst+k;
+	}
+
 	i8_t* Util::appendString(i8_t* dst, i32_t dstSize, const i8_t* src)
 	{
 		i32_t k = 0;
@@ -19,7 +37,7 @@ namespace Zerodelay
 		if ( !buff || !buffIn )
 		{
 			assert(false);
-			return false;
+			return -1;
 		}
 		i32_t k = 0;
 		while ((*buffIn != '\0') && (k < buffSize-1) && (k < buffInSize))

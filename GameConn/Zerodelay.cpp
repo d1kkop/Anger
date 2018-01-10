@@ -119,14 +119,14 @@ namespace Zerodelay
 		delete C;
 	}
 
-	EConnectCallResult ZNode::connect(const ZEndpoint& endPoint, const std::string& pw, i32_t timeoutSeconds, bool sendRequest)
+	EConnectCallResult ZNode::connect(const ZEndpoint& endPoint, const std::string& pw, i32_t timeoutSeconds, const std::map<std::string, std::string>& additionalData, bool sendRequest)
 	{
-		return C->cn()->connect( toEtp(endPoint), pw, timeoutSeconds, sendRequest );
+		return C->cn()->connect( toEtp(endPoint), pw, timeoutSeconds, sendRequest, additionalData );
 	}
 
-	EConnectCallResult ZNode::connect(const std::string& name, i32_t port, const std::string& pw, i32_t timeoutSeconds, bool sendRequest)
+	EConnectCallResult ZNode::connect(const std::string& name, i32_t port, const std::string& pw, i32_t timeoutSeconds, const std::map<std::string, std::string>& additionalData, bool sendRequest)
 	{
-		return C->cn()->connect( name, port, pw, timeoutSeconds, sendRequest );
+		return C->cn()->connect( name, port, pw, timeoutSeconds, sendRequest, additionalData );
 	}
 
 	void ZNode::disconnect(u32_t lingerTimeMs)
@@ -324,7 +324,7 @@ namespace Zerodelay
 		C->cn()->bindOnConnectResult( cb);
 	}
 
-	void ZNode::bindOnNewConnection(const std::function<void (bool directLink, const ZEndpoint&)>& cb)
+	void ZNode::bindOnNewConnection(const std::function<void (bool directLink, const ZEndpoint&, const std::map<std::string, std::string>&)>& cb)
 	{
 		C->cn()->bindOnNewConnection( cb );
 	}

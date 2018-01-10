@@ -59,7 +59,7 @@ namespace UnitTests
 			}
 			printf( "connect result: %s %s\n", etp.toIpAndPort().c_str(), resStr.c_str() );
 		});
-		g2->bindOnNewConnection( [&] (bool directLink, auto& etp)
+		g2->bindOnNewConnection( [&] (bool directLink, auto& etp, auto& additionalData)
 		{ 
 			printf("new connection: %s\n", etp.toIpAndPort().c_str());
 			foundNewConn = true;
@@ -163,7 +163,7 @@ namespace UnitTests
 			}
 		};
 
-		auto onNewConnLamda = [&] (bool directLink, auto etp)
+		auto onNewConnLamda = [&] (bool directLink, auto etp, auto& additionalData)
 		{
 			connNewIncomingConns++;
 		};
@@ -574,7 +574,7 @@ namespace UnitTests
 
 		_ztp.resolve("localhost", 27000);
 		
-		g1->connect( _ztp, "", 8, true );
+		g1->connect( _ztp, "", 8, std::map<std::string, std::string>(), true );
 		
 		g2->listen( 27000 );
 		g2->setUserDataPtr( this );

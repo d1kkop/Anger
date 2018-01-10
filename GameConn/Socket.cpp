@@ -343,7 +343,6 @@ namespace Zerodelay
 		if ( res == 0 || !SDLNet_SocketReady(m_Socket) )
 			return ERecvResult::NoData;
 
-		const auto maxBuffSize = ISocket::sm_MaxRecvBuffSize;
 		UDPpacket packet = { 0 };
 		packet.data = (Uint8 *) buff;
 		packet.len  = rawSize;

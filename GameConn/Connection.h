@@ -36,7 +36,7 @@ namespace Zerodelay
 		void setMaxConnectionsReached();
 		void setInvalidConnectPacket();
 		// -- sends
-		void sendConnectRequest(const std::string& pw);
+		bool sendConnectRequest(const std::string& pw, const std::map<std::string, std::string>& additionalData);
 		void sendConnectAccept();
 		void sendKeepAliveRequest();
 		void sendKeepAliveAnswer();
@@ -74,5 +74,6 @@ namespace Zerodelay
 		// state
 		bool m_IsWaitingForKeepAlive;
 		EConnectionState m_State;
+		u32_t m_connectId;
 	};
 }

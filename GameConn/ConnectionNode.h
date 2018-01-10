@@ -18,7 +18,7 @@ namespace Zerodelay
 	{
 		using ConnectResultCallback = std::function<void (const ZEndpoint&, EConnectResult)>;
 		using DisconnectCallback	= std::function<void (bool, const ZEndpoint&, EDisconnectReason)>;
-		using NewConnectionCallback = std::function<void (bool, const ZEndpoint&)>;
+		using NewConnectionCallback = std::function<void (bool, const ZEndpoint&, const std::map<std::string, std::string>&)>;
 
 	public:
 		ConnectionNode(i32_t keepAliveIntervalSeconds=8);
@@ -28,8 +28,10 @@ namespace Zerodelay
 		void postInitialize(class CoreNode* coreNode);
 
 		// state
-		EConnectCallResult connect( const EndPoint& endPoint, const std::string& pw="", i32_t timeoutSeconds=8, bool sendRequest=true );
-		EConnectCallResult connect( const std::string& name, i32_t port, const std::string& pw="", i32_t timeoutSeconds=8, bool sendRequest=true );
+		EConnectCallResult connect( const EndPoint& endPoint, const std::string& pw="", i32_t timeoutSeconds=8, bool sendRequest=true,
+								   const std::map<std::string, std::string>& additionalData = std::map<std::string, std::string>() );
+		EConnectCallResult connect( const std::string& name, i32_t port, const std::string& pw="", i32_t timeoutSeconds=8, bool sendRequest=true, 
+								   const std::map<std::string, std::string>& additionalData = std::map<std::string, std::string>() );
 		EListenCallResult listenOn( i32_t port );
 		EDisconnectCallResult disconnect(const EndPoint& endPoint, EDisconnectReason reason, EConnectionState newState, bool sendMsg, bool deleteAndRemove);
 		i32_t getNumOpenConnections() const;
@@ -57,7 +59,7 @@ namespace Zerodelay
 		// call callbacks
 		void doConnectResultCallbacks(const EndPoint& remote, EConnectResult result);
 		void doDisconnectCallbacks(bool directLink, const EndPoint& remote, EDisconnectReason reason);
-		void doNewIncomingConnectionCallbacks(bool directLink, const EndPoint& remote);
+		void doNewIncomingConnectionCallbacks(bool directLink, const EndPoint& remote, const std::map<std::string, std::string>& additionalData);
 
 	private:
 		// sends (relay)
