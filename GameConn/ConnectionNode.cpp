@@ -457,7 +457,7 @@ namespace Zerodelay
 			return;
 		}
 		// Check password
-		static const i32_t kBuffSize=ZERODELAY_BUFF_RECV_SIZE;
+		const i32_t kBuffSize=ZERODELAY_BUFF_RECV_SIZE;
 		i8_t pw[kBuffSize];
 		i32_t readBytes = Util::readString( pw, kBuffSize, payload, payloadLen );
 		if ( readBytes < 0 )
@@ -490,6 +490,7 @@ namespace Zerodelay
 				m_CoreNode->setCriticalError(ECriticalError::SerializationError, ZERODELAY_FUNCTION);
 				return; // invalid serialization
 			}
+			readBytes += res;
 			// read value
 			i8_t value[kBuffSize];
 			res = Util::readString( value, kBuffSize, payload + readBytes, payloadLen ) + 1;
@@ -498,6 +499,7 @@ namespace Zerodelay
 				m_CoreNode->setCriticalError(ECriticalError::SerializationError, ZERODELAY_FUNCTION);
 				return; // invalid serialization
 			}
+			readBytes += res;
 			additionalData.insert(std::make_pair(key, value));
 		}
 		// All fine..

@@ -98,10 +98,11 @@ namespace Zerodelay
 		m_StartConnectingTS = ::clock();
 		m_connectId = ::rand();
 		i32_t dstSize = ZERODELAY_BUFF_SIZE;
-		i8_t mapBuffer[ZERODELAY_BUFF_RECV_SIZE]; // deliberately bigger than dstSize
+		i8_t mapBuffer[ZERODELAY_BUFF_SIZE]; // deliberately bigger than dstSize
 		i8_t* ptr = mapBuffer;
 		bool bSucces = false;
 		ptr = Util::appendString2( ptr, dstSize, pw.c_str(), bSucces );
+		if (!bSucces) return false;
 		for (auto& kvp : additionalData)
 		{
 			ptr = Util::appendString2( ptr, dstSize, kvp.first.c_str(), bSucces );
@@ -109,7 +110,7 @@ namespace Zerodelay
 			ptr = Util::appendString2( ptr, dstSize, kvp.second.c_str(), bSucces );
 			if (!bSucces) return false;
 		}
-		sendSystemMessage( EDataPacketType::ConnectRequest, ptr, ZERODELAY_BUFF_SIZE-dstSize );
+		sendSystemMessage( EDataPacketType::ConnectRequest, mapBuffer, ZERODELAY_BUFF_SIZE-dstSize );
 		return true;
 	}
 

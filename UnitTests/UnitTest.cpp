@@ -62,6 +62,14 @@ namespace UnitTests
 		g2->bindOnNewConnection( [&] (bool directLink, auto& etp, auto& additionalData)
 		{ 
 			printf("new connection: %s\n", etp.toIpAndPort().c_str());
+			if ( additionalData.size() )
+			{
+				printf("additional data:\n");
+				for (auto& kvp : additionalData)
+				{
+					printf("Key %s value %s\n", kvp.first.c_str(), kvp.second.c_str());
+				}
+			}
 			foundNewConn = true;
 		});
 		auto discLamda = [] (bool isThisConnection, auto& etp, auto eReason)
@@ -71,12 +79,15 @@ namespace UnitTests
 		g1->bindOnDisconnect( discLamda );
 		g2->bindOnDisconnect( discLamda );
 		ZEndpoint ztp;
+		std::map<std::string, std::string> values;
+		values["value1"]  = "hello world";
+		values["my name"] = "bart";
 		bool bResolve = ztp.resolve("localhost", 27001);
 		assert(bResolve);
 		printf("deliberately connecting with wrong pw..\n");
-		auto res = g1->connect( ztp, "lala2" );
+		auto res = g1->connect( ztp, "lala2", 8, values );
 		assert(res == EConnectCallResult::Succes);
-		res = g1->connect("localhost",27001,"lala");
+		res = g1->connect("localhost",27001,"lala", 8, values);
 		assert(res == EConnectCallResult::AlreadyExists);
 	//	g2->setMaxIncomingConnections(-1);
 		g2->setMaxIncomingConnections(1);
@@ -96,7 +107,7 @@ namespace UnitTests
 				if ( !g1->isConnectionKnown(ztp2) )
 				{
 					printf("Trying connect with correct pw...\n");
-					res = g1->connect("127.0.0.1", 27001, "lala");
+					res = g1->connect("127.0.0.1", 27001, "lala", 8, values);
 				//	assert(res == EConnectCallResult::Succes);
 				}
 			}
