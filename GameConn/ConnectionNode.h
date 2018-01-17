@@ -48,7 +48,7 @@ namespace Zerodelay
 		void setMaxIncomingConnections(i32_t maxNumConnections);
 		void setRelayConnectAndDisconnectEvents(bool relay);
 		// getters
-		bool getRelayConnectAndDisconnect() const { return m_RelayConnectAndDisconnect; }
+		bool shouldRelayConnectAndDisconnect() const { return m_RelayConnectAndDisconnect; }
 		void getConnectionListCopy(std::vector<ZEndpoint>& endpoints); // only puts connected connections in list
 		// callbacks
 		void bindOnConnectResult(const ConnectResultCallback& cb)		{ Util::bindCallback(m_ConnectResultCallbacks, cb); }
@@ -63,13 +63,14 @@ namespace Zerodelay
 
 	private:
 		// sends (relay)
-		void sendRemoteConnected( const class Connection* g );
+		void sendRemoteConnected( const class Connection* g, const std::map<std::string, std::string>& additionalData );
 		void sendRemoteDisconnected( const class Connection* g, EDisconnectReason reason );
 		void sendSystemMessage( class RUDPLink& link, EDataPacketType state, const i8_t* payLoad=nullptr, i32_t len=0 );
 		// recvs (Game thread)
 		bool recvPacket( const struct Packet& pack, class Connection* g, class RUDPLink& link );
 		void handleInvalidConnectAttempt( EDataPacketType responseType, class RUDPLink& link );
 		void recvConnectPacket(const i8_t* payload, i32_t len, class RUDPLink& link);
+
 		void recvConnectAccept(class Connection* g);
 		void recvDisconnectPacket( const i8_t* payload, i32_t len, class Connection* g );
 		void recvRemoteConnected(class Connection* g, const i8_t* payload, i32_t payloadLen);

@@ -15,6 +15,8 @@ namespace Zerodelay
 		static u16_t swap16( u16_t val );
 		static i32_t getTimeSince(i32_t timestamp);  // in milliseconds
 
+		static i32_t deserializeMap( std::map<std::string, std::string>& data, const i8_t* source, i32_t payloadLenIn );
+
 		template <typename List, typename Callback>
 		static void bindCallback( List& list, const Callback& cb );
 		template <typename List, typename Callback>

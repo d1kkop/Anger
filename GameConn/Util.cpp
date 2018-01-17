@@ -48,8 +48,7 @@ namespace Zerodelay
 		if ( buffSize > 0 )
 		{
 			*buff = '\0';
-			if ( (*buff=='\0') )
-				return k;
+			return k++;
 		}
 		assert(false);
 		return -1;
@@ -91,4 +90,35 @@ namespace Zerodelay
 		float elapsedSeconds = float(now - timestamp) / (float)CLOCKS_PER_SEC;
 		return i32_t(elapsedSeconds * 1000.f);
 	}
+
+
+	Zerodelay::i32_t Util::deserializeMap(std::map<std::string, std::string>& data, const i8_t* payload, i32_t payloadLen)
+	{
+		i32_t readBytes = 0;
+		const i32_t kBuffSize = ZERODELAY_BUFF_RECV_SIZE;
+		while (readBytes != payloadLen)
+		{
+			// read key
+			i8_t key[kBuffSize];
+			i32_t res = Util::readString( key, kBuffSize, payload + readBytes, payloadLen );
+			if (res < 0 )
+			{
+				m_CoreNode->setCriticalError(ECriticalError::SerializationError, ZERODELAY_FUNCTION);
+				return; // invalid serialization
+			}
+			readBytes += res;
+			// read value
+			i8_t value[kBuffSize];
+			res = Util::readString( value, kBuffSize, payload + readBytes, payloadLen );
+			if (res < 0 )
+			{
+				m_CoreNode->setCriticalError(ECriticalError::SerializationError, ZERODELAY_FUNCTION);
+				return; // invalid serialization
+			}
+			readBytes += res;
+			data.insert(std::make_pair(key, value));
+		}
+		return readBytes;
+	}
+
 }

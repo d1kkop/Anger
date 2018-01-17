@@ -316,32 +316,54 @@ namespace Zerodelay
 		});
 	}
 
-	void ConnectionNode::sendRemoteConnected(const Connection* g)
+	void ConnectionNode::sendRemoteConnected(const Connection* g, const std::map<std::string, std::string>& additionalData)
 	{
-		if ( !getRelayConnectAndDisconnect() ) 
+		if ( !shouldRelayConnectAndDisconnect() ) 
 		{
 			assert(false);
 			return; 
 		}
 		auto& etp = g->getEndPoint();
-		i8_t buff[128];
-		i32_t offs = etp.write( buff, 128 );
+		i32_t dstSize = ZERODELAY_BUFF_SIZE;
+		i8_t buff[ZERODELAY_BUFF_SIZE];
+		i32_t offs = etp.write( buff, dstSize );
 		if ( offs < 0 )
 		{
 			m_CoreNode->setCriticalError(ECriticalError::SerializationError, ZERODELAY_FUNCTION);
 			return;
 		}
+		dstSize -= offs;
+		i8_t* ptr = buff + offs;
+		for (auto& kvp : additionalData)
+		{
+			bool bSucces;
+			// key
+			ptr = Util::appendString2( ptr, dstSize, kvp.first, bSucces );
+			if (!bSucces)
+			{
+				m_CoreNode->setCriticalError(ECriticalError::SerializationError, ZERODELAY_FUNCTION);
+				return;
+			}
+			// value
+			ptr = Util::appendString2( ptr, dstSize, kvp.second, bSucces );
+			if (!bSucces)
+			{
+				m_CoreNode->setCriticalError(ECriticalError::SerializationError, ZERODELAY_FUNCTION);
+				return;
+			}
+		}
 		// to all except
 		forConnections(&g->getEndPoint(), true, [&](Connection& c)
 		{
 			if (!c.isConnected()) return;
-			c.getLink()->addToSendQueue( (u8_t)EDataPacketType::RemoteConnected, buff, offs, EHeaderPacketType::Reliable_Ordered, 0, false );
+			c.getLink()->addToSendQueue( (u8_t)EDataPacketType::RemoteConnected, buff, ZERODELAY_FUNCTION-dstSize, 
+										 EHeaderPacketType::Reliable_Ordered, 0, false );
 		});
 	}
 
 	void ConnectionNode::sendRemoteDisconnected(const Connection* g, EDisconnectReason reason)
 	{
-		if ( !getRelayConnectAndDisconnect() )
+		if ( !shouldRelayConnectAndDisconnect() )
 		{
 			assert(false);
 			return; 
@@ -362,6 +384,7 @@ namespace Zerodelay
 		forConnections(&g->getEndPoint(), true, [&](Connection& c)
 		{
 			if (!c.isConnected()) return; // skip 
+			// one added byte because of disconnect reason (8 bits)
 			c.getLink()->addToSendQueue( (u8_t)EDataPacketType::RemoteDisconnected, buff, offs+1, EHeaderPacketType::Reliable_Ordered, 0, false );
 		});
 	}
@@ -476,38 +499,15 @@ namespace Zerodelay
 			handleInvalidConnectAttempt( EDataPacketType::MaxConnectionsReached, link );
 			return;
 		}
-		// read zero terminating str
-		readBytes += 1;
 		// read additional data
 		std::map<std::string, std::string> additionalData;
-		while (readBytes != payloadLen)
-		{
-			// read key
-			i8_t key[kBuffSize];
-			i32_t res = Util::readString( key, kBuffSize, payload + readBytes, payloadLen ) + 1;
-			if (res < 0 )
-			{
-				m_CoreNode->setCriticalError(ECriticalError::SerializationError, ZERODELAY_FUNCTION);
-				return; // invalid serialization
-			}
-			readBytes += res;
-			// read value
-			i8_t value[kBuffSize];
-			res = Util::readString( value, kBuffSize, payload + readBytes, payloadLen ) + 1;
-			if (res < 0 )
-			{
-				m_CoreNode->setCriticalError(ECriticalError::SerializationError, ZERODELAY_FUNCTION);
-				return; // invalid serialization
-			}
-			readBytes += res;
-			additionalData.insert(std::make_pair(key, value));
-		}
+		Util::deserializeMap(additionalData, payload + readBytes, payloadLen - readBytes);
 		// All fine..
 		Connection* g = new Connection( this, false, &link );
 		g->sendConnectAccept();
 		m_Connections.insert( std::make_pair(link.getEndPoint(), g) );
 		doNewIncomingConnectionCallbacks(true, link.getEndPoint(), additionalData);
-		if (m_RelayConnectAndDisconnect) sendRemoteConnected( g );
+		if (m_RelayConnectAndDisconnect) sendRemoteConnected( g, additionalData );
 		Platform::log( "New incoming connection %s.", g->getEndPoint().toIpAndPort().c_str() );
 	}
 
@@ -529,7 +529,8 @@ namespace Zerodelay
 	void ConnectionNode::recvRemoteConnected(class Connection* g, const i8_t* data, i32_t len)
 	{
 		EndPoint etp;
-		if (etp.read( data, len ) < 0)
+		i32_t offs = etp.read( data, len );
+		if ( offs < 0 )
 		{
 			m_CoreNode->setCriticalError(ECriticalError::SerializationError, ZERODELAY_FUNCTION);
 			return;
@@ -540,7 +541,9 @@ namespace Zerodelay
 			m_CoreNode->setCriticalError(ECriticalError::SerializationError, ZERODELAY_FUNCTION);
 			return;
 		}
-		doNewIncomingConnectionCallbacks(false, etp, std::map<std::string, std::string>()); // TODO
+		std::map<std::string, std::string> additionalData;
+		Util::deserializeMap(additionalData, data, len-offs);
+		doNewIncomingConnectionCallbacks(false, etp, additionalData);
 		Platform::log( "Remote %s connected.", etp.toIpAndPort().c_str() );
 	}
 
