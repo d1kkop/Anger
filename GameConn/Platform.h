@@ -11,7 +11,7 @@
 
 
 #if _WIN32
-#define ZERODELAY_FUNCTION __FUNCTION__
+#define ZERODELAY_FUNCTION __FUNCTION__, __LINE__
 #else
 #define ZERODELAY_FUNCTION "UKNOWN"
 #endif

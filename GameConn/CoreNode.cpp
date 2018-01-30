@@ -111,16 +111,15 @@ namespace Zerodelay
 		}
 	}
 
-	void CoreNode::setCriticalError(ECriticalError error, const char* fn)
+	void CoreNode::setCriticalError(ECriticalError error, const char* fn, u32_t line)
 	{
 		m_CriticalErrors |= (u32_t)error;
 		m_FunctionInError = fn;
+		Platform::log("Critical ERROR %s in: %s on line %d", getCriticalErrorMsg(error), fn, line);
 	}
 
-	const char* CoreNode::getCriticalErrorMsg() const
+	const char* CoreNode::getCriticalErrorMsg(ECriticalError err) const
 	{
-		// If multiple are set, simply return the first bit that is set.
-		ECriticalError err = (ECriticalError)(u32_t)m_CriticalErrors;
 		switch (err)
 		{
 			case ECriticalError::SerializationError:

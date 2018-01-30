@@ -31,35 +31,25 @@ namespace UnitTests
 
 	void ConnectionLayerTest::run()
 	{
-		bool connected = false;
-		bool timedOut  = false;
-		bool foundNewConn = false;
+		int numTimedout  = 0;
+		int numConnected = 0;
+		int numInvalidPw = 0;
+		int numMaxConnsReached = 0;
+		int numDisconnected = 0;
+		int numNewConnections = 0;
 		ZNode* g1 = new ZNode(200, 2);
-		ZNode* g2 = new ZNode(200, 2);
-		g1->bindOnConnectResult( [&] (auto etp, auto res) 
+		const u32_t kConnections = 10;
+		ZNode* gs[kConnections];
+		for (auto & g : gs)
 		{
-			std::string resStr;
-			switch ( res )
-			{
-			case EConnectResult::Succes:
-				resStr = "succes";
-			//	std::this_thread::sleep_for(1000ms);
-			//	g1->disconnectAll();
-				break;
-
-			case EConnectResult::Timedout:
-				resStr = "timed out";
-				break;
-			case EConnectResult::InvalidPassword:
-				resStr = "invalid password";
-				break;
-			case EConnectResult::MaxConnectionsReached:
-				resStr = "max connections reached";
-				break;
-			}
-			printf( "connect result: %s %s\n", etp.toIpAndPort().c_str(), resStr.c_str() );
-		});
-		g2->bindOnNewConnection( [&] (bool directLink, auto& etp, auto& additionalData)
+			g = new ZNode(200, 2);
+		}
+		auto discLamda = [&] (bool isThisConnection, auto& etp, auto eReason)
+		{
+			printf("disconnected: %s, reason: %d\n", etp.toIpAndPort().c_str(), (int)eReason);
+			numDisconnected++;
+		};
+		auto newConnLamda = [&] (bool directLink, auto& etp, auto& additionalData)
 		{ 
 			printf("new connection: %s\n", etp.toIpAndPort().c_str());
 			if ( additionalData.size() )
@@ -67,72 +57,124 @@ namespace UnitTests
 				printf("additional data:\n");
 				for (auto& kvp : additionalData)
 				{
-					printf("Key %s value %s\n", kvp.first.c_str(), kvp.second.c_str());
+					printf("Key: %s value: %s\n", kvp.first.c_str(), kvp.second.c_str());
 				}
 			}
-			foundNewConn = true;
-		});
-		auto discLamda = [] (bool isThisConnection, auto& etp, auto eReason)
-		{
-			printf("disconnected: %s, reason: %d\n", etp.toIpAndPort().c_str(), (int)eReason);
+			numNewConnections++;
 		};
+		for (auto g : gs)
+		{
+			g->bindOnConnectResult( [&] (auto etp, auto res) 
+			{
+				std::string resStr;
+				switch ( res )
+				{
+				case EConnectResult::Succes:
+					resStr = "succes";
+					numConnected++;
+					//	std::this_thread::sleep_for(1000ms);
+					//	g1->disconnectAll();
+					break;
+
+				case EConnectResult::Timedout:
+					resStr = "timed out";
+					numTimedout++;
+					break;
+				case EConnectResult::InvalidPassword:
+					resStr = "invalid password";
+					numInvalidPw++;
+					break;
+				case EConnectResult::MaxConnectionsReached:
+					resStr = "max connections reached";
+					numMaxConnsReached++;
+					break;
+				}
+				printf( "connect result: %s %s\n", etp.toIpAndPort().c_str(), resStr.c_str() );
+			});
+			g->bindOnNewConnection( newConnLamda );
+			g->bindOnDisconnect( discLamda );
+		}
+		g1->bindOnNewConnection( newConnLamda );
 		g1->bindOnDisconnect( discLamda );
-		g2->bindOnDisconnect( discLamda );
 		ZEndpoint ztp;
 		std::map<std::string, std::string> values;
 		values["value1"]  = "hello world";
 		values["my name"] = "bart";
+		values["key3"]    = "value3";
 		bool bResolve = ztp.resolve("localhost", 27001);
 		assert(bResolve);
 		printf("deliberately connecting with wrong pw..\n");
-		auto res = g1->connect( ztp, "lala2", 8, values );
+		auto res = gs[0]->connect( ztp, "lala2", 8, values );
 		assert(res == EConnectCallResult::Succes);
-		res = g1->connect("localhost",27001,"lala", 8, values);
+		res = gs[0]->connect("localhost",27001,"lala", 8, values);
 		assert(res == EConnectCallResult::AlreadyExists);
 	//	g2->setMaxIncomingConnections(-1);
-		g2->setMaxIncomingConnections(1);
+		g1->setMaxIncomingConnections(32);
 		std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-		g2->listen(27001, "lala");
+		g1->listen(27001, "lala");
 
 		ZEndpoint ztp2("127.0.0.1", 27001);
 		ZEndpoint ztp3("localhost", 27001);
 		assert(ztp2 == ztp3);
 		volatile bool bClose = false;
-		std::thread t( [&] () {
+		std::thread t( [&] () 
+		{
 			while  ( !bClose )
 			{
 				g1->update();
-				g2->update();
-				std::this_thread::sleep_for(10ms);
-				if ( !g1->isConnectionKnown(ztp2) )
+				for (auto g : gs)
 				{
-					printf("Trying connect with correct pw...\n");
-					res = g1->connect("127.0.0.1", 27001, "lala", 8, values);
-				//	assert(res == EConnectCallResult::Succes);
+					g->update();
+					std::this_thread::sleep_for(10ms);
+					if ( !g->isConnectionKnown(ztp2) )
+					{
+						res = g->connect("127.0.0.1", 27001, "lala", 8, values);
+					}
 				}
 			}
 		});
 
 		std::this_thread::sleep_for(5000ms);
-		Result = g1->isConnectedTo(ztp2);
+		int numSuccesful = 0;
+		Result = false;
+		for ( auto g : gs )
+		{
+			if ( g->isConnectedTo(ztp2) ) numSuccesful++;
+		}
+		int kTargetNumConns = (int) roundf(float(kConnections+1)*((float)kConnections/2));
+		Result = ( numSuccesful == kConnections ) && ( kTargetNumConns  == numNewConnections && numInvalidPw == 1 && numTimedout == 0 );
+
 		bClose = true;
 		if ( t.joinable() )
 			t.join();
-		Result = Result && (foundNewConn);
 
 		g1->disconnect();
 	//	g2->disconnect();
 
+
+		auto fnAnyConnectionHasOpenLinks = [&]()
+		{
+			for ( auto g : gs )
+			{
+				if ( g->getNumOpenLinks() > 0 ) return true;
+			}
+			return false;
+		};
+
 		int k = 0;
-		while (/*++k < 20 &&*/ (g1->getNumOpenLinks() != 0 || g2->getNumOpenLinks() != 0))
+		while (/*++k < 20 &&*/ (g1->getNumOpenLinks() != 0 || fnAnyConnectionHasOpenLinks()) )
 		{
 			std::this_thread::sleep_for(std::chrono::milliseconds(50));
 			g1->update();
-			g2->update();
+			for (auto g : gs) g->update();
 		}
 
 		delete g1;
-		delete g2;
+		for (auto g : gs) delete g;
+
+
+		printf("Results: \nNumConnected %d numRemoteConnected %d NumTimedOut %d NumInvalidPw %d NumMaxConnectionReached %d NumDisconnected %d\n", 
+			   numConnected, numNewConnections, numTimedout, numInvalidPw, numMaxConnsReached, numDisconnected);
 	}
 
 	//////////////////////////////////////////////////////////////////////////

@@ -55,9 +55,9 @@ namespace Zerodelay
 		void setIsSuperPeer(bool superPeer) { m_IsSuperPeer = superPeer; }
 		bool isSuperPeer() const { return m_IsSuperPeer; } // server or authorative peer in p2p
 
-		void setCriticalError(ECriticalError error, const char* fn);
+		void setCriticalError(ECriticalError error, const char* fn, u32_t line);
 		bool hasCriticalErrors() const { return m_CriticalErrors != 0; }
-		const char* getCriticalErrorMsg() const;
+		const char* getCriticalErrorMsg(ECriticalError error) const;
 		const char* getFunctionInError() const { return m_FunctionInError.c_str(); }
 
 		void setUserDataPtr( void* ptr ) { m_UserPtr = ptr; }

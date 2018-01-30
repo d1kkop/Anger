@@ -338,14 +338,14 @@ namespace Zerodelay
 		{
 			bool bSucces;
 			// key
-			ptr = Util::appendString2( ptr, dstSize, kvp.first, bSucces );
+			ptr = Util::appendString2( ptr, dstSize, kvp.first.c_str(), bSucces );
 			if (!bSucces)
 			{
 				m_CoreNode->setCriticalError(ECriticalError::SerializationError, ZERODELAY_FUNCTION);
 				return;
 			}
 			// value
-			ptr = Util::appendString2( ptr, dstSize, kvp.second, bSucces );
+			ptr = Util::appendString2( ptr, dstSize, kvp.second.c_str(), bSucces );
 			if (!bSucces)
 			{
 				m_CoreNode->setCriticalError(ECriticalError::SerializationError, ZERODELAY_FUNCTION);
@@ -356,7 +356,7 @@ namespace Zerodelay
 		forConnections(&g->getEndPoint(), true, [&](Connection& c)
 		{
 			if (!c.isConnected()) return;
-			c.getLink()->addToSendQueue( (u8_t)EDataPacketType::RemoteConnected, buff, ZERODELAY_FUNCTION-dstSize, 
+			c.getLink()->addToSendQueue( (u8_t)EDataPacketType::RemoteConnected, buff, ZERODELAY_BUFF_SIZE-dstSize, 
 										 EHeaderPacketType::Reliable_Ordered, 0, false );
 		});
 	}
@@ -501,7 +501,12 @@ namespace Zerodelay
 		}
 		// read additional data
 		std::map<std::string, std::string> additionalData;
-		Util::deserializeMap(additionalData, payload + readBytes, payloadLen - readBytes);
+		bool succes = Util::deserializeMap(additionalData, payload + readBytes, payloadLen - readBytes);
+		if (!succes)
+		{
+			m_CoreNode->setCriticalError(ECriticalError::SerializationError, ZERODELAY_FUNCTION);
+			return;
+		}
 		// All fine..
 		Connection* g = new Connection( this, false, &link );
 		g->sendConnectAccept();
@@ -542,7 +547,12 @@ namespace Zerodelay
 			return;
 		}
 		std::map<std::string, std::string> additionalData;
-		Util::deserializeMap(additionalData, data, len-offs);
+		bool succes = Util::deserializeMap(additionalData, data+offs, len-offs);
+		if (!succes)
+		{
+			m_CoreNode->setCriticalError(ECriticalError::SerializationError, ZERODELAY_FUNCTION);
+			return;
+		}
 		doNewIncomingConnectionCallbacks(false, etp, additionalData);
 		Platform::log( "Remote %s connected.", etp.toIpAndPort().c_str() );
 	}

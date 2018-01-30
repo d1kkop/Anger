@@ -9,13 +9,19 @@ namespace Zerodelay
 	{
 		static i8_t* appendString2(i8_t* dst, i32_t& dstSize, const i8_t* src, bool& bSucces);
 		static i8_t* appendString( i8_t* dst, i32_t dstSize, const i8_t* src );
+
+		// NOTE, returns the amount of read bytes (includes the zero terminating char!)
+		// So if str is: "lala", it returns 5.
+		// If error occurs, returns -1.
 		static i32_t readString( i8_t* dst, i32_t dstSize, const i8_t* buffIn, i32_t buffInSize );
+
+
 		static bool  readFixed( i8_t* dst, i32_t dstSize, const i8_t* buffIn, i32_t buffInSize );
 		static u32_t swap32( u32_t val );
 		static u16_t swap16( u16_t val );
 		static i32_t getTimeSince(i32_t timestamp);  // in milliseconds
 
-		static i32_t deserializeMap( std::map<std::string, std::string>& data, const i8_t* source, i32_t payloadLenIn );
+		static bool deserializeMap( std::map<std::string, std::string>& data, const i8_t* source, i32_t payloadLenIn );
 
 		template <typename List, typename Callback>
 		static void bindCallback( List& list, const Callback& cb );

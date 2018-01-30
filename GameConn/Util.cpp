@@ -48,7 +48,7 @@ namespace Zerodelay
 		if ( buffSize > 0 )
 		{
 			*buff = '\0';
-			return k++;
+			return k+1;
 		}
 		assert(false);
 		return -1;
@@ -92,33 +92,28 @@ namespace Zerodelay
 	}
 
 
-	Zerodelay::i32_t Util::deserializeMap(std::map<std::string, std::string>& data, const i8_t* payload, i32_t payloadLen)
+	bool Util::deserializeMap(std::map<std::string, std::string>& data, const i8_t* payload, i32_t payloadLen)
 	{
 		i32_t readBytes = 0;
 		const i32_t kBuffSize = ZERODELAY_BUFF_RECV_SIZE;
-		while (readBytes != payloadLen)
+		while (payloadLen)
 		{
 			// read key
-			i8_t key[kBuffSize];
-			i32_t res = Util::readString( key, kBuffSize, payload + readBytes, payloadLen );
-			if (res < 0 )
+			i8_t key[2][kBuffSize];
+			for (auto k : key)
 			{
-				m_CoreNode->setCriticalError(ECriticalError::SerializationError, ZERODELAY_FUNCTION);
-				return; // invalid serialization
+				i32_t res = Util::readString( k, kBuffSize, payload + readBytes, payloadLen );
+				if (res < 0 )
+				{
+					return false;
+				}
+				readBytes  += res;
+				payloadLen -= res;
+				if ( payloadLen < 0 ) return false;
 			}
-			readBytes += res;
-			// read value
-			i8_t value[kBuffSize];
-			res = Util::readString( value, kBuffSize, payload + readBytes, payloadLen );
-			if (res < 0 )
-			{
-				m_CoreNode->setCriticalError(ECriticalError::SerializationError, ZERODELAY_FUNCTION);
-				return; // invalid serialization
-			}
-			readBytes += res;
-			data.insert(std::make_pair(key, value));
+			data.insert(std::make_pair(key[0], key[1]));
 		}
-		return readBytes;
+		return true;
 	}
 
 }

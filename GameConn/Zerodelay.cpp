@@ -347,7 +347,7 @@ namespace Zerodelay
 			ZEndpoint* zeptr = nullptr;
 			if ( etp )
 			{
-				zept = toZpt(*etp);
+				zept  = toZpt(*etp);
 				zeptr = &zept;
 			}
 			cb( zeptr, id );
