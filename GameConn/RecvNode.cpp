@@ -14,6 +14,7 @@ namespace Zerodelay
 	RecvNode::RecvNode(i32_t resendIntervalMs):
 		m_IsClosing(false),
 		m_ResendIntervalMs(resendIntervalMs),
+		m_UniqueLinkIdCounter(0),
 		m_Socket(nullptr),
 		m_RecvThread(nullptr),
 		m_SendThread(nullptr),
@@ -93,7 +94,7 @@ namespace Zerodelay
 		assert( type == EHeaderPacketType::Reliable_Ordered || type == EHeaderPacketType::Unreliable_Sequenced );
 		if ( !(type == EHeaderPacketType::Reliable_Ordered || type == EHeaderPacketType::Unreliable_Sequenced) )
 		{
-			m_CoreNode->setCriticalError(ECriticalError::InvalidLogic, ZERODELAY_FUNCTION);
+			m_CoreNode->setCriticalError(ECriticalError::InvalidLogic, ZERODELAY_FUNCTION_LINE);
 			return;
 		}
 		bool bWasSent = false;
@@ -203,7 +204,7 @@ namespace Zerodelay
 			if ( m_IsClosing )
 				break;
 
-			if ( eResult != ERecvResult::Succes || rawSize <= 0 )
+			if ( eResult != ERecvResult::Succes )
 			{
 				// optionally capture the socket errors
 				if ( m_CaptureSocketErrors )
@@ -217,6 +218,13 @@ namespace Zerodelay
 				continue;
 			}
 
+			if ( rawSize < RUDPLink::hdr_Generic_Size )
+			{
+				Platform::log("WARNING: Incoming packet smaller than hdr size, dropping packet.");
+				continue;
+			}
+
+			// get link, even if is pending delete
 			RUDPLink* link = getLink(endPoint, true);
 			if ( link && link->isPendingDelete() )
 			{
@@ -231,20 +239,50 @@ namespace Zerodelay
 					{
 						norm_id = buff[RUDPLink::off_Norm_Id];
 					}
-					Platform::log("Ignoring data for conn %s as is pending delete... hdrId: %d data: %s dataId: %d, deleted for time %d ms.", link->getEndPoint().toIpAndPort().c_str(), buff[0], buff, norm_id, timeSincePenDelete);
+					Platform::log("Ignoring data for conn %s id %d as is pending delete... hdrId: %d data: %s dataId: %d, deleted for time %d ms.", link->getEndPoint().toIpAndPort().c_str(), link->id(), buff[0], buff, norm_id, timeSincePenDelete);
 				}
 				continue;
 			}
 		
-			if (!link) // try add
+			if (!link) // add must be succesful if link wasnt found
 			{
-				// add fails of previous already exists
-				link = addLink(endPoint);
+				// if not known link, first packet MUST be a connect packet, otherwise discard it
+				// this is an early out routine to avoid going through the whole connection node for all 'random' packets that come in
+				if ( rawSize < RUDPLink::off_Norm_Data || 
+					 buff[RUDPLink::off_Type] != (i8_t)EHeaderPacketType::Reliable_Ordered || 
+					 buff[RUDPLink::off_Norm_Id] != (i8_t)EDataPacketType::ConnectRequest )
+				{
+					u32_t linkId = 0;
+					if ( rawSize >= 4 ) { linkId = *(u32_t*)(buff + RUDPLink::off_Link); }
+					Platform::log("Ignoring data for conn %s id %d, as packet was not a connect request packet and connection was not know yet.",
+								   endPoint.toIpAndPort().c_str(), linkId );
+					continue;
+				}
+				link = addLink(endPoint, false);
+				assert(link);
+				// cannot check linkId because dont know it yet (is a connect attempt)
+				link->recvData( buff, rawSize );
 			}
-			
-			if (link) 
+			else
 			{
-				link->recvData( buff, rawSize );	
+				// Fail if link id's dont match or if is connect accept packet and connectId (in the payload) doesnt match the client's connectId.
+				u32_t linkId = *(u32_t*)(buff + RUDPLink::off_Link);
+				if ( linkId != link->id() )
+				{
+					if ( rawSize >= RUDPLink::off_Norm_Data+4 && 
+						 buff[RUDPLink::off_Type] == (i8_t)EHeaderPacketType::Reliable_Ordered &&
+						 buff[RUDPLink::off_Norm_Id] == (i8_t)EDataPacketType::ConnectAccept )
+					{
+						linkId = *(u32_t*)(buff + RUDPLink::off_Norm_Data);
+					}
+				}
+
+				if ( linkId != link->id() )
+				{
+					Platform::log("Warning dropping packet because link id does not match. Incoming %d, having %d.", linkId, link->id());
+					continue;
+				}
+				link->recvData( buff, rawSize );
 			}
 		}
 	}
@@ -313,15 +351,20 @@ namespace Zerodelay
 		return nullptr;
 	}
 
-	class RUDPLink* RecvNode::addLink(const EndPoint& endPoint)
+	class RUDPLink* RecvNode::addLink(const EndPoint& endPoint, bool isConnector)
 	{
 		std::lock_guard<std::mutex> lock(m_OpenLinksMutex);
 		auto it = m_OpenLinksMap.find( endPoint );
 		if ( it == m_OpenLinksMap.end() )
 		{
 			Platform::log("Link to %s added.", endPoint.toIpAndPort().c_str());
-			RUDPLink* link = new RUDPLink( this, endPoint );
-			m_OpenLinksMap.insert( std::make_pair( endPoint, link ) );
+			// If connecting, start out with random id and have server assign it a unique id
+			// Use ID through system to detect out of order data
+			u32_t linkId;
+			if (!isConnector) linkId = m_UniqueLinkIdCounter++;
+			else linkId = rand();
+			RUDPLink* link = new RUDPLink( this, endPoint, linkId );
+			m_OpenLinksMap[endPoint] = link;
 			m_OpenLinksList.emplace_back( link );
 			return link;
 		}

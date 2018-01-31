@@ -304,7 +304,7 @@ namespace Zerodelay
 			if (!deserializeGroup(data, buffLen))
 			{
 				Platform::log( "ERROR deserialization of variable group failed dataLen %d.", buffLen );
-				m_CoreNode->setCriticalError(ECriticalError::SerializationError, ZERODELAY_FUNCTION);
+				m_CoreNode->setCriticalError(ECriticalError::SerializationError, ZERODELAY_FUNCTION_LINE);
 				break;
 			}
 			else
@@ -321,7 +321,7 @@ namespace Zerodelay
 		if (buffLen != 0)
 		{
 			Platform::log( "ERROR deserialization of %d variable groups was not correct.", numGroups );
-			m_CoreNode->setCriticalError(ECriticalError::SerializationError, ZERODELAY_FUNCTION);
+			m_CoreNode->setCriticalError(ECriticalError::SerializationError, ZERODELAY_FUNCTION_LINE);
 		}				
 	}
 
@@ -445,8 +445,8 @@ namespace Zerodelay
 		i8_t name[RPC_NAME_MAX_LENGTH];
 		if (!Util::readFixed(name, RPC_NAME_MAX_LENGTH, data, (RPC_NAME_MAX_LENGTH < len ? RPC_NAME_MAX_LENGTH : len)))
 		{
-			Platform::log("CRITICAL serialization error in %s, trying to read function name %s, remote variable group was not created!", ZERODELAY_FUNCTION, name);
-			m_CoreNode->setCriticalError(ECriticalError::SerializationError, ZERODELAY_FUNCTION);
+			Platform::log("CRITICAL serialization error in %s, trying to read function name %s, remote variable group was not created!", ZERODELAY_FUNCTION_LINE, name);
+			m_CoreNode->setCriticalError(ECriticalError::SerializationError, ZERODELAY_FUNCTION_LINE);
 			return;
 		}
 		u32_t nId = *(u32_t*)(data + RPC_NAME_MAX_LENGTH);
@@ -465,8 +465,8 @@ namespace Zerodelay
 		}
 		else
 		{
-			Platform::log("CRITICAL: serialize group function: %s not found, from: %s, no remote variable group was created!", fname, ZERODELAY_FUNCTION);
-			m_CoreNode->setCriticalError(ECriticalError::CannotFindExternalCFunction, ZERODELAY_FUNCTION);
+			Platform::log("CRITICAL: serialize group function: %s not found, from: %s, no remote variable group was created!", fname, ZERODELAY_FUNCTION_LINE);
+			m_CoreNode->setCriticalError(ECriticalError::CannotFindExternalCFunction, ZERODELAY_FUNCTION_LINE);
 		}
 	}
 

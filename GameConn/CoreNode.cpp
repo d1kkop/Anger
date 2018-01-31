@@ -55,7 +55,7 @@ namespace Zerodelay
 		i32_t kRead   = Util::readString(ptrNext, RPC_NAME_MAX_LENGTH, payload, len);
 		if ( kRead < 0 )
 		{
-			setCriticalError(ECriticalError::SerializationError, ZERODELAY_FUNCTION);
+			setCriticalError(ECriticalError::SerializationError, ZERODELAY_FUNCTION_LINE);
 			return;
 		}
 		void* pf = Platform::getPtrFromName( funcName );
@@ -69,7 +69,7 @@ namespace Zerodelay
 		}
 		else
 		{
-			setCriticalError(ECriticalError::CannotFindExternalCFunction, ZERODELAY_FUNCTION);
+			setCriticalError(ECriticalError::CannotFindExternalCFunction, ZERODELAY_FUNCTION_LINE);
 			Platform::log("CRITICAL: Cannot find external C function %s", funcName);
 		}
 	}

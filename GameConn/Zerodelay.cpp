@@ -275,7 +275,7 @@ namespace Zerodelay
 			if ( sock )
 				C->rn()->send( id, data, len, asEpt(specific), exclude, EHeaderPacketType::Reliable_Ordered, channel, relay );
 			else
-				C->setCriticalError(ECriticalError::SocketIsNull, ZERODELAY_FUNCTION);
+				C->setCriticalError(ECriticalError::SocketIsNull, ZERODELAY_FUNCTION_LINE);
 		}
 	}
 
@@ -295,7 +295,7 @@ namespace Zerodelay
 			if ( sock )
 				C->rn()->sendReliableNewest( packId, groupId, groupBit, data, len, asEpt(specific), exclude );
 			else
-				C->setCriticalError(ECriticalError::SocketIsNull, ZERODELAY_FUNCTION);
+				C->setCriticalError(ECriticalError::SocketIsNull, ZERODELAY_FUNCTION_LINE);
 		}
 	}
 
@@ -315,7 +315,7 @@ namespace Zerodelay
 			if ( sock )
 				C->rn()->send( packId, data, len, asEpt(specific), exclude, EHeaderPacketType::Unreliable_Sequenced, channel, relay );
 			else
-				C->setCriticalError(ECriticalError::SocketIsNull, ZERODELAY_FUNCTION);
+				C->setCriticalError(ECriticalError::SocketIsNull, ZERODELAY_FUNCTION_LINE);
 		}
 	}
 

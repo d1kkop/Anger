@@ -15,7 +15,7 @@ namespace Zerodelay
 #define Ensure_State( state ) \
 	if ( m_State != EConnectionState::##state ) \
 	{\
-		Platform::log("WARNING state mismatch in %s, wanted state %s, but is %d\n", (__FUNCTION__), #state, m_State); \
+		Platform::log("WARNING state mismatch in %s, line %d, wanted state %s, but is %d\n", ZERODELAY_FUNCTION, ZERODELAY_LINE, #state, m_State); \
 		return; \
 	}
 
@@ -30,7 +30,6 @@ namespace Zerodelay
 		m_KeepAliveIntervalMs(keepAliveIntervalSeconds*1000),
 		m_StartConnectingTS(-1),
 		m_KeepAliveTS(-1),
-		m_connectId(0),
 		m_IsWaitingForKeepAlive(false),
 		m_State(EConnectionState::Idle)
 	{
@@ -96,12 +95,10 @@ namespace Zerodelay
 		assert( m_State == EConnectionState::Idle ); // just called after creation
 		m_State = EConnectionState::Connecting;
 		m_StartConnectingTS = ::clock();
-		m_connectId = ::rand();
 		i32_t dstSize = ZERODELAY_BUFF_SIZE;
-		i8_t mapBuffer[ZERODELAY_BUFF_SIZE]; // deliberately bigger than dstSize
-		i8_t* ptr = mapBuffer;
+		i8_t dataBuffer[ZERODELAY_BUFF_SIZE]; // deliberately bigger than dstSize
 		bool bSucces = false;
-		ptr = Util::appendString2( ptr, dstSize, pw.c_str(), bSucces );
+		i8_t* ptr = Util::appendString2( dataBuffer, dstSize, pw.c_str(), bSucces );
 		if (!bSucces) return false;
 		for (auto& kvp : additionalData)
 		{
@@ -110,15 +107,18 @@ namespace Zerodelay
 			ptr = Util::appendString2( ptr, dstSize, kvp.second.c_str(), bSucces );
 			if (!bSucces) return false;
 		}
-		sendSystemMessage( EDataPacketType::ConnectRequest, mapBuffer, ZERODELAY_BUFF_SIZE-dstSize );
+		sendSystemMessage( EDataPacketType::ConnectRequest, dataBuffer, ZERODELAY_BUFF_SIZE-dstSize );
 		return true;
 	}
 
-	void Connection::sendConnectAccept()
+	void Connection::sendConnectAccept(u32_t connectorId)
 	{
 		assert( m_State == EConnectionState::Idle ); // just called after creation
 		m_State = EConnectionState::Connected;
-		sendSystemMessage( EDataPacketType::ConnectAccept );
+		i8_t buff[8];
+		*(u32_t*)buff = connectorId;
+		*(u32_t*)(buff + 4) = m_Link->id();
+		sendSystemMessage( EDataPacketType::ConnectAccept, buff, 8 );
 	}
 
 	void Connection::sendKeepAliveRequest()

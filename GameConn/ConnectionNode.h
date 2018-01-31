@@ -69,10 +69,9 @@ namespace Zerodelay
 		// recvs (Game thread)
 		bool recvPacket( const struct Packet& pack, class Connection* g, class RUDPLink& link );
 		void handleInvalidConnectAttempt( EDataPacketType responseType, class RUDPLink& link );
-		void recvConnectPacket(const i8_t* payload, i32_t len, class RUDPLink& link);
-
-		void recvConnectAccept(class Connection* g);
-		void recvDisconnectPacket( const i8_t* payload, i32_t len, class Connection* g );
+		void recvConnectPacket(u32_t connectorId, const i8_t* payload, i32_t len, class RUDPLink& link);
+		void recvConnectAccept(const i8_t* payload, i32_t len, class Connection* g);
+		void recvDisconnectPacket(const i8_t* payload, i32_t len, class Connection* g );
 		void recvRemoteConnected(class Connection* g, const i8_t* payload, i32_t payloadLen);
 		void recvRemoteDisconnected(class Connection* g, const i8_t* payload, i32_t payloadLen);
 		void recvAlreadyConnected(class Connection* g, const i8_t* payload, i32_t payloadLen);

@@ -89,7 +89,7 @@ namespace Zerodelay
 			return EConnectCallResult::AlreadyExists;
 		}
 		// add link fails if a previous already exists
-		RUDPLink* link = m_DispatchNode->addLink( endPoint );
+		RUDPLink* link = m_DispatchNode->addLink( endPoint, true );
 		if (!link)
 		{
 			return EConnectCallResult::AlreadyExists;
@@ -252,7 +252,7 @@ namespace Zerodelay
 		assert(cb);
 		if(!cb)
 		{
-			m_CoreNode->setCriticalError(ECriticalError::InvalidLogic, ZERODELAY_FUNCTION); 
+			m_CoreNode->setCriticalError(ECriticalError::InvalidLogic, ZERODELAY_FUNCTION_LINE); 
 			return;
 		}
 		if ( specific )
@@ -329,7 +329,7 @@ namespace Zerodelay
 		i32_t offs = etp.write( buff, dstSize );
 		if ( offs < 0 )
 		{
-			m_CoreNode->setCriticalError(ECriticalError::SerializationError, ZERODELAY_FUNCTION);
+			m_CoreNode->setCriticalError(ECriticalError::SerializationError, ZERODELAY_FUNCTION_LINE);
 			return;
 		}
 		dstSize -= offs;
@@ -341,14 +341,14 @@ namespace Zerodelay
 			ptr = Util::appendString2( ptr, dstSize, kvp.first.c_str(), bSucces );
 			if (!bSucces)
 			{
-				m_CoreNode->setCriticalError(ECriticalError::SerializationError, ZERODELAY_FUNCTION);
+				m_CoreNode->setCriticalError(ECriticalError::SerializationError, ZERODELAY_FUNCTION_LINE);
 				return;
 			}
 			// value
 			ptr = Util::appendString2( ptr, dstSize, kvp.second.c_str(), bSucces );
 			if (!bSucces)
 			{
-				m_CoreNode->setCriticalError(ECriticalError::SerializationError, ZERODELAY_FUNCTION);
+				m_CoreNode->setCriticalError(ECriticalError::SerializationError, ZERODELAY_FUNCTION_LINE);
 				return;
 			}
 		}
@@ -377,7 +377,7 @@ namespace Zerodelay
 		}
 		else
 		{
-			m_CoreNode->setCriticalError(ECriticalError::SerializationError, ZERODELAY_FUNCTION);
+			m_CoreNode->setCriticalError(ECriticalError::SerializationError, ZERODELAY_FUNCTION_LINE);
 			return;
 		}
 		// to all except
@@ -399,18 +399,21 @@ namespace Zerodelay
 		assert(pack.type == EHeaderPacketType::Reliable_Ordered);
 		if (!(pack.type == EHeaderPacketType::Reliable_Ordered))
 		{
-			Platform::log("WARNING: Unexpected packet type (%d) in %s", (i32_t)pack.type, ZERODELAY_FUNCTION);
+			Platform::log("WARNING: Unexpected packet type (%d) in %s.", (i32_t)pack.type, ZERODELAY_FUNCTION_LINE);
 			return false; // all connect node packets are reliable ordered
 		}
+		// this assumes that first byte of payload is higher level data id followed by variable data length (payload), assert this
+		static_assert(RUDPLink::off_Norm_Data - RUDPLink::off_Norm_Id == 1, "Invalid offset");
 		EDataPacketType packType = (EDataPacketType)pack.data[0];
 		const i8_t* payload  = pack.data+1;		// first byte is PacketType
-		i32_t payloadLen	 = pack.len-1;		// len includes the packetType byte
+		i32_t payloadLen	 = pack.len-1;		// len includes the packetType (first byte), therefore subtract 1 to obtain payload
 		// if not a connection yet, only interested in connect attempt packets
 		if (!g)
 		{
 			if (packType == EDataPacketType::ConnectRequest) 
 			{
-				recvConnectPacket(payload, payloadLen, link);
+				// pack.linkId is not link.linkId here, it is the connectorId
+				recvConnectPacket(pack.linkId, payload, payloadLen, link);
 			}
 			else
 			{
@@ -424,10 +427,10 @@ namespace Zerodelay
 			switch (packType)
 			{
 			case EDataPacketType::ConnectRequest: // in p2p, there is already a connection for a request
-				recvConnectPacket(payload, payloadLen, link);
+				recvConnectPacket(pack.linkId, payload, payloadLen, link);
 				break;
 			case EDataPacketType::ConnectAccept:
-				recvConnectAccept(g);
+				recvConnectAccept(payload, payloadLen, g);
 				break;
 			case EDataPacketType::Disconnect:
 				recvDisconnectPacket(payload, payloadLen, g);
@@ -470,7 +473,7 @@ namespace Zerodelay
 		link.blockAllUpcomingSends();
 	}
 
-	void ConnectionNode::recvConnectPacket(const i8_t* payload, i32_t payloadLen, RUDPLink& link)
+	void ConnectionNode::recvConnectPacket(u32_t connectorId, const i8_t* payload, i32_t payloadLen, RUDPLink& link)
 	{
 		// If already in list
 		auto it = m_Connections.find(link.getEndPoint());
@@ -485,7 +488,7 @@ namespace Zerodelay
 		i32_t readBytes = Util::readString( pw, kBuffSize, payload, payloadLen );
 		if ( readBytes < 0 )
 		{
-			m_CoreNode->setCriticalError(ECriticalError::SerializationError, ZERODELAY_FUNCTION);
+			m_CoreNode->setCriticalError(ECriticalError::SerializationError, ZERODELAY_FUNCTION_LINE);
 			return; // invalid serialization
 		}
 		if ( strcmp( m_Password.c_str(), pw ) != 0 )
@@ -504,20 +507,34 @@ namespace Zerodelay
 		bool succes = Util::deserializeMap(additionalData, payload + readBytes, payloadLen - readBytes);
 		if (!succes)
 		{
-			m_CoreNode->setCriticalError(ECriticalError::SerializationError, ZERODELAY_FUNCTION);
+			m_CoreNode->setCriticalError( ECriticalError::SerializationError, ZERODELAY_FUNCTION_LINE );
 			return;
 		}
 		// All fine..
 		Connection* g = new Connection( this, false, &link );
-		g->sendConnectAccept();
+		g->sendConnectAccept( connectorId );
 		m_Connections.insert( std::make_pair(link.getEndPoint(), g) );
 		doNewIncomingConnectionCallbacks(true, link.getEndPoint(), additionalData);
 		if (m_RelayConnectAndDisconnect) sendRemoteConnected( g, additionalData );
 		Platform::log( "New incoming connection %s.", g->getEndPoint().toIpAndPort().c_str() );
 	}
 
-	void ConnectionNode::recvConnectAccept(class Connection* g)
+	void ConnectionNode::recvConnectAccept(const i8_t* payload, i32_t payloadLen, class Connection* g)
 	{
+		if (payloadLen != 8)
+		{
+			Platform::log("WARNING: Invalid connect accept packet, length too short. In %s, line %d.", ZERODELAY_FUNCTION, ZERODELAY_LINE);
+			return;
+		}
+		u32_t connectId = *(u32_t*)(payload);
+		u32_t linkId = *(u32_t*)(payload+4);
+		if ( connectId != g->getLink()->id() )
+		{
+			Platform::log("WARNING: Received connect accept, but connect id did not match. In %s, line %d.", ZERODELAY_FUNCTION, ZERODELAY_LINE);
+			return;
+		}
+		// connectId has been veryfied now, forget it and overwrite with linkId known on recipient side
+		g->getLink()->setLinkId(linkId, connectId);
 		g->onReceiveConnectAccept();	
 	}
 
@@ -537,20 +554,20 @@ namespace Zerodelay
 		i32_t offs = etp.read( data, len );
 		if ( offs < 0 )
 		{
-			m_CoreNode->setCriticalError(ECriticalError::SerializationError, ZERODELAY_FUNCTION);
+			m_CoreNode->setCriticalError(ECriticalError::SerializationError, ZERODELAY_FUNCTION_LINE);
 			return;
 		}
 		assert(etp != g->getEndPoint()); // should never get remote endpoint msg from direct link
 		if (g->getEndPoint() == etp)
 		{
-			m_CoreNode->setCriticalError(ECriticalError::SerializationError, ZERODELAY_FUNCTION);
+			m_CoreNode->setCriticalError(ECriticalError::SerializationError, ZERODELAY_FUNCTION_LINE);
 			return;
 		}
 		std::map<std::string, std::string> additionalData;
 		bool succes = Util::deserializeMap(additionalData, data+offs, len-offs);
 		if (!succes)
 		{
-			m_CoreNode->setCriticalError(ECriticalError::SerializationError, ZERODELAY_FUNCTION);
+			m_CoreNode->setCriticalError(ECriticalError::SerializationError, ZERODELAY_FUNCTION_LINE);
 			return;
 		}
 		doNewIncomingConnectionCallbacks(false, etp, additionalData);
@@ -564,13 +581,13 @@ namespace Zerodelay
 		i32_t offs = etp.read(data, len);
 		if ( offs < 0 )
 		{
-			m_CoreNode->setCriticalError(ECriticalError::SerializationError, ZERODELAY_FUNCTION);
+			m_CoreNode->setCriticalError(ECriticalError::SerializationError, ZERODELAY_FUNCTION_LINE);
 			return;
 		}
 		assert(g->getEndPoint() != etp); // should not remote disconnect for a direct link
 		if (g->getEndPoint() == etp)
 		{
-			m_CoreNode->setCriticalError(ECriticalError::SerializationError, ZERODELAY_FUNCTION);
+			m_CoreNode->setCriticalError(ECriticalError::SerializationError, ZERODELAY_FUNCTION_LINE);
 			return;
 		}
 		reason = (EDisconnectReason)data[offs];

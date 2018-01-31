@@ -38,7 +38,7 @@ namespace UnitTests
 		int numDisconnected = 0;
 		int numNewConnections = 0;
 		ZNode* g1 = new ZNode(200, 2);
-		const u32_t kConnections = 10;
+		const u32_t kConnections = 1;
 		ZNode* gs[kConnections];
 		for (auto & g : gs)
 		{
@@ -103,8 +103,9 @@ namespace UnitTests
 		values["key3"]    = "value3";
 		bool bResolve = ztp.resolve("localhost", 27001);
 		assert(bResolve);
+		EConnectCallResult res;
 		printf("deliberately connecting with wrong pw..\n");
-		auto res = gs[0]->connect( ztp, "lala2", 8, values );
+		res = gs[0]->connect( ztp, "lala2", 8, values );
 		assert(res == EConnectCallResult::Succes);
 		res = gs[0]->connect("localhost",27001,"lala", 8, values);
 		assert(res == EConnectCallResult::AlreadyExists);

@@ -37,7 +37,7 @@ namespace Zerodelay
 		void setInvalidConnectPacket();
 		// -- sends
 		bool sendConnectRequest(const std::string& pw, const std::map<std::string, std::string>& additionalData);
-		void sendConnectAccept();
+		void sendConnectAccept(u32_t connectorId);
 		void sendKeepAliveRequest();
 		void sendKeepAliveAnswer();
 		// -- receives
@@ -74,6 +74,5 @@ namespace Zerodelay
 		// state
 		bool m_IsWaitingForKeepAlive;
 		EConnectionState m_State;
-		u32_t m_connectId;
 	};
 }

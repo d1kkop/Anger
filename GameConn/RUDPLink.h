@@ -45,29 +45,48 @@ namespace Zerodelay
 		static const i32_t sm_MaxLingerTimeMs  = 500;
 		static const i32_t sm_MaxItemsPerGroup = 16;
 
-		// TODO Packet layout offsets should not be completely here because it contains higher level data layout information
-		static const i32_t off_Type = 0;			// Reliable, Unreliable or Ack
-		static const i32_t off_Ack_Chan = 1;		// In case of ack, the channel
-		static const i32_t off_Ack_Num  = 2;		// In case of ack, ther number of acks in one packet cluttered together
-		static const i32_t off_Ack_Payload = 6;		// In case of ack, the sequence numb
-		static const i32_t off_Norm_Chan = 1;		// Normal, Channel
-		static const i32_t off_Norm_Seq  = 2;		// Normal, Seq numb
-		static const i32_t off_Norm_Id   = 6;		// Normal/Data, Packet Id 
-		static const i32_t off_Norm_Data = 7;		// Normal, Payload
-		static const i32_t off_RelNew_Seq  = 1;		// RelNew, sequence
-		static const i32_t off_RelNew_Num  = 5;		// RelNew, num groups
-		static const i32_t off_RelNew_GroupId   = 9;		// ReliableNew, GroupId (4 bytes)
-		static const i32_t off_RelNew_GroupBits = 13;		// 2 Bytes (max 16 vars per group)
-		static const i32_t off_RelNew_GroupSkipBytes = 15;	// 2 bytes that hold amount of bytes to skip in case group id is is not known
-		static const i32_t off_RelNew_Data = 17;			// pay load
 		
-		static const i32_t off_Ack_RelNew_Seq = 1;			// Ack_ReliableNew_Seq numb
+		// Generic packet overhead
+		static const i32_t off_Link = 0;
+		static const i32_t off_Type = 4;			// Reliable, Unreliable or Ack
+		static const i32_t hdr_Generic_Size = (off_Type - off_Link)+1;
+		
 
+		// Normal packet overhead
+		static const i32_t off_Norm_Chan = 5;		// Normal, Channel (least 7 bits) & Relay (hi bit)
+		static const i32_t off_Norm_Seq  = 6;		// Normal, Seq numb
+		static const i32_t off_Norm_Id   = 10;		// Normal/Data, Packet Id 
+		static const i32_t off_Norm_Data = 11;		// Normal, Payload
+		static const i32_t hdr_Norm_Size = (off_Norm_Id - off_Norm_Chan); // Note, payload includes ID (1byte)
+
+		// Reliable newest packet overhead
+		static const i32_t off_RelNew_Seq  = 5;		// RelNew, sequence
+		static const i32_t off_RelNew_Num  = 9;		// RelNew, num groups
+		static const i32_t off_RelNew_GroupId   = 13;		// ReliableNew, GroupId (4 bytes)
+		static const i32_t off_RelNew_GroupBits = 17;		// 2 Bytes (max 16 vars per group)
+		static const i32_t off_RelNew_GroupSkipBytes = 19;	// 2 bytes that hold amount of bytes to skip in case group id is is not known
+		static const i32_t off_RelNew_Data = 21;			// pay load
+		static const i32_t hdr_Relnew_Size = (off_RelNew_Data - off_RelNew_Seq);
+
+
+		// Ack normal packet overhead
+		static const i32_t off_Ack_Chan = 5;		// In case of ack, the channel
+		static const i32_t off_Ack_Num  = 6;		// In case of ack, ther number of acks in one packet cluttered together
+		static const i32_t off_Ack_Payload = 10;	// In case of ack, the sequence numb
+		static const i32_t hdr_Ack_Size = (off_Ack_Payload - off_Ack_Chan);
+
+		
+		// Ack reliable newest overhead
+		static const i32_t off_Ack_RelNew_Seq  = 5;			// Ack_ReliableNew_Seq numb
+		static const i32_t hdr_Ack_RelNew_Size = 4;			// Size of single sequence numb
+
+
+		// Maximum channels in case of normal packet types
 		static const i32_t sm_NumChannels  = 8;
 
 
 	public:
-		RUDPLink(class RecvNode* recvNode, const EndPoint& endPoint);
+		RUDPLink(class RecvNode* recvNode, const EndPoint& endPoint, u32_t linkId);
 		~RUDPLink();
 
 		// ------ Called from main thread -------
@@ -90,6 +109,8 @@ namespace Zerodelay
 		bool isPinned() const;
 		void unpin();
 
+		u32_t id() const { return m_LinkId; }
+		void setLinkId(u32_t id, u32_t connectorId);
 		bool areAllQueuesEmpty() const;
 
 		// Set to 0, to turn off. Default is off.
@@ -110,22 +131,26 @@ namespace Zerodelay
 		// executed on recv thread
 		void recvData( const i8_t* buff, i32_t len );
 		void addAckToAckQueue( i8_t channel, u32_t seq );
-		void receiveReliableOrdered(const i8_t * buff, i32_t rawSize);
-		void receiveUnreliableSequenced(const i8_t * buff, i32_t rawSize);
-		void receiveReliableNewest(const i8_t* buff, i32_t rawSize);
+		void receiveReliableOrdered(u32_t linkId, const i8_t * buff, i32_t rawSize);
+		void receiveUnreliableSequenced(u32_t linkId, const i8_t * buff, i32_t rawSize);
+		void receiveReliableNewest(u32_t linkId, const i8_t* buff, i32_t rawSize);
 		void receiveAck(const i8_t* buff, i32_t rawSize);
 		void receiveAckRelNewest(const i8_t* buff, i32_t rawSize);
 
-		// support functions
-		void assembleNormalPacket( Packet& pack, EHeaderPacketType packetType, u8_t dataId, const i8_t* data, i32_t len, i32_t hdrSize, i8_t channel, bool relay );
-		void extractChannelRelayAndSeq(const i8_t* buff, i32_t rawSize, i8_t& channOut, bool& relayOut, u32_t& seqOut );
-		void createNormalPacket(Packet& pack, const i8_t* buff, i32_t dataSize, i8_t channel, bool relay, EHeaderPacketType type) const;
-		bool isSequenceNewer( u32_t incoming, u32_t having ) const;
-		bool isSequenceNewerGroupItem( u32_t incoming, u32_t having ) const; // This one is newer only when having is incoming-UINT_MAX/2
+		// serialize functions
+		static void serializeNormalPacket( Packet& pack, u32_t linkId, EHeaderPacketType packetType, u8_t dataId, const i8_t* data, i32_t len, i32_t hdrSize, i8_t channel, bool relay );
+		static bool deserializeGenericHdr(const i8_t* buff, i32_t rawSize, u32_t& linkIdOut, EHeaderPacketType& packetType);
+		static bool deserializeNormalHdr(const i8_t* buff, i32_t rawSize, i8_t& channOut, bool& relayOut, u32_t& seqOut );
+		static void createNormalPacket(Packet& pack, const i8_t* buff, i32_t dataSize, u32_t linkId, i8_t channel, bool relay, EHeaderPacketType type);
+
+		// sequence newer support
+		static bool isSequenceNewer( u32_t incoming, u32_t having );
+		static bool isSequenceNewerGroupItem( u32_t incoming, u32_t having ); // This one is newer only when having is incoming-UINT_MAX/2
 
 		// manager ptrs
 		RecvNode* m_RecvNode;
 		// state
+		u32_t m_LinkId;
 		EndPoint m_EndPoint;
 		std::atomic_bool m_BlockNewSends;
 		// send queues

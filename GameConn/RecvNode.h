@@ -15,6 +15,7 @@ namespace Zerodelay
 {
 	struct Packet 
 	{
+		u32_t linkId;
 		i32_t len; 
 		i8_t* data;
 		i8_t channel;
@@ -50,7 +51,7 @@ namespace Zerodelay
 		class ISocket* getSocket() const { return m_Socket; }
 
 		class RUDPLink* getLink( const EndPoint& endPoint, bool getIfIsPendingDelete ) const;
-		class RUDPLink* addLink( const EndPoint& endPoint ); // returns nullptr if already exists
+		class RUDPLink* addLink( const EndPoint& endPoint, bool isConnector ); // returns nullptr if already exists
 		void startThreads();
 
 		i32_t getNumOpenLinks() const;
@@ -69,6 +70,7 @@ namespace Zerodelay
 		class ISocket* m_Socket;
 		bool   m_CaptureSocketErrors;
 		i32_t  m_ResendIntervalMs;
+		u32_t  m_UniqueLinkIdCounter;
 		std::thread* m_RecvThread;
 		std::thread* m_SendThread;
 		std::condition_variable m_SendThreadCv;

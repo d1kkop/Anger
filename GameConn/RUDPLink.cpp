@@ -10,14 +10,15 @@
 
 namespace Zerodelay
 {
-	RUDPLink::RUDPLink(RecvNode* recvNode, const EndPoint& endPoint):
+	RUDPLink::RUDPLink(RecvNode* recvNode, const EndPoint& endPoint, u32_t linkId):
 		m_RecvNode(recvNode),
+		m_LinkId(linkId),
+		m_EndPoint(endPoint),
 		m_BlockNewSends(false),
 		m_PacketLossPercentage(0),
 		m_IsPendingDelete(false),
 		m_MarkDeleteTS(0)
 	{
-		m_EndPoint = endPoint;
 		m_SendSeq_reliable_newest = 0;
 		m_RecvSeq_reliable_newest_recvThread = 0;
 		m_RecvSeq_reliable_newest_sendThread = 1; // set to 1 to avoid immediate sending an ack as, (0 >= 0) == true, so is newer
@@ -34,17 +35,17 @@ namespace Zerodelay
 
 	RUDPLink::~RUDPLink()
 	{
-		for ( auto& it : m_SendQueue_unreliable ) delete [] it.data;
-		for ( i32_t i=0; i<sm_NumChannels; ++i ) for (auto& it : m_SendQueue_reliable[i] ) delete [] it.data;
-		for ( i32_t i=0; i<sm_NumChannels; ++i ) for (auto& it : m_RecvQueue_reliable_order[i] ) delete [] it.second.data;
-		for ( i32_t i=0; i<sm_NumChannels; ++i ) for (auto& it : m_RecvQueue_unreliable_sequenced[i] ) delete [] it.data;
-		for ( auto& kvp : m_SendQueue_reliable_newest ) for (auto i = 0; i < sm_MaxItemsPerGroup ; i++) delete [] kvp.second.groupItems[i].data;
+		for ( auto& pack : m_SendQueue_unreliable ) delete [] pack.data;
+		for ( auto & queue : m_SendQueue_reliable) for (auto& pack : queue) delete [] pack.data;
+		for ( auto & queue : m_RecvQueue_reliable_order ) for (auto& seqPacketPair : queue) delete [] seqPacketPair.second.data;
+		for ( auto & queue : m_RecvQueue_unreliable_sequenced ) for (auto& pack : queue) delete [] pack.data;
+		for ( auto& groupIdGroupPair : m_SendQueue_reliable_newest ) for (auto & groupItem : groupIdGroupPair.second.groupItems) delete [] groupItem.data;
 	}
 
 	void RUDPLink::addToSendQueue(u8_t id, const i8_t* data, i32_t len, EHeaderPacketType packetType, u8_t channel, bool relay)
 	{
 		if ( m_BlockNewSends ) // discard new packets in this case
-		{ 
+		{
 			Platform::log("WARNING: Trying to send id %d with sendType %d while send is blocked.", id, (u32_t)packetType);
 			return; 
 		}
@@ -52,10 +53,11 @@ namespace Zerodelay
 		if ( packetType == EHeaderPacketType::Ack || packetType == EHeaderPacketType::Reliable_Newest )
 		{
 			assert( false && "Invalid packet type" );
+			m_RecvNode->getCoreNode()->setCriticalError( ECriticalError::InvalidLogic, ZERODELAY_FUNCTION_LINE );
 			return;
 		}
 		Packet pack;
-		assembleNormalPacket( pack, packetType, id, data, len, off_Norm_Data, channel, relay );
+		serializeNormalPacket( pack, m_LinkId, packetType, id, data, len, off_Norm_Data, channel, relay );
 		if ( packetType == EHeaderPacketType::Reliable_Ordered )
 		{
 			std::lock_guard<std::mutex> lock(m_SendQueuesMutex);
@@ -81,6 +83,7 @@ namespace Zerodelay
 		if ( !( groupBit >= 0 && groupBit < sm_MaxItemsPerGroup ) )
 		{
 			Platform::log("ERROR: GroupBit must be >= 0 and less than %d.", sm_MaxItemsPerGroup);
+			m_RecvNode->getCoreNode()->setCriticalError( ECriticalError::SerializationError, ZERODELAY_FUNCTION_LINE );
 			return;
 		}
 		std::lock_guard<std::mutex> lock(m_SendQueuesMutex);
@@ -231,6 +234,15 @@ namespace Zerodelay
 		m_PinnedCount--;
 	}
 
+	void RUDPLink::setLinkId(u32_t id, u32_t connectorId)
+	{
+		if (m_LinkId != connectorId)
+		{
+			m_RecvNode->getCoreNode()->setCriticalError(ECriticalError::InvalidLogic, ZERODELAY_FUNCTION_LINE);
+			return;
+		}
+		m_LinkId = id;
+	}
 
 	// ----------------- Called from send thread -----------------------------------------------
 
@@ -275,7 +287,8 @@ namespace Zerodelay
 	{
 		// format per entry: groupId(4bytes) | groupBits( (items.size()+7)/8 bytes ) | n x groupData (sum( item_data_size, n ) bytes )
 		i8_t dataBuffer[ZERODELAY_BUFF_RECV_SIZE]; // decl buffer
-		dataBuffer[off_Type] = (i8_t)EHeaderPacketType::Reliable_Newest; // start with type
+		*(u32_t*)dataBuffer  = m_LinkId;
+		dataBuffer[off_Type] = (i8_t)EHeaderPacketType::Reliable_Newest; // type after linkId
 		*(u32_t*)(dataBuffer + off_RelNew_Seq) = m_SendSeq_reliable_newest; // followed by sequence number
 		i32_t kNumGroupsWritten = 0;  // keeps track of num groups as is not know yet
 		i32_t kBytesWritten = off_RelNew_GroupId; // skip 4 bytes, as num groups is not yet known
@@ -304,8 +317,8 @@ namespace Zerodelay
 					assert(kBytesWritten + item.dataLen <= ZERODELAY_BUFF_SIZE); 
 					if ( kBytesWritten + item.dataLen > ZERODELAY_BUFF_SIZE )
 					{
-						Platform::log("CRITICAL buffer overrun detected in %s", ZERODELAY_FUNCTION );
-						m_RecvNode->getCoreNode()->setCriticalError( ECriticalError::TooMuchDataToSend, ZERODELAY_FUNCTION );
+						Platform::log("CRITICAL: Buffer overrun detected in %s.", ZERODELAY_FUNCTION_LINE );
+						m_RecvNode->getCoreNode()->setCriticalError( ECriticalError::TooMuchDataToSend, ZERODELAY_FUNCTION_LINE );
 						return;
 					}
 					Platform::memCpy(dataBuffer + kBytesWritten, item.dataLen, item.data, item.dataLen);
@@ -374,10 +387,10 @@ namespace Zerodelay
 		{
 			return;
 		}
-		i8_t buff[8];
+		i8_t buff[32];
 		buff[off_Type] = (i8_t)EHeaderPacketType::Ack_Reliable_Newest;
 		*(u32_t*)&buff[off_Ack_RelNew_Seq] = recvThreadAckValue;
-		socket->send(m_EndPoint, buff, 5);
+		socket->send(m_EndPoint, buff, 4);
 		m_RecvSeq_reliable_newest_sendThread = recvThreadAckValue+1;
 	}
 
@@ -389,7 +402,11 @@ namespace Zerodelay
 		if ( m_PacketLossPercentage > 0 && (u8_t)(rand() % 100) < m_PacketLossPercentage )
 			return; // discard
 
-		EHeaderPacketType type = (EHeaderPacketType)buff[off_Type];
+		u32_t linkId; 
+		EHeaderPacketType type;
+		if (!deserializeGenericHdr(buff, rawSize, linkId, type))
+			return;
+
 		switch ( type )
 		{
 		case EHeaderPacketType::Ack:
@@ -403,15 +420,15 @@ namespace Zerodelay
 		case EHeaderPacketType::Reliable_Ordered:
 			// ack it (even if we already processed this packet)
 			addAckToAckQueue( buff[off_Norm_Chan] & 7, *(u32_t*)&buff[off_Norm_Seq] );
-			receiveReliableOrdered(buff, rawSize);	
+			receiveReliableOrdered( linkId, buff, rawSize );	
 			break;
 
 		case EHeaderPacketType::Unreliable_Sequenced:
-			receiveUnreliableSequenced(buff, rawSize);
+			receiveUnreliableSequenced( linkId, buff, rawSize );
 			break;
 
 		case EHeaderPacketType::Reliable_Newest:
-			receiveReliableNewest( buff, rawSize );
+			receiveReliableNewest( linkId, buff, rawSize );
 			break;
 
 		default:
@@ -430,12 +447,16 @@ namespace Zerodelay
 		}
 	}
 
-	void RUDPLink::receiveReliableOrdered(const i8_t * buff, i32_t rawSize)
+	void RUDPLink::receiveReliableOrdered(u32_t linkId, const i8_t * buff, i32_t rawSize)
 	{
 		i8_t channel;
 		bool relay;
 		u32_t seq;
-		extractChannelRelayAndSeq( buff, rawSize, channel, relay, seq );
+		if ( !deserializeNormalHdr(buff, rawSize, channel, relay, seq) )
+		{
+			Platform::log("WARNING: Serialization error in %s, line %d.", ZERODELAY_FUNCTION, ZERODELAY_LINE);
+			return;
+		}
 
 		auto& recvSeq = m_RecvSeq_reliable_recvThread[channel];
 		if ( !isSequenceNewer(seq, recvSeq) )
@@ -447,7 +468,7 @@ namespace Zerodelay
 		if ( queue.count( seq ) == 0 )
 		{
 			Packet pack; // Offset off_Norm_Id is correct data packet type (EDataPacketType) (not EHeaderPacketType!) is included in the data
-			createNormalPacket( pack, buff + off_Norm_Id, rawSize-off_Norm_Id, channel, relay, EHeaderPacketType::Reliable_Ordered );
+			createNormalPacket( pack, buff + off_Norm_Id, rawSize-off_Norm_Id, linkId, channel, relay, EHeaderPacketType::Reliable_Ordered );
 			queue.insert( std::make_pair(seq, pack) );
 		}
 		// update recv seq to most recent possible
@@ -457,12 +478,16 @@ namespace Zerodelay
 		}
 	}
 
-	void RUDPLink::receiveUnreliableSequenced(const i8_t * buff, i32_t rawSize)
+	void RUDPLink::receiveUnreliableSequenced(u32_t linkId, const i8_t * buff, i32_t rawSize)
 	{
 		i8_t channel;
 		bool relay;
 		u32_t seq;
-		extractChannelRelayAndSeq( buff, rawSize, channel, relay, seq );
+		if ( !deserializeNormalHdr(buff, rawSize, channel, relay, seq) )
+		{
+			Platform::log("WARNING: Serialization error in %s, line %d.", ZERODELAY_FUNCTION, ZERODELAY_LINE );
+			return;
+		}
 		
 		if ( !isSequenceNewer(seq, m_RecvSeq_unreliable[channel]) )
 			return;
@@ -472,17 +497,17 @@ namespace Zerodelay
 		m_RecvSeq_unreliable[channel] = seq+1;
 
 		Packet pack;  // Id offset of Norm_ID is correct as id is enclosed in payload/data
-		createNormalPacket( pack, buff + off_Norm_Id, rawSize-off_Norm_Id, channel, relay, EHeaderPacketType::Unreliable_Sequenced );
+		createNormalPacket( pack, buff + off_Norm_Id, rawSize-off_Norm_Id, linkId, channel, relay, EHeaderPacketType::Unreliable_Sequenced );
 
 		std::lock_guard<std::mutex> lock(m_RecvQueuesMutex);
 		m_RecvQueue_unreliable_sequenced[channel].emplace_back( pack );
 	}
 
-	void RUDPLink::receiveReliableNewest(const i8_t* buff, i32_t rawSize)
+	void RUDPLink::receiveReliableNewest(u32_t linkId, const i8_t* buff, i32_t rawSize)
 	{
-		if ( rawSize < off_RelNew_Data ) // weak check to see if at least hdr size is available
+		if ( rawSize < hdr_Relnew_Size )
 		{
-			Platform::log("ERROR: invalid reliable newest data, too short");
+			Platform::log("WARNING: Invalid reliable newest data, too short. In %s, line %d.", ZERODELAY_FUNCTION, ZERODELAY_LINE);
 			return;
 		}
 
@@ -496,7 +521,7 @@ namespace Zerodelay
 
 		// do further processing of individual groups in higher level group unwrap system
 		Packet pack;
-		createNormalPacket( pack, buff + off_RelNew_Num, rawSize - off_RelNew_Num, 0, false, EHeaderPacketType::Reliable_Newest );
+		createNormalPacket( pack, buff + off_RelNew_Num, rawSize - off_RelNew_Num, linkId, 0, false, EHeaderPacketType::Reliable_Newest );
 
 		std::lock_guard<std::mutex> lock(m_RecvQueuesMutex);
 		m_RecvQueue_reliable_newest.emplace_back( pack );
@@ -504,15 +529,25 @@ namespace Zerodelay
 
 	void RUDPLink::receiveAck(const i8_t * buff, i32_t rawSize)
 	{
+		if (rawSize < hdr_Ack_Size)
+		{
+			Platform::log("WARNING: Invalid ack size detected in %s, line %d.", ZERODELAY_FUNCTION, ZERODELAY_LINE);
+			return;
+		}
 		i8_t channel = buff[off_Ack_Chan];
 		i32_t num = *(i32_t*)(buff + off_Ack_Num); // num of acks
+		if (rawSize - hdr_Ack_Size != num*4)
+		{
+			Platform::log("WARNING: Invalid ack payload detected in %s, line %d.", ZERODELAY_FUNCTION, ZERODELAY_LINE);
+			return;
+		}
 		std::lock_guard<std::mutex> lock(m_SendQueuesMutex);
 		auto& queue = m_SendQueue_reliable[channel];
 		for (i32_t i = 0; i < num; ++i) // for each ack, try to find it, and remove as was succesfully transmitted
 		{
 			// remove from send queue if we receive an ack for the packet
 			u32_t seq = *(u32_t*)(buff + (i*4) + off_Ack_Payload);
-			auto it = std::find_if(queue.begin(), queue.end(), [seq](auto& pack)
+			auto it   = std::find_if(queue.begin(), queue.end(), [seq](auto& pack)
 			{
 				return *(u32_t*)&pack.data[off_Norm_Seq] == seq;
 			});
@@ -527,6 +562,12 @@ namespace Zerodelay
 
 	void RUDPLink::receiveAckRelNewest(const i8_t* buff, i32_t rawSize)
 	{
+		if (rawSize < hdr_Ack_RelNew_Size)
+		{
+			Platform::log("WARNING: Invalid reliable newest ack size detected in %s, line %d.", ZERODELAY_FUNCTION, ZERODELAY_LINE);
+			return;
+		}
+
 		u32_t ackSeq = *(i32_t*) (buff + off_Ack_RelNew_Seq);
 		if ( !isSequenceNewer( ackSeq, m_RecvSeq_reliable_newest_ack ) )
 			return; // if sequence is already acked, ignore
@@ -537,7 +578,7 @@ namespace Zerodelay
 		std::lock_guard<std::mutex> lock(m_SendQueuesMutex);
 		auto& queue = m_SendQueue_reliable_newest;
 		// For all groups in queue, update all items per group to received ack.
-		// If not a single localRevision is newer than the Remote, remote the group from the list.
+		// If not a single localRevision is newer than the Remote, remove the group from the list.
 		for ( auto it = queue.begin(); it != queue.end(); )
 		{
 			auto& group = it->second;
@@ -564,9 +605,10 @@ namespace Zerodelay
 
 	// ----------------- Support functions (does not touch class data) -----------------------------------------------
 
-	void RUDPLink::assembleNormalPacket(Packet& pack, EHeaderPacketType packetType, u8_t dataId, const i8_t* data, i32_t len, i32_t hdrSize, i8_t channel, bool relay)
+	void RUDPLink::serializeNormalPacket(Packet& pack, u32_t linkId, EHeaderPacketType packetType, u8_t dataId, const i8_t* data, i32_t len, i32_t hdrSize, i8_t channel, bool relay)
 	{
 		pack.data = new i8_t[len+hdrSize];
+		*(u32_t*)(pack.data + off_Link) = linkId;
 		pack.data[off_Type] = (i8_t)packetType;
 		pack.data[off_Norm_Chan] = channel;
 		pack.data[off_Norm_Chan] |= ((i8_t)relay) << 3; // skip over the bits for channel, 0 to 7
@@ -575,15 +617,26 @@ namespace Zerodelay
 		pack.len = len + off_Norm_Data;
 	}
 
-	void RUDPLink::extractChannelRelayAndSeq(const i8_t* buff, i32_t rawSize, i8_t& channel, bool& relay, u32_t& seq)
+	bool RUDPLink::deserializeGenericHdr(const i8_t* buff, i32_t rawSize, u32_t& linkIdOut, EHeaderPacketType& packetType)
 	{
+		if ( rawSize < hdr_Generic_Size ) return false;
+		linkIdOut  = *(u32_t*)(buff + off_Link);
+		packetType = (EHeaderPacketType)*(buff + off_Type);
+		return true;
+	}
+
+	bool RUDPLink::deserializeNormalHdr(const i8_t* buff, i32_t rawSize, i8_t& channel, bool& relay, u32_t& seq)
+	{
+		if ( rawSize <= hdr_Norm_Size ) return false; 
 		channel = (buff[off_Norm_Chan] & 7);
 		relay   = (buff[off_Norm_Chan] & 8) != 0;
 		seq		= *(u32_t*)(buff + off_Norm_Seq);
+		return true;
 	}
 
-	void RUDPLink::createNormalPacket(Packet& pack, const i8_t* buff, i32_t dataSize, i8_t channel, bool relay, EHeaderPacketType type) const
+	void RUDPLink::createNormalPacket(Packet& pack, const i8_t* buff, i32_t dataSize, u32_t linkId, i8_t channel, bool relay, EHeaderPacketType type)
 	{
+		pack.linkId = linkId;
 		pack.len  = dataSize;
 		pack.data = new i8_t[pack.len];
 		pack.channel = channel;
@@ -592,13 +645,13 @@ namespace Zerodelay
 		Platform::memCpy(pack.data, pack.len, buff, pack.len); 
 	}
 
-	bool RUDPLink::isSequenceNewer(u32_t incoming, u32_t having) const
+	bool RUDPLink::isSequenceNewer(u32_t incoming, u32_t having)
 	{
 		return (incoming >= having && (incoming - having) <= (UINT_MAX>>1)) || 
 			   (incoming < having && (having - incoming) > (UINT_MAX>>1));
 	}
 
-	bool RUDPLink::isSequenceNewerGroupItem(u32_t incoming, u32_t having) const
+	bool RUDPLink::isSequenceNewerGroupItem(u32_t incoming, u32_t having)
 	{
 		return (incoming > having && (incoming - having) <= (UINT_MAX>>1)) || 
 			   (incoming < having && (having - incoming) > (UINT_MAX>>1));
