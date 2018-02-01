@@ -37,7 +37,7 @@ namespace Zerodelay
 		void setInvalidConnectPacket();
 		// -- sends
 		bool sendConnectRequest(const std::string& pw, const std::map<std::string, std::string>& additionalData);
-		void sendConnectAccept(u32_t connectorId);
+		void sendConnectAccept();
 		void sendKeepAliveRequest();
 		void sendKeepAliveAnswer();
 		// -- receives

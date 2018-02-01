@@ -111,14 +111,11 @@ namespace Zerodelay
 		return true;
 	}
 
-	void Connection::sendConnectAccept(u32_t connectorId)
+	void Connection::sendConnectAccept()
 	{
 		assert( m_State == EConnectionState::Idle ); // just called after creation
 		m_State = EConnectionState::Connected;
-		i8_t buff[8];
-		*(u32_t*)buff = connectorId;
-		*(u32_t*)(buff + 4) = m_Link->id();
-		sendSystemMessage( EDataPacketType::ConnectAccept, buff, 8 );
+		sendSystemMessage( EDataPacketType::ConnectAccept);
 	}
 
 	void Connection::sendKeepAliveRequest()

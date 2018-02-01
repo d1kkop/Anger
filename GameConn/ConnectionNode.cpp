@@ -89,7 +89,7 @@ namespace Zerodelay
 			return EConnectCallResult::AlreadyExists;
 		}
 		// add link fails if a previous already exists
-		RUDPLink* link = m_DispatchNode->addLink( endPoint, true );
+		RUDPLink* link = m_DispatchNode->addLink( endPoint, nullptr );
 		if (!link)
 		{
 			return EConnectCallResult::AlreadyExists;
@@ -413,12 +413,12 @@ namespace Zerodelay
 			if (packType == EDataPacketType::ConnectRequest) 
 			{
 				// pack.linkId is not link.linkId here, it is the connectorId
-				recvConnectPacket(pack.linkId, payload, payloadLen, link);
+				recvConnectPacket(payload, payloadLen, link);
 			}
 			else
 			{
 				// for now, only allow other packets when having a connectin, so if not, remove the link
-				handleInvalidConnectAttempt(pack.linkId, EDataPacketType::InvalidConnectPacket, link);
+				handleInvalidConnectAttempt(EDataPacketType::InvalidConnectPacket, link);
 			}
 			return true;
 		}
@@ -427,10 +427,10 @@ namespace Zerodelay
 			switch (packType)
 			{
 			case EDataPacketType::ConnectRequest: // in p2p, there is already a connection for a request
-				recvConnectPacket(pack.linkId, payload, payloadLen, link);
+				recvConnectPacket(payload, payloadLen, link);
 				break;
 			case EDataPacketType::ConnectAccept:
-				recvConnectAccept(payload, payloadLen, g);
+				g->onReceiveConnectAccept();
 				break;
 			case EDataPacketType::Disconnect:
 				recvDisconnectPacket(payload, payloadLen, g);
@@ -466,23 +466,20 @@ namespace Zerodelay
 		return false; // unhandeld
 	}
 
-	void ConnectionNode::handleInvalidConnectAttempt(u32_t connectorId, EDataPacketType responseType, RUDPLink& link)
+	void ConnectionNode::handleInvalidConnectAttempt(EDataPacketType responseType, RUDPLink& link)
 	{
-		i8_t buff[8];
-		*(u32_t*)buff = connectorId;
-		*(u32_t*)(buff + 4) = link.id();
-		sendSystemMessage( link, responseType, buff, 8 );
+		sendSystemMessage( link, responseType );
 		link.markPendingDelete();
 		link.blockAllUpcomingSends();
 	}
 
-	void ConnectionNode::recvConnectPacket(u32_t connectorId, const i8_t* payload, i32_t payloadLen, RUDPLink& link)
+	void ConnectionNode::recvConnectPacket(const i8_t* payload, i32_t payloadLen, RUDPLink& link)
 	{
 		// If already in list
 		auto it = m_Connections.find(link.getEndPoint());
 		if (it != m_Connections.end())
 		{
-			handleInvalidConnectAttempt( connectorId, EDataPacketType::AlreadyConnected, link );
+			handleInvalidConnectAttempt(EDataPacketType::AlreadyConnected, link );
 			return;
 		}
 		// Check password
@@ -496,13 +493,13 @@ namespace Zerodelay
 		}
 		if ( strcmp( m_Password.c_str(), pw ) != 0 )
 		{
-			handleInvalidConnectAttempt( connectorId, EDataPacketType::IncorrectPassword, link );
+			handleInvalidConnectAttempt(EDataPacketType::IncorrectPassword, link );
 			return;
 		}
 		// Check if not exceeding max connections
 		if ( (i32_t)m_Connections.size() >= m_MaxIncomingConnections )
 		{
-			handleInvalidConnectAttempt( connectorId, EDataPacketType::MaxConnectionsReached, link );
+			handleInvalidConnectAttempt(EDataPacketType::MaxConnectionsReached, link);
 			return;
 		}
 		// read additional data
@@ -515,27 +512,11 @@ namespace Zerodelay
 		}
 		// All fine..
 		Connection* g = new Connection( this, false, &link );
-		g->sendConnectAccept( connectorId );
+		g->sendConnectAccept();
 		m_Connections.insert( std::make_pair(link.getEndPoint(), g) );
 		doNewIncomingConnectionCallbacks(true, link.getEndPoint(), additionalData);
 		if (m_RelayConnectAndDisconnect) sendRemoteConnected( g, additionalData );
 		Platform::log( "New incoming connection %s.", g->getEndPoint().toIpAndPort().c_str() );
-	}
-
-	void ConnectionNode::recvConnectAccept(const i8_t* payload, i32_t payloadLen, class Connection* g)
-	{
-		u32_t connectId, linkId;
-		if (!deserializeConnectInfo(payload, payloadLen, connectId, linkId))
-			return;
-
-		if ( connectId != g->getLink()->id() )
-		{
-			Platform::log("WARNING: Received connect accept, but connect id did not match. In %s, line %d.", ZERODELAY_FUNCTION, ZERODELAY_LINE);
-			return;
-		}
-		// connectId has been veryfied now, forget it and overwrite with linkId known on recipient side
-		g->getLink()->setLinkId(linkId, connectId);
-		g->onReceiveConnectAccept();
 	}
 
 	void ConnectionNode::recvDisconnectPacket(const i8_t* payload, i32_t len, class Connection* g)
@@ -597,9 +578,6 @@ namespace Zerodelay
 
 	void ConnectionNode::recvAlreadyConnected(class Connection* g, const i8_t* payload, i32_t payloadLen)
 	{
-		u32_t connectId, linkId;
-		if (!deserializeConnectInfo(payload, payloadLen, connectId, linkId))
-			return;
 		// No state change on the connection in this case, could already be successfully connected before.
 		ZEndpoint ztp = toZpt(g->getEndPoint());
 		Util::forEachCallback(m_ConnectResultCallbacks, [&](const ConnectResultCallback& crc)
@@ -622,26 +600,4 @@ namespace Zerodelay
 			sendRemoteDisconnected( g, EDisconnectReason::Lost );
 		}
 	}
-
-	bool ConnectionNode::deserializeConnectInfo(const i8_t* payload, i32_t payloadLen, u32_t& connectId, u32_t& linkId)
-	{
-		if (payloadLen < 8)
-		{
-			Platform::log("WARNING: Invalid connect accept packet, length too short. In %s, line %d.", ZERODELAY_FUNCTION, ZERODELAY_LINE);
-			return false;
-		}
-		connectId = *(u32_t*)(payload);
-		linkId = *(u32_t*)(payload + 4);
-		return true;
-	}
-
-	bool ConnectionNode::isConnectResponsePacket(i8_t t)
-	{
-		return  (t == (i8_t)EDataPacketType::ConnectAccept) ||
-				(t == (i8_t)EDataPacketType::InvalidConnectPacket) ||
-				(t == (i8_t)EDataPacketType::IncorrectPassword) || 
-				(t == (i8_t)EDataPacketType::MaxConnectionsReached) ||
-				(t == (i8_t)EDataPacketType::AlreadyConnected);
-	}
-
 }

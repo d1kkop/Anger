@@ -15,7 +15,6 @@ namespace Zerodelay
 	RecvNode::RecvNode(i32_t resendIntervalMs):
 		m_IsClosing(false),
 		m_ResendIntervalMs(resendIntervalMs),
-		m_UniqueLinkIdCounter(0),
 		m_Socket(nullptr),
 		m_RecvThread(nullptr),
 		m_SendThread(nullptr),
@@ -245,6 +244,7 @@ namespace Zerodelay
 				continue;
 			}
 		
+			u32_t linkId = *(u32_t*)(buff + RUDPLink::off_Link);
 			if (!link) // add must be succesful if link wasnt found
 			{
 				// if not known link, first packet MUST be a connect packet, otherwise discard it
@@ -259,37 +259,22 @@ namespace Zerodelay
 								   endPoint.toIpAndPort().c_str(), linkId );
 					continue;
 				}
-				link = addLink(endPoint, false);
+				link = addLink(endPoint, nullptr);
 				assert(link);
-				// cannot check linkId because dont know it yet (is a connect attempt)
-				link->recvData( buff, rawSize );
 			}
-			else
+			else if ( linkId != link->id() )
 			{
-				// Fail if link id's dont match or if is connect accept packet and connectId (in the payload) doesnt match the client's connectId.
-				u32_t linkId = *(u32_t*)(buff + RUDPLink::off_Link);
-				if ( linkId != link->id() )
-				{
-					if ( rawSize >= RUDPLink::off_Norm_Data+4 && 
-						 buff[RUDPLink::off_Type] == (i8_t)EHeaderPacketType::Reliable_Ordered &&
-						 ConnectionNode::isConnectResponsePacket(buff[RUDPLink::off_Norm_Id]) )
-					{
-						linkId = *(u32_t*)(buff + RUDPLink::off_Norm_Data);
-					}
-				}
-
-				if ( linkId != link->id() )
-				{
-					i8_t hdrType  = -1;
-					i8_t dataType = -1;
-					if ( rawSize >= RUDPLink::off_Type+1 ) hdrType = buff[RUDPLink::off_Type];
-					if ( rawSize >= RUDPLink::off_Norm_Id+1 ) dataType = buff[RUDPLink::off_Norm_Id];
-					Platform::log("WARNING: Dropping packet because link id does not match. Incoming %d, having %d, hdrType %d dataType %d.",
-								  linkId, link->id(), hdrType, dataType);
-					continue;
-				}
-				link->recvData( buff, rawSize );
+				// Fail if link id's dont match
+				i8_t hdrType  = -1;
+				i8_t dataType = -1;
+				if ( rawSize >= RUDPLink::off_Type+1 ) hdrType = buff[RUDPLink::off_Type];
+				if ( rawSize >= RUDPLink::off_Norm_Id+1 ) dataType = buff[RUDPLink::off_Norm_Id];
+				Platform::log("WARNING: Dropping packet because link id does not match. Incoming %d, having %d, hdrType %d dataType %d.",
+								linkId, link->id(), hdrType, dataType);
+				continue;
 			}
+
+			link->recvData( buff, rawSize );
 		}
 	}
 
@@ -357,18 +342,14 @@ namespace Zerodelay
 		return nullptr;
 	}
 
-	class RUDPLink* RecvNode::addLink(const EndPoint& endPoint, bool isConnector)
+	class RUDPLink* RecvNode::addLink(const EndPoint& endPoint, const u32_t* linkIdPtr)
 	{
 		std::lock_guard<std::mutex> lock(m_OpenLinksMutex);
 		auto it = m_OpenLinksMap.find( endPoint );
 		if ( it == m_OpenLinksMap.end() )
 		{
-			Platform::log("Link to %s added.", endPoint.toIpAndPort().c_str());
-			// If connecting, start out with random id and have server assign it a unique id
-			// Use ID through system to detect out of order data
-			u32_t linkId;
-			if (!isConnector) linkId = m_UniqueLinkIdCounter++;
-			else linkId = rand();
+			u32_t linkId = linkIdPtr?*linkIdPtr:rand();
+			Platform::log("Link to %s (id %d) added.", endPoint.toIpAndPort().c_str(), linkId);
 			RUDPLink* link = new RUDPLink( this, endPoint, linkId );
 			m_OpenLinksMap[endPoint] = link;
 			m_OpenLinksList.emplace_back( link );

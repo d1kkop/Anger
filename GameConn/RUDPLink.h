@@ -110,7 +110,6 @@ namespace Zerodelay
 		void unpin();
 
 		u32_t id() const { return m_LinkId; }
-		void setLinkId(u32_t id, u32_t connectorId);
 		bool areAllQueuesEmpty() const;
 
 		// Set to 0, to turn off. Default is off.

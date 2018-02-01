@@ -234,16 +234,6 @@ namespace Zerodelay
 		m_PinnedCount--;
 	}
 
-	void RUDPLink::setLinkId(u32_t id, u32_t connectorId)
-	{
-		if (m_LinkId != connectorId)
-		{
-			m_RecvNode->getCoreNode()->setCriticalError(ECriticalError::InvalidLogic, ZERODELAY_FUNCTION_LINE);
-			return;
-		}
-		m_LinkId = id;
-	}
-
 	// ----------------- Called from send thread -----------------------------------------------
 
 	void RUDPLink::flushSendQueue(ISocket* socket)
@@ -355,8 +345,9 @@ namespace Zerodelay
 	void RUDPLink::dispatchAckQueue(ISocket* socket)
 	{
 		std::lock_guard<std::mutex> lock(m_AckMutex);
-		for (auto& ackQueue : m_AckQueue)
+		for(u32_t i=0; i<sm_NumChannels; i++)
 		{
+			auto& ackQueue = m_AckQueue[i];
 			i8_t buff[ZERODELAY_BUFF_RECV_SIZE]; // recv buff size correct
 			i32_t  kSizeWritten = 0;
 			for (auto& it : ackQueue)
