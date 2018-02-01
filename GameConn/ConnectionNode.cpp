@@ -418,7 +418,7 @@ namespace Zerodelay
 			else
 			{
 				// for now, only allow other packets when having a connectin, so if not, remove the link
-				handleInvalidConnectAttempt(EDataPacketType::InvalidConnectPacket, link);
+				handleInvalidConnectAttempt(pack.linkId, EDataPacketType::InvalidConnectPacket, link);
 			}
 			return true;
 		}
@@ -466,9 +466,12 @@ namespace Zerodelay
 		return false; // unhandeld
 	}
 
-	void ConnectionNode::handleInvalidConnectAttempt(EDataPacketType responseType, RUDPLink& link)
+	void ConnectionNode::handleInvalidConnectAttempt(u32_t connectorId, EDataPacketType responseType, RUDPLink& link)
 	{
-		sendSystemMessage( link, responseType );
+		i8_t buff[8];
+		*(u32_t*)buff = connectorId;
+		*(u32_t*)(buff + 4) = link.id();
+		sendSystemMessage( link, responseType, buff, 8 );
 		link.markPendingDelete();
 		link.blockAllUpcomingSends();
 	}
@@ -479,7 +482,7 @@ namespace Zerodelay
 		auto it = m_Connections.find(link.getEndPoint());
 		if (it != m_Connections.end())
 		{
-			handleInvalidConnectAttempt( EDataPacketType::AlreadyConnected, link );
+			handleInvalidConnectAttempt( connectorId, EDataPacketType::AlreadyConnected, link );
 			return;
 		}
 		// Check password
@@ -493,13 +496,13 @@ namespace Zerodelay
 		}
 		if ( strcmp( m_Password.c_str(), pw ) != 0 )
 		{
-			handleInvalidConnectAttempt( EDataPacketType::IncorrectPassword, link );
+			handleInvalidConnectAttempt( connectorId, EDataPacketType::IncorrectPassword, link );
 			return;
 		}
 		// Check if not exceeding max connections
 		if ( (i32_t)m_Connections.size() >= m_MaxIncomingConnections )
 		{
-			handleInvalidConnectAttempt( EDataPacketType::MaxConnectionsReached, link );
+			handleInvalidConnectAttempt( connectorId, EDataPacketType::MaxConnectionsReached, link );
 			return;
 		}
 		// read additional data
@@ -521,13 +524,10 @@ namespace Zerodelay
 
 	void ConnectionNode::recvConnectAccept(const i8_t* payload, i32_t payloadLen, class Connection* g)
 	{
-		if (payloadLen != 8)
-		{
-			Platform::log("WARNING: Invalid connect accept packet, length too short. In %s, line %d.", ZERODELAY_FUNCTION, ZERODELAY_LINE);
+		u32_t connectId, linkId;
+		if (!deserializeConnectInfo(payload, payloadLen, connectId, linkId))
 			return;
-		}
-		u32_t connectId = *(u32_t*)(payload);
-		u32_t linkId = *(u32_t*)(payload+4);
+
 		if ( connectId != g->getLink()->id() )
 		{
 			Platform::log("WARNING: Received connect accept, but connect id did not match. In %s, line %d.", ZERODELAY_FUNCTION, ZERODELAY_LINE);
@@ -535,7 +535,7 @@ namespace Zerodelay
 		}
 		// connectId has been veryfied now, forget it and overwrite with linkId known on recipient side
 		g->getLink()->setLinkId(linkId, connectId);
-		g->onReceiveConnectAccept();	
+		g->onReceiveConnectAccept();
 	}
 
 	void ConnectionNode::recvDisconnectPacket(const i8_t* payload, i32_t len, class Connection* g)
@@ -597,6 +597,9 @@ namespace Zerodelay
 
 	void ConnectionNode::recvAlreadyConnected(class Connection* g, const i8_t* payload, i32_t payloadLen)
 	{
+		u32_t connectId, linkId;
+		if (!deserializeConnectInfo(payload, payloadLen, connectId, linkId))
+			return;
 		// No state change on the connection in this case, could already be successfully connected before.
 		ZEndpoint ztp = toZpt(g->getEndPoint());
 		Util::forEachCallback(m_ConnectResultCallbacks, [&](const ConnectResultCallback& crc)
@@ -618,6 +621,27 @@ namespace Zerodelay
 		{
 			sendRemoteDisconnected( g, EDisconnectReason::Lost );
 		}
+	}
+
+	bool ConnectionNode::deserializeConnectInfo(const i8_t* payload, i32_t payloadLen, u32_t& connectId, u32_t& linkId)
+	{
+		if (payloadLen < 8)
+		{
+			Platform::log("WARNING: Invalid connect accept packet, length too short. In %s, line %d.", ZERODELAY_FUNCTION, ZERODELAY_LINE);
+			return false;
+		}
+		connectId = *(u32_t*)(payload);
+		linkId = *(u32_t*)(payload + 4);
+		return true;
+	}
+
+	bool ConnectionNode::isConnectResponsePacket(i8_t t)
+	{
+		return  (t == (i8_t)EDataPacketType::ConnectAccept) ||
+				(t == (i8_t)EDataPacketType::InvalidConnectPacket) ||
+				(t == (i8_t)EDataPacketType::IncorrectPassword) || 
+				(t == (i8_t)EDataPacketType::MaxConnectionsReached) ||
+				(t == (i8_t)EDataPacketType::AlreadyConnected);
 	}
 
 }

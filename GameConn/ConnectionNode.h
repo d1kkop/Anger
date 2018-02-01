@@ -68,17 +68,23 @@ namespace Zerodelay
 		void sendSystemMessage( class RUDPLink& link, EDataPacketType state, const i8_t* payLoad=nullptr, i32_t len=0 );
 		// recvs (Game thread)
 		bool recvPacket( const struct Packet& pack, class Connection* g, class RUDPLink& link );
-		void handleInvalidConnectAttempt( EDataPacketType responseType, class RUDPLink& link );
+		void handleInvalidConnectAttempt( u32_t connectorId, EDataPacketType responseType, class RUDPLink& link );
 		void recvConnectPacket(u32_t connectorId, const i8_t* payload, i32_t len, class RUDPLink& link);
 		void recvConnectAccept(const i8_t* payload, i32_t len, class Connection* g);
-		void recvDisconnectPacket(const i8_t* payload, i32_t len, class Connection* g );
+		void recvDisconnectPacket(const i8_t* payload, i32_t len, class Connection* g);
 		void recvRemoteConnected(class Connection* g, const i8_t* payload, i32_t payloadLen);
 		void recvRemoteDisconnected(class Connection* g, const i8_t* payload, i32_t payloadLen);
 		void recvAlreadyConnected(class Connection* g, const i8_t* payload, i32_t payloadLen);
 		// updating
 		void updateConnecting( class Connection* g );
 		void updateKeepAlive( class Connection* g );
+		// deserialize helpers
+		bool deserializeConnectInfo(const i8_t* payload, i32_t payloadLen, u32_t& connectId, u32_t& linkId);
+
+	public:
+		static bool isConnectResponsePacket(i8_t type);
 		
+	private:
 		bool m_RelayConnectAndDisconnect;
 		i32_t m_KeepAliveIntervalSeconds;
 		i32_t m_MaxIncomingConnections;

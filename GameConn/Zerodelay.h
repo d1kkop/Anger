@@ -29,8 +29,8 @@ namespace Zerodelay
 
 	enum class EDataPacketType: u8_t
 	{
-		ConnectRequest,
-		ConnectAccept,
+		ConnectRequest = 50,
+		ConnectAccept = 51,
 		Disconnect,
 		RemoteConnected,
 		RemoteDisconnected,

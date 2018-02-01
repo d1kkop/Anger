@@ -286,7 +286,7 @@ namespace Zerodelay
 	void RUDPLink::dispatchReliableNewestQueue(ISocket* socket)
 	{
 		// format per entry: groupId(4bytes) | groupBits( (items.size()+7)/8 bytes ) | n x groupData (sum( item_data_size, n ) bytes )
-		i8_t dataBuffer[ZERODELAY_BUFF_RECV_SIZE]; // decl buffer
+		i8_t dataBuffer[ZERODELAY_BUFF_RECV_SIZE]; // recv buffer size correct!
 		*(u32_t*)dataBuffer  = m_LinkId;
 		dataBuffer[off_Type] = (i8_t)EHeaderPacketType::Reliable_Newest; // type after linkId
 		*(u32_t*)(dataBuffer + off_RelNew_Seq) = m_SendSeq_reliable_newest; // followed by sequence number
@@ -355,11 +355,11 @@ namespace Zerodelay
 	void RUDPLink::dispatchAckQueue(ISocket* socket)
 	{
 		std::lock_guard<std::mutex> lock(m_AckMutex);
-		for (i32_t i=0; i<sm_NumChannels; ++i)
+		for (auto& ackQueue : m_AckQueue)
 		{
 			i8_t buff[ZERODELAY_BUFF_RECV_SIZE]; // recv buff size correct
 			i32_t  kSizeWritten = 0;
-			for (auto& it : m_AckQueue[i])
+			for (auto& it : ackQueue)
 			{
 				u32_t seq = it;
 				*(u32_t*)&buff[kSizeWritten + off_Ack_Payload] = seq;
@@ -367,9 +367,10 @@ namespace Zerodelay
 				if (kSizeWritten >= ZERODELAY_BUFF_SIZE) // send when send buff size is exceeded
 					break;
 			}
-			m_AckQueue[i].clear();
+			ackQueue.clear();
 			if (kSizeWritten > 0) // only transmit acks if there was still something in the queue
 			{
+				*(u32_t*)buff = m_LinkId;
 				buff[off_Type] = (i8_t)EHeaderPacketType::Ack;
 				buff[off_Ack_Chan] = (i8_t)i; // channel
 				*(u32_t*)&buff[off_Ack_Num] = kSizeWritten / 4; // num of acks

@@ -84,9 +84,9 @@ namespace Zerodelay
 
 	void Connection::setInvalidConnectPacket()
 	{
-		Ensure_State(Connecting);
+		Ensure_State( Connecting );
 		m_State = EConnectionState::InvalidConnectPacket;
-		m_ConnectionNode->doConnectResultCallbacks(getEndPoint(), EConnectResult::InvalidConnectPacket);
+		m_ConnectionNode->doConnectResultCallbacks( getEndPoint(), EConnectResult::InvalidConnectPacket );
 		Platform::log("Received invalid connect packet for connection %s.", getEndPoint().toIpAndPort().c_str());
 	}
 

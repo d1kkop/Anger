@@ -4,6 +4,7 @@
 #include "RUDPLink.h"
 #include "CoreNode.h"
 #include "Platform.h"
+#include "ConnectionNode.h"
 
 #include <cassert>
 #include <chrono>
@@ -271,7 +272,7 @@ namespace Zerodelay
 				{
 					if ( rawSize >= RUDPLink::off_Norm_Data+4 && 
 						 buff[RUDPLink::off_Type] == (i8_t)EHeaderPacketType::Reliable_Ordered &&
-						 buff[RUDPLink::off_Norm_Id] == (i8_t)EDataPacketType::ConnectAccept )
+						 ConnectionNode::isConnectResponsePacket(buff[RUDPLink::off_Norm_Id]) )
 					{
 						linkId = *(u32_t*)(buff + RUDPLink::off_Norm_Data);
 					}
@@ -279,7 +280,12 @@ namespace Zerodelay
 
 				if ( linkId != link->id() )
 				{
-					Platform::log("Warning dropping packet because link id does not match. Incoming %d, having %d.", linkId, link->id());
+					i8_t hdrType  = -1;
+					i8_t dataType = -1;
+					if ( rawSize >= RUDPLink::off_Type+1 ) hdrType = buff[RUDPLink::off_Type];
+					if ( rawSize >= RUDPLink::off_Norm_Id+1 ) dataType = buff[RUDPLink::off_Norm_Id];
+					Platform::log("WARNING: Dropping packet because link id does not match. Incoming %d, having %d, hdrType %d dataType %d.",
+								  linkId, link->id(), hdrType, dataType);
 					continue;
 				}
 				link->recvData( buff, rawSize );
