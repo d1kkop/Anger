@@ -402,11 +402,11 @@ namespace Zerodelay
 		switch ( type )
 		{
 		case EHeaderPacketType::Ack:
-			receiveAck(buff, rawSize);
+			receiveAck( buff, rawSize );
 			break;
 
 		case EHeaderPacketType::Ack_Reliable_Newest:
-			receiveAckRelNewest(buff, rawSize);
+			receiveAckRelNewest( buff, rawSize );
 			break;
 
 		case EHeaderPacketType::Reliable_Ordered:
@@ -527,8 +527,8 @@ namespace Zerodelay
 			return;
 		}
 		i8_t channel = buff[off_Ack_Chan];
-		i32_t num = *(i32_t*)(buff + off_Ack_Num); // num of acks
-		if (rawSize - hdr_Ack_Size != num*4)
+		i32_t num	 = *(i32_t*)(buff + off_Ack_Num); // num of acks
+		if (rawSize - (hdr_Ack_Size+hdr_Generic_Size) != num*4)
 		{
 			Platform::log("WARNING: Invalid ack payload detected in %s, line %d.", ZERODELAY_FUNCTION, ZERODELAY_LINE);
 			return;

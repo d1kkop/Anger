@@ -44,7 +44,7 @@ namespace Zerodelay
 	{
 		if (m_Link)
 		{
-			Platform::log("Clean link called on connection to %s.", m_Endpoint.toIpAndPort().c_str());
+			Platform::log("Link cleaned (nullptr now) on connection to %s (id %d).", m_Endpoint.toIpAndPort().c_str(), m_Link->id());
 			m_Link->blockAllUpcomingSends();
 			m_Link->markPendingDelete();
 			m_Link = nullptr; // link itself is deleted from sendThread in receive/dispather node
@@ -71,7 +71,7 @@ namespace Zerodelay
 		Ensure_State( Connecting );
 		m_State = EConnectionState::InvalidPassword;
 		m_ConnectionNode->doConnectResultCallbacks( getEndPoint(), EConnectResult::InvalidPassword );
-		Platform::log("Received invalid password for connection %s.", getEndPoint().toIpAndPort().c_str());
+		Platform::log("Received invalid password for connection %s (id %d).", getEndPoint().toIpAndPort().c_str(), m_Link->id());
 	}
 
 	void Connection::setMaxConnectionsReached()
@@ -79,7 +79,7 @@ namespace Zerodelay
 		Ensure_State( Connecting );
 		m_State = EConnectionState::MaxConnectionsReached;
 		m_ConnectionNode->doConnectResultCallbacks( getEndPoint(), EConnectResult::MaxConnectionsReached );
-		Platform::log("Received max connections reached for connection %s.", getEndPoint().toIpAndPort().c_str());
+		Platform::log("Received max connections reached for connection %s (id %d).", getEndPoint().toIpAndPort().c_str(), m_Link->id());
 	}
 
 	void Connection::setInvalidConnectPacket()
@@ -87,7 +87,7 @@ namespace Zerodelay
 		Ensure_State( Connecting );
 		m_State = EConnectionState::InvalidConnectPacket;
 		m_ConnectionNode->doConnectResultCallbacks( getEndPoint(), EConnectResult::InvalidConnectPacket );
-		Platform::log("Received invalid connect packet for connection %s.", getEndPoint().toIpAndPort().c_str());
+		Platform::log("Received invalid connect packet for connection %s (id %d).", getEndPoint().toIpAndPort().c_str(), m_Link->id());
 	}
 
 	bool Connection::sendConnectRequest(const std::string& pw, const std::map<std::string, std::string>& additionalData)
@@ -137,14 +137,14 @@ namespace Zerodelay
 		m_State = EConnectionState::Connected;
 		m_KeepAliveTS = ::clock();
 		m_ConnectionNode->doConnectResultCallbacks(getEndPoint(), EConnectResult::Succes);
-		Platform::log( "Connection accepted to %s.", getEndPoint().toIpAndPort().c_str() );
+		Platform::log( "Connection accepted to %s (id %d).", getEndPoint().toIpAndPort().c_str(), m_Link->id() );
 	}
 
 	void Connection::onReceiveDisconnect()
 	{
 		Ensure_State( Connected )
+		Platform::log( "Disconnect received, removing connection %s (id %d).", getEndPoint().toIpAndPort().c_str(), m_Link->id() );
 		disconnect(true, getEndPoint(), EDisconnectReason::Closed, EConnectionState::Disconnected, false);
-		Platform::log( "Disconnect received, removing connection %s.", getEndPoint().toIpAndPort().c_str() );
 	}
 
 	void Connection::onReceiveKeepAliveRequest()
@@ -171,7 +171,7 @@ namespace Zerodelay
 			m_State = EConnectionState::InitiateTimedOut;
 			m_ConnectionNode->doConnectResultCallbacks(getEndPoint(), EConnectResult::Timedout);
 			cleanLink();
-			Platform::log("Connection attempt timed out to %s.", getEndPoint().toIpAndPort().c_str());
+			Platform::log("Connection attempt timed out to %s (id %d).", getEndPoint().toIpAndPort().c_str(), m_Link->id());
 		}
 	}
 
@@ -191,8 +191,8 @@ namespace Zerodelay
 		}
 		else if ( Util::getTimeSince( m_KeepAliveTS ) > 5000 ) // 5 seconds is rediculous ping, so consider it lost
 		{
+			Platform::log("Connection timed out to %s (id %d).", getEndPoint().toIpAndPort().c_str(), m_Link->id());
 			disconnect(true, getEndPoint(), EDisconnectReason::Lost, EConnectionState::ConnectionTimedOut, false);
-			Platform::log("Connection timed out to %s.", getEndPoint().toIpAndPort().c_str());
 		}
 	}
 

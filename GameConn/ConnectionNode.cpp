@@ -177,7 +177,8 @@ namespace Zerodelay
 			EConnectionState state = c->getState();
 			if ( !(state == EConnectionState::Connected || state == EConnectionState::Connecting) )
 			{
-				Platform::log("Deleted connection to %s. Num remaining connections before delete %d.", c->getEndPoint().toIpAndPort().c_str(), (i32_t)m_Connections.size());
+				Platform::log("Deleted connection to %s. Num remaining connections before delete %d.", 
+							  c->getEndPoint().toIpAndPort().c_str(), (i32_t)m_Connections.size());
 				delete c;
 				it = m_Connections.erase( it );
 				continue;
@@ -516,7 +517,7 @@ namespace Zerodelay
 		m_Connections.insert( std::make_pair(link.getEndPoint(), g) );
 		doNewIncomingConnectionCallbacks(true, link.getEndPoint(), additionalData);
 		if (m_RelayConnectAndDisconnect) sendRemoteConnected( g, additionalData );
-		Platform::log( "New incoming connection %s.", g->getEndPoint().toIpAndPort().c_str() );
+		Platform::log( "New incoming connection to %s (id %d).", g->getEndPoint().toIpAndPort().c_str(), link.id() );
 	}
 
 	void ConnectionNode::recvDisconnectPacket(const i8_t* payload, i32_t len, class Connection* g)

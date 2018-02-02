@@ -37,12 +37,12 @@ namespace UnitTests
 		int numMaxConnsReached = 0;
 		int numDisconnected = 0;
 		int numNewConnections = 0;
-		ZNode* g1 = new ZNode(200, 2);
-		const u32_t kConnections = 1;
+		ZNode* g1 = new ZNode(20, 2);
+		const u32_t kConnections = 10;
 		ZNode* gs[kConnections];
 		for (auto & g : gs)
 		{
-			g = new ZNode(200, 2);
+			g = new ZNode(20, 2);
 		}
 		auto discLamda = [&] (bool isThisConnection, auto& etp, auto eReason)
 		{

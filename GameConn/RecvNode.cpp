@@ -230,18 +230,22 @@ namespace Zerodelay
 			{
 				// Only report messages after the link has stopped lingering, otherwise we may end up with many messages that were just send after disconnect
 				// or if disconnect is re-transmitted very often due to high retransmission rate in reliable ordered protocol.
+				i8_t norm_id  = -1;
+				if ( rawSize > RUDPLink::off_Norm_Id ) norm_id = buff[RUDPLink::off_Norm_Id];
+				buff[rawSize] = '\0';
+
 				i32_t timeSincePenDelete = link->getTimeSincePendingDelete();
 				if ( timeSincePenDelete >= RUDPLink::sm_MaxLingerTimeMs )
 				{ 
-					buff[rawSize] = '\0';
-					i8_t norm_id = 0;
-					if ( rawSize > RUDPLink::off_Norm_Id )
-					{
-						norm_id = buff[RUDPLink::off_Norm_Id];
-					}
-					Platform::log("Ignoring data for conn %s id %d as is pending delete... hdrId: %d data: %s dataId: %d, deleted for time %d ms.", link->getEndPoint().toIpAndPort().c_str(), link->id(), buff[0], buff, norm_id, timeSincePenDelete);
+					Platform::log("WARNING: Ignoring data for link %s (id %d) as is pending delete and more than %dms lingered (%dms). HdrId: %d dataId: %d payload: %s.",
+								  link->getEndPoint().toIpAndPort().c_str(), link->id(), RUDPLink::sm_MaxLingerTimeMs, timeSincePenDelete, buff[RUDPLink::off_Type], norm_id, buff);
+					continue;
 				}
-				continue;
+				else
+				{
+					Platform::log("Receiving data on %s (id %d) %dms after became pending delete. HdrId: %d dataId: %d payload: %s.",
+								  link->getEndPoint().toIpAndPort().c_str(), link->id(), timeSincePenDelete, buff[RUDPLink::off_Type], norm_id, buff);
+				}
 			}
 		
 			u32_t linkId = *(u32_t*)(buff + RUDPLink::off_Link);
@@ -255,11 +259,11 @@ namespace Zerodelay
 				{
 					u32_t linkId = 0;
 					if ( rawSize >= 4 ) { linkId = *(u32_t*)(buff + RUDPLink::off_Link); }
-					Platform::log("Ignoring data for conn %s id %d, as packet was not a connect request packet and connection was not know yet.",
+					Platform::log("WARNING: Ignoring data for link %s (id %d) as packet was not a connect request packet and connection was not know.",
 								   endPoint.toIpAndPort().c_str(), linkId );
 					continue;
 				}
-				link = addLink(endPoint, nullptr);
+				link = addLink(endPoint, &linkId);
 				assert(link);
 			}
 			else if ( linkId != link->id() )
@@ -316,10 +320,10 @@ namespace Zerodelay
 			}
 
 			// Keep lingering for some time..
-			if ( link->getTimeSincePendingDelete() > RUDPLink::sm_MaxLingerTimeMs*2 )
+			if ( link->getTimeSincePendingDelete() > RUDPLink::sm_MaxLingerTimeMs )
 			{
 				// Actually delete the connection
-				Platform::log("Link to %s deleted.", link->getEndPoint().toIpAndPort().c_str());
+				Platform::log("Link to %s id: %d deleted.", link->getEndPoint().toIpAndPort().c_str(), link->id());
 				m_OpenLinksMap.erase(link->getEndPoint());
 				delete link;
 				it = m_OpenLinksList.erase(it);
@@ -348,7 +352,12 @@ namespace Zerodelay
 		auto it = m_OpenLinksMap.find( endPoint );
 		if ( it == m_OpenLinksMap.end() )
 		{
-			u32_t linkId = linkIdPtr?*linkIdPtr:rand();
+			u32_t linkId;
+			if ( linkIdPtr ) linkId = *linkIdPtr;
+			else { 
+				linkId = rand();
+				Platform::log("New LinkId %d generated.", linkId);
+			}
 			Platform::log("Link to %s (id %d) added.", endPoint.toIpAndPort().c_str(), linkId);
 			RUDPLink* link = new RUDPLink( this, endPoint, linkId );
 			m_OpenLinksMap[endPoint] = link;

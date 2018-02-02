@@ -42,7 +42,7 @@ namespace Zerodelay
 	class RUDPLink
 	{
 	public:
-		static const i32_t sm_MaxLingerTimeMs  = 500;
+		static const i32_t sm_MaxLingerTimeMs  = 1000;
 		static const i32_t sm_MaxItemsPerGroup = 16;
 
 		
@@ -72,7 +72,7 @@ namespace Zerodelay
 		// Ack normal packet overhead
 		static const i32_t off_Ack_Chan = 5;		// In case of ack, the channel
 		static const i32_t off_Ack_Num  = 6;		// In case of ack, ther number of acks in one packet cluttered together
-		static const i32_t off_Ack_Payload = 10;	// In case of ack, the sequence numb
+		static const i32_t off_Ack_Payload = 10;	// In case of ack, the first sequence numb
 		static const i32_t hdr_Ack_Size = (off_Ack_Payload - off_Ack_Chan);
 
 		

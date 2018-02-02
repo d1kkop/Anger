@@ -16,6 +16,8 @@ namespace Zerodelay
 		if ( wasInitialized )
 			return 0;
 
+		srand ((u32_t)time(nullptr));
+
 	#if ZERODELAY_SDL
 
 		i32_t err =  SDL_Init(0);

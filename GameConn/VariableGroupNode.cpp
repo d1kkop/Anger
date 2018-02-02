@@ -190,7 +190,7 @@ namespace Zerodelay
 			}
 			else // discards any creation before connection was established or after was disconnected/lost
 			{
-				Platform::log("INFO: Discarding remote group creation from %s, as it was not connected or already disconnected\n", ztp->toIpAndPort().c_str());
+				Platform::log("Discarding remote group creation from %s, as it was not connected or already disconnected\n", ztp->toIpAndPort().c_str());
 			}
 		}
 		else
