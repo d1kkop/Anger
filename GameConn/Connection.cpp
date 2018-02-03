@@ -170,8 +170,8 @@ namespace Zerodelay
 		{
 			m_State = EConnectionState::InitiateTimedOut;
 			m_ConnectionNode->doConnectResultCallbacks(getEndPoint(), EConnectResult::Timedout);
-			cleanLink();
 			Platform::log("Connection attempt timed out to %s (id %d).", getEndPoint().toIpAndPort().c_str(), m_Link->id());
+			cleanLink();
 		}
 	}
 

@@ -45,7 +45,7 @@ namespace Zerodelay
 		class Connection* getProcessingConnection() const { return m_ProcessingConnection; }
 		// setters
 		void setPassword( const std::string& pw );
-		void setMaxIncomingConnections(i32_t maxNumConnections);
+		void setMaxIncomingConnections(u32_t maxNumConnections);
 		void setRelayConnectAndDisconnectEvents(bool relay);
 		// getters
 		bool shouldRelayConnectAndDisconnect() const { return m_RelayConnectAndDisconnect; }

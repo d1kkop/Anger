@@ -32,13 +32,6 @@ namespace Zerodelay
 	};
 
 
-	using sendQueueType = std::deque<Packet>;
-	using recvQueueType = std::deque<Packet>;
-	using ackQueueType  = std::deque<u32_t>;
-	using recvReliableOrderedQueueType = std::map<u32_t, Packet>;
-	using sendReliableNewestQueueType  = std::map<u32_t, reliableNewestDataGroup>; 
-
-
 	class RUDPLink
 	{
 	public:
@@ -117,13 +110,14 @@ namespace Zerodelay
 		const EndPoint& getEndPoint() const { return m_EndPoint; }				// Set at beginning, can be queried by multiple threads.
 		i32_t getTimeSincePendingDelete() const;								// Is set when becomes pending delete which is thread safe, so this can be queried thread safe.
 
+		// TODO To be implemented
+		u32_t getLatency() const { return 40; }
+
 	private:
 		// executed on send thread
-		void flushSendQueue( ISocket* socket );
-		void dispatchSendQueue(ISocket* socket);
+		void dispatchRelOrderedQueueIfLatencyTimePassed(u32_t deltaTime, ISocket* socket);
+		void dispatchReliableOrderedQueue(ISocket* socket);
 		void dispatchReliableNewestQueue(ISocket* socket);
-		void dispatchReliableQueue(ISocket* socket);
-		void dispatchUnreliableQueue(ISocket* socket);
 		void dispatchAckQueue(ISocket* socket);
 		void dispatchRelNewestAckQueue(ISocket* socket);
 
@@ -153,15 +147,14 @@ namespace Zerodelay
 		EndPoint m_EndPoint;
 		std::atomic_bool m_BlockNewSends;
 		// send queues
-		sendQueueType m_SendQueue_reliable[sm_NumChannels];
-		sendQueueType m_SendQueue_unreliable;
-		sendReliableNewestQueueType m_SendQueue_reliable_newest;
+		std::deque<Packet>  m_RetransmitQueue_reliable[sm_NumChannels];
+		std::map<u32_t, reliableNewestDataGroup> m_SendQueue_reliable_newest;
 		// recv queues
-		recvQueueType m_RecvQueue_unreliable_sequenced[sm_NumChannels];
-		recvReliableOrderedQueueType m_RecvQueue_reliable_order[sm_NumChannels];
-		recvQueueType m_RecvQueue_reliable_newest;
+		std::deque<Packet>		m_RecvQueue_unreliable_sequenced[sm_NumChannels];
+		std::map<u32_t, Packet> m_RecvQueue_reliable_order[sm_NumChannels];
+		std::deque<Packet>		m_RecvQueue_reliable_newest;
 		// ack queue
-		ackQueueType m_AckQueue[sm_NumChannels];
+		std::deque<u32_t> m_AckQueue[sm_NumChannels];
 		// sequencers
 		u32_t m_SendSeq_reliable[sm_NumChannels];
 		u32_t m_SendSeq_unreliable[sm_NumChannels];
@@ -173,14 +166,15 @@ namespace Zerodelay
 		u32_t m_RecvSeq_reliable_newest_sendThread;								// checked against the 'm_RecvSeq_reliable_newest_sendThread' and will dispatch if necessary
 		u32_t m_RecvSeq_reliable_newest_ack;
 		// threading
-		mutable std::mutex m_SendQueuesMutex;
+		mutable std::mutex m_ReliableOrderedQueueMutex;
+		mutable std::mutex m_ReliableNewestQueueMutex;
 		mutable std::mutex m_RecvQueuesMutex;
 		mutable std::mutex m_AckMutex;
-		mutable std::mutex m_AckRelNewestMutex;
 		// statistics
-		u8_t m_PacketLossPercentage;
+		u32_t m_retransmitWaitingTime;
+		u8_t  m_PacketLossPercentage;
 		// pinned
-		uint32_t m_PinnedCount;
+		u32_t m_PinnedCount;
 		// on delete
 		std::mutex m_PendingDeleteMutex;
 		volatile bool m_IsPendingDelete; // Set from main thread, queried by recv thread

@@ -27,7 +27,7 @@ namespace Zerodelay
 	class RecvNode
 	{
 	public:
-		RecvNode(i32_t resendIntervalMs=20);
+		RecvNode(u32_t sendRelNewestIntervalMs=33, u32_t ackAggregateTimeMs=8);
 		virtual ~RecvNode();
 		void reset();
 
@@ -68,8 +68,9 @@ namespace Zerodelay
 
 		volatile bool m_IsClosing;
 		class ISocket* m_Socket;
-		bool   m_CaptureSocketErrors;
-		i32_t  m_ResendIntervalMs;
+		bool  m_CaptureSocketErrors;
+		u32_t m_SendRelNewestIntervalMs;
+		u32_t m_AckAggregateTimeMs;
 		std::thread* m_RecvThread;
 		std::thread* m_SendThread;
 		std::condition_variable m_SendThreadCv;

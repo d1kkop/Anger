@@ -221,13 +221,8 @@ namespace Zerodelay
 		m_Password = pw;
 	}
 
-	void ConnectionNode::setMaxIncomingConnections(i32_t maxNumConnections)
+	void ConnectionNode::setMaxIncomingConnections(u32_t maxNumConnections)
 	{
-		if ( maxNumConnections < 1 )
-		{
-			Platform::log( "WARNING: maxNumConnections less than 1, call ignored." );
-			return;
-		}
 		m_MaxIncomingConnections = maxNumConnections;
 	}
 

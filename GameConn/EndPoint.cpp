@@ -28,8 +28,8 @@ namespace Zerodelay
 
 	#if ZERODELAY_SDLSOCKET
 		IPaddress iph;
-		iph.host = Util::swap32(m_IpAddress.host);
-		iph.port = Util::swap16(m_IpAddress.port);
+		iph.host = Util::hton(m_IpAddress.host);
+		iph.port = Util::hton(m_IpAddress.port);
 		u8_t* ip = (u8_t*)&iph.host;
 		//std::string ip = SDLNet_ResolveIP(&iph); // expects in host form <-- is superrrr slow function
 		char buff[1024];
@@ -97,7 +97,7 @@ namespace Zerodelay
 
 	u16_t EndPoint::getPortHostOrder() const
 	{
-		return Util::swap16(getPortNetworkOrder());
+		return Util::hton(getPortNetworkOrder());
 	}
 
 	u16_t EndPoint::getPortNetworkOrder() const
@@ -113,7 +113,7 @@ namespace Zerodelay
 
 	u32_t EndPoint::getIpv4HostOrder() const
 	{
-		return Util::swap32(getIpv4NetworkOrder());
+		return Util::hton(getIpv4NetworkOrder());
 	}
 
 	u32_t EndPoint::getIpv4NetworkOrder() const
@@ -168,7 +168,7 @@ namespace Zerodelay
 
 	void EndPoint::setIpAndPortFromHostOrder(u32_t ip, u16_t port)
 	{
-		setIpAndPortFromNetworkOrder(Util::swap32(ip), Util::swap16(port));
+		setIpAndPortFromNetworkOrder(Util::hton(ip), Util::hton(port));
 	}
 
 	i32_t EndPoint::compareLess(const EndPoint& a, const EndPoint& b)

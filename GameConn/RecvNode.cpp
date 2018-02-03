@@ -12,9 +12,10 @@
 
 namespace Zerodelay
 {
-	RecvNode::RecvNode(i32_t resendIntervalMs):
+	RecvNode::RecvNode(u32_t sendRelNewestIntervalMs, u32_t ackAggregateTimeMs):
 		m_IsClosing(false),
-		m_ResendIntervalMs(resendIntervalMs),
+		m_SendRelNewestIntervalMs(sendRelNewestIntervalMs),
+		m_AckAggregateTimeMs(ackAggregateTimeMs),
 		m_Socket(nullptr),
 		m_RecvThread(nullptr),
 		m_SendThread(nullptr),
@@ -284,15 +285,41 @@ namespace Zerodelay
 
 	void RecvNode::sendThread()
 	{
+		u32_t ackAccumTime = 0;
+		u32_t relNewAccumTime = 0;
 		while ( !m_IsClosing )
 		{
+			u32_t lowestLatency = ~0UL;
 			std::unique_lock<std::mutex> lock(m_OpenLinksMutex);
-			m_SendThreadCv.wait_for( lock, std::chrono::milliseconds(m_ResendIntervalMs) );
+			for (auto l : m_OpenLinksList)
+			{
+				u32_t lat = l->getLatency();
+				lowestLatency = min(lat, lowestLatency);
+			}
+			u32_t waitTime = min(lowestLatency, min(m_SendRelNewestIntervalMs, m_AckAggregateTimeMs));
+			m_SendThreadCv.wait_for( lock, std::chrono::milliseconds(waitTime) );
 			if ( m_IsClosing )
 				return;
-			for (auto& kvp : m_OpenLinksMap)
+			for (auto l : m_OpenLinksList)
 			{
-				kvp.second->flushSendQueue( m_Socket );
+				l->dispatchRelOrderedQueueIfLatencyTimePassed(waitTime, m_Socket);
+			}
+			ackAccumTime += waitTime;
+			if (ackAccumTime >= m_AckAggregateTimeMs) 
+			{
+				ackAccumTime -= m_AckAggregateTimeMs;
+				for (auto l : m_OpenLinksList)
+				{
+					l->dispatchAckQueue(m_Socket);
+					l->dispatchRelNewestAckQueue(m_Socket);
+				}
+			}
+			relNewAccumTime += waitTime;
+			if (waitTime >= m_SendRelNewestIntervalMs)
+			{
+				relNewAccumTime -= m_SendRelNewestIntervalMs;
+				for (auto l : m_OpenLinksList)
+					l->dispatchRelNewestAckQueue(m_Socket);
 			}
 			updatePendingDeletes();
 		}
@@ -354,7 +381,8 @@ namespace Zerodelay
 		{
 			u32_t linkId;
 			if ( linkIdPtr ) linkId = *linkIdPtr;
-			else { 
+			else 
+			{ 
 				linkId = rand();
 				Platform::log("New LinkId %d generated.", linkId);
 			}

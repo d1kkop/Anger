@@ -138,18 +138,18 @@ namespace Zerodelay
 	class ZDLL_DECLSPEC ZNode
 	{
 	public:
-		/*[resendIntervalMs]			Is the time to wait before retransmitting (reliable) packets in the send queue.
-										New packets are always sent immediately.
-		  [keepAliveIntervalSeconds]	Is the time between consequative requests to keep the connection alive. */
-		ZNode( i32_t resendIntervalMs=50, i32_t keepAliveIntervalSeconds=8 );
+		/*	[reliableNewestUpdateIntervalMs]	Is the frequency for sending the reliable-newest packet queue.
+			[ackAggregateTimeMs]				Is the time to aggregate acknowledge packets before sending them to avoid sending a packet per ack (4 bytes only).
+			[keepAliveIntervalSeconds]			Is the time between consequative requests to keep the connection alive. */
+		ZNode( u32_t reliableNewestUpdateIntervalMs=33, u32_t ackAggregateTimeMs=8, u32_t keepAliveIntervalSeconds=8 );
 		virtual ~ZNode();
 
 
 		/*	Connect  to specific endpoint. 
 			A succesful call does not mean a connection is established.
 			To know if a connection is established, bindOnConnectResult. */
-		EConnectCallResult connect( const ZEndpoint& endPoint, const std::string& pw="", i32_t timeoutSeconds=8, const std::map<std::string, std::string>& additionalData=std::map<std::string, std::string>(), bool sendConnectRequest=true );
-		EConnectCallResult connect( const std::string& name, i32_t port, const std::string& pw="", i32_t timeoutSeconds=8, const std::map<std::string, std::string>& additionalData=std::map<std::string, std::string>(), bool sendConnectRequest=true );
+		EConnectCallResult connect( const ZEndpoint& endPoint, const std::string& pw="", u32_t timeoutSeconds=8, const std::map<std::string, std::string>& additionalData=std::map<std::string, std::string>(), bool sendConnectRequest=true );
+		EConnectCallResult connect( const std::string& name, u16_t port, const std::string& pw="", u32_t timeoutSeconds=8, const std::map<std::string, std::string>& additionalData=std::map<std::string, std::string>(), bool sendConnectRequest=true );
 
 
 		/*	Calls disconnect on each connection in the node and stops listening for incoming connections. 
@@ -215,7 +215,7 @@ namespace Zerodelay
 
 		/*	Max number of incoming connections this node will accept. 
 			Default is 32. */
-		void setMaxIncomingConnections( i32_t maxNumConnections );
+		void setMaxIncomingConnections( u32_t maxNumConnections );
 
 
 		/*	Returns ture if is server in client-server architecture or if is the authorative peer in a p2p network. */
@@ -224,7 +224,7 @@ namespace Zerodelay
 
 		/*	Simulate packet loss to test Quality of Service in game. 
 			Precentage is value between 0 and 100. */
-		void simulatePacketLoss( i32_t percentage );
+		void simulatePacketLoss( u32_t percentage );
 
 
 		/*	Messages are guarenteed to arrive and also in the order they were sent. This applies per channel.

@@ -14,10 +14,10 @@ Zerodelay is a network gaming library that is aimed to be lightweight, cross pla
 		* A group that gets an update while it is not yet created, will ack, however, the
 			data may never be updated since it was not created yet. solve this.
 		* Cluster Reliable_Ordered data (more efficient sending)
-		* Cluster Unreliable data (more efficient sending)
-		* Links that are created but never connected, will not remove themselves.
+		* Cluster Unreliable data (more efficient sending)themselves.
 		* Make endiannes correct in RUDP link and everywhere else
-		* Send acks immediately instead of awaiting the retransmit interval.
+		* Send acks immediately instead of awaiting the retransmit 
+		* Links that are created but never connected, will not remove interval.
 
 
 	NOTES:

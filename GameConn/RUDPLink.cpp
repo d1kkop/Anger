@@ -15,6 +15,7 @@ namespace Zerodelay
 		m_LinkId(linkId),
 		m_EndPoint(endPoint),
 		m_BlockNewSends(false),
+		m_retransmitWaitingTime(0),
 		m_PacketLossPercentage(0),
 		m_IsPendingDelete(false),
 		m_MarkDeleteTS(0)
@@ -35,11 +36,10 @@ namespace Zerodelay
 
 	RUDPLink::~RUDPLink()
 	{
-		for ( auto& pack : m_SendQueue_unreliable ) delete [] pack.data;
-		for ( auto & queue : m_SendQueue_reliable) for (auto& pack : queue) delete [] pack.data;
-		for ( auto & queue : m_RecvQueue_reliable_order ) for (auto& seqPacketPair : queue) delete [] seqPacketPair.second.data;
-		for ( auto & queue : m_RecvQueue_unreliable_sequenced ) for (auto& pack : queue) delete [] pack.data;
-		for ( auto& groupIdGroupPair : m_SendQueue_reliable_newest ) for (auto & groupItem : groupIdGroupPair.second.groupItems) delete [] groupItem.data;
+		for (auto & queue : m_RetransmitQueue_reliable) for (auto& pack : queue) delete [] pack.data;
+		for (auto & queue : m_RecvQueue_reliable_order) for (auto& seqPacketPair : queue) delete [] seqPacketPair.second.data;
+		for (auto & queue : m_RecvQueue_unreliable_sequenced ) for (auto& pack : queue) delete [] pack.data;
+		for (auto & groupIdGroupPair : m_SendQueue_reliable_newest ) for (auto & groupItem : groupIdGroupPair.second.groupItems) delete [] groupItem.data;
 	}
 
 	void RUDPLink::addToSendQueue(u8_t id, const i8_t* data, i32_t len, EHeaderPacketType packetType, u8_t channel, bool relay)
@@ -60,15 +60,17 @@ namespace Zerodelay
 		serializeNormalPacket( pack, m_LinkId, packetType, id, data, len, off_Norm_Data, channel, relay );
 		if ( packetType == EHeaderPacketType::Reliable_Ordered )
 		{
-			std::lock_guard<std::mutex> lock(m_SendQueuesMutex);
-			*(u32_t*)&pack.data[off_Norm_Seq] = m_SendSeq_reliable[channel]++;
-			m_SendQueue_reliable[channel].emplace_back( pack );
+			{
+				std::lock_guard<std::mutex> lock(m_ReliableOrderedQueueMutex);
+				*(u32_t*)&pack.data[off_Norm_Seq] = m_SendSeq_reliable[channel]++;
+				m_RetransmitQueue_reliable[channel].emplace_back( pack );
+			}
+			m_RecvNode->getSocket()->send( m_EndPoint, pack.data, pack.len );
 		}
 		else
 		{
-			std::lock_guard<std::mutex> lock(m_SendQueuesMutex);
 			*(u32_t*)&pack.data[off_Norm_Seq] = m_SendSeq_unreliable[channel]++;
-			m_SendQueue_unreliable.emplace_back( pack );
+			m_RecvNode->getSocket()->send( m_EndPoint, pack.data, pack.len );
 		}
 	}
 
@@ -86,7 +88,7 @@ namespace Zerodelay
 			m_RecvNode->getCoreNode()->setCriticalError( ECriticalError::SerializationError, ZERODELAY_FUNCTION_LINE );
 			return;
 		}
-		std::lock_guard<std::mutex> lock(m_SendQueuesMutex);
+		std::lock_guard<std::mutex> lock(m_ReliableNewestQueueMutex);
 		auto it = m_SendQueue_reliable_newest.find( groupId );
 		if ( it == m_SendQueue_reliable_newest.end() )
 		{
@@ -186,15 +188,17 @@ namespace Zerodelay
 
 	bool RUDPLink::areAllQueuesEmpty() const
 	{
-		std::unique_lock<std::mutex> lock(m_SendQueuesMutex);
+		std::unique_lock<std::mutex> lock(m_ReliableOrderedQueueMutex);
+		std::unique_lock<std::mutex> lock2(m_ReliableNewestQueueMutex);
+		std::unique_lock<std::mutex> lock3(m_RecvQueuesMutex);
+		std::unique_lock<std::mutex> lock4(m_AckMutex);
 		for ( i32_t i=0; i<sm_NumChannels; ++i )
 		{
-			if ( !m_SendQueue_reliable[i].empty() ) return false;
+			if ( !m_RetransmitQueue_reliable[i].empty() ) return false;
 			if ( !m_RecvQueue_unreliable_sequenced[i].empty() ) return false;
 			if ( !m_RecvQueue_reliable_order[i].empty() ) return false;
 			if ( !m_AckQueue[i].empty() ) return false;
 		}
-		if ( !m_SendQueue_unreliable.empty() ) return false;
 		if ( !m_SendQueue_reliable_newest.empty() ) return false;
 		if ( !m_RecvQueue_reliable_newest.empty() ) return false;
 		return true;
@@ -236,24 +240,21 @@ namespace Zerodelay
 
 	// ----------------- Called from send thread -----------------------------------------------
 
-	void RUDPLink::flushSendQueue(ISocket* socket)
+	void RUDPLink::dispatchRelOrderedQueueIfLatencyTimePassed(u32_t deltaTime, ISocket* socket)
 	{
-		dispatchSendQueue(socket);
-		dispatchAckQueue(socket);
-		dispatchRelNewestAckQueue(socket);
+		m_retransmitWaitingTime += deltaTime;
+		u32_t latencyTime = (u32_t)( 1.3f*getLatency() );
+		if ( m_retransmitWaitingTime >= latencyTime )
+		{
+			m_retransmitWaitingTime -= latencyTime;
+			dispatchReliableOrderedQueue(socket);
+		}
 	}
 
-	void RUDPLink::dispatchSendQueue(ISocket* socket)
+	void RUDPLink::dispatchReliableOrderedQueue(ISocket* socket)
 	{
-		std::unique_lock<std::mutex> lock(m_SendQueuesMutex);
-		dispatchReliableQueue(socket);
-		dispatchUnreliableQueue(socket);
-		dispatchReliableNewestQueue(socket);
-	}
-
-	void RUDPLink::dispatchReliableQueue(ISocket* socket)
-	{
-		for (auto& queue : m_SendQueue_reliable)
+		std::unique_lock<std::mutex> lock(m_ReliableOrderedQueueMutex);
+		for (auto& queue : m_RetransmitQueue_reliable)
 		{
 			for (auto& pack : queue)
 			{
@@ -261,16 +262,6 @@ namespace Zerodelay
 				socket->send(m_EndPoint, pack.data, pack.len);
 			}
 		}
-	}
-
-	void RUDPLink::dispatchUnreliableQueue(ISocket* socket)
-	{
-		for (auto& pack : m_SendQueue_unreliable)
-		{
-			socket->send(m_EndPoint, pack.data, pack.len);
-			delete[] pack.data;
-		}
-		m_SendQueue_unreliable.clear(); // clear unreliable queue immediately
 	}
 
 	void RUDPLink::dispatchReliableNewestQueue(ISocket* socket)
@@ -282,6 +273,7 @@ namespace Zerodelay
 		*(u32_t*)(dataBuffer + off_RelNew_Seq) = m_SendSeq_reliable_newest; // followed by sequence number
 		i32_t kNumGroupsWritten = 0;  // keeps track of num groups as is not know yet
 		i32_t kBytesWritten = off_RelNew_GroupId; // skip 4 bytes, as num groups is not yet known
+		std::unique_lock<std::mutex> lock(m_ReliableNewestQueueMutex);
 		for (auto& it = m_SendQueue_reliable_newest.begin(); it != m_SendQueue_reliable_newest.end(); it++)
 		{
 			auto& kvp = *it;
@@ -533,8 +525,8 @@ namespace Zerodelay
 			Platform::log("WARNING: Invalid ack payload detected in %s, line %d.", ZERODELAY_FUNCTION, ZERODELAY_LINE);
 			return;
 		}
-		std::lock_guard<std::mutex> lock(m_SendQueuesMutex);
-		auto& queue = m_SendQueue_reliable[channel];
+		std::lock_guard<std::mutex> lock(m_ReliableOrderedQueueMutex);
+		auto& queue = m_RetransmitQueue_reliable[channel];
 		for (i32_t i = 0; i < num; ++i) // for each ack, try to find it, and remove as was succesfully transmitted
 		{
 			// remove from send queue if we receive an ack for the packet
@@ -567,7 +559,7 @@ namespace Zerodelay
 		// update to newer ack + 1;
 		m_RecvSeq_reliable_newest_ack = ackSeq+1;
 
-		std::lock_guard<std::mutex> lock(m_SendQueuesMutex);
+		std::lock_guard<std::mutex> lock(m_ReliableOrderedQueueMutex);
 		auto& queue = m_SendQueue_reliable_newest;
 		// For all groups in queue, update all items per group to received ack.
 		// If not a single localRevision is newer than the Remote, remove the group from the list.
@@ -593,7 +585,6 @@ namespace Zerodelay
 			}
 		}
 	}
-
 
 	// ----------------- Support functions (does not touch class data) -----------------------------------------------
 

@@ -102,11 +102,11 @@ namespace Zerodelay
 	// -------- ZNode ----------------------------------------------------------------------------------------------
 
 
-	ZNode::ZNode(i32_t sendThreadSleepTimeMs, i32_t keepAliveIntervalSeconds) :
+	ZNode::ZNode(u32_t reliableNewestUpdateIntervalMs, u32_t ackAggregateTimeMs, u32_t keepAliveIntervalSeconds) :
 		C(new CoreNode
 		(
 			this,
-			(new RecvNode(sendThreadSleepTimeMs)),
+			(new RecvNode(reliableNewestUpdateIntervalMs, ackAggregateTimeMs)),
 			(new ConnectionNode(keepAliveIntervalSeconds)),
 			(new VariableGroupNode())
 		))
@@ -119,12 +119,12 @@ namespace Zerodelay
 		delete C;
 	}
 
-	EConnectCallResult ZNode::connect(const ZEndpoint& endPoint, const std::string& pw, i32_t timeoutSeconds, const std::map<std::string, std::string>& additionalData, bool sendRequest)
+	EConnectCallResult ZNode::connect(const ZEndpoint& endPoint, const std::string& pw, u32_t timeoutSeconds, const std::map<std::string, std::string>& additionalData, bool sendRequest)
 	{
 		return C->cn()->connect( toEtp(endPoint), pw, timeoutSeconds, sendRequest, additionalData );
 	}
 
-	EConnectCallResult ZNode::connect(const std::string& name, i32_t port, const std::string& pw, i32_t timeoutSeconds, const std::map<std::string, std::string>& additionalData, bool sendRequest)
+	EConnectCallResult ZNode::connect(const std::string& name, u16_t port, const std::string& pw, u32_t timeoutSeconds, const std::map<std::string, std::string>& additionalData, bool sendRequest)
 	{
 		return C->cn()->connect( name, port, pw, timeoutSeconds, sendRequest, additionalData );
 	}
@@ -239,7 +239,7 @@ namespace Zerodelay
 		C->cn()->setPassword( pw );
 	}
 
-	void ZNode::setMaxIncomingConnections(i32_t maxNumConnections)
+	void ZNode::setMaxIncomingConnections(u32_t maxNumConnections)
 	{
 		C->cn()->setMaxIncomingConnections( maxNumConnections );
 	}
@@ -254,7 +254,7 @@ namespace Zerodelay
 		return (!C->isP2P() && C->isListening()) || (C->isP2P() && C->isSuperPeer());
 	}
 
-	void ZNode::simulatePacketLoss(i32_t percentage)
+	void ZNode::simulatePacketLoss(u32_t percentage)
 	{
 		C->rn()->simulatePacketLoss( percentage );
 	}
