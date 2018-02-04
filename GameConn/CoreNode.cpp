@@ -65,7 +65,7 @@ namespace Zerodelay
 			void (*pfunc)(const ZEndpoint&, void*, const i8_t*, i32_t);
 			pfunc = (decltype(pfunc)) pf;
 			ZEndpoint ztp = toZpt(etp);
-			pfunc( ztp, m_UserPtr, payload+kRead+1, len );
+			pfunc( ztp, m_UserPtr, payload+kRead, len );
 		}
 		else
 		{

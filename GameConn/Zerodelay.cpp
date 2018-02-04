@@ -194,10 +194,10 @@ namespace Zerodelay
 		{
 			bool bQueuesEmpty = link->areAllQueuesEmpty();
 			C->rn()->unpinLink(link);
-			if ( !bQueuesEmpty ) return false;
+			if ( !bQueuesEmpty ) return true;
 			link = C->rn()->getLinkAndPinIt(++linkIdx);
 		}
-		return true;
+		return false;
 	}
 
 	void ZNode::update()

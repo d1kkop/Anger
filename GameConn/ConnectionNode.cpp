@@ -177,7 +177,7 @@ namespace Zerodelay
 			EConnectionState state = c->getState();
 			if ( !(state == EConnectionState::Connected || state == EConnectionState::Connecting) )
 			{
-				Platform::log("Deleted connection to %s. Num remaining connections before delete %d.", 
+				Platform::log("Deleted and removed connection to %s. Num remaining connections before delete %d.", 
 							  c->getEndPoint().toIpAndPort().c_str(), (i32_t)m_Connections.size());
 				delete c;
 				it = m_Connections.erase( it );

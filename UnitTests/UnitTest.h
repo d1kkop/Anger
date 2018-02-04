@@ -200,6 +200,7 @@ namespace UnitTests
 	{
 		SyncGroupTest()
 		{
+			Name = "SyncGroupTest";
 		}
 
 		virtual void initialize() override;

@@ -38,7 +38,7 @@ namespace UnitTests
 		int numDisconnected = 0;
 		int numNewConnections = 0;
 		ZNode* g1 = new ZNode();
-		const u32_t kConnections = 25;
+		const u32_t kConnections = 256;
 		ZNode* gs[kConnections];
 		for (auto & g : gs)
 		{
@@ -104,15 +104,14 @@ namespace UnitTests
 		bool bResolve = ztp.resolve("localhost", 27001);
 		assert(bResolve);
 		EConnectCallResult res;
-		printf("deliberately connecting with wrong pw..\n");
-		res = gs[0]->connect( ztp, "lala2", 8, values );
-		assert(res == EConnectCallResult::Succes);
-		res = gs[0]->connect("localhost",27001,"lala", 8, values);
-		assert(res == EConnectCallResult::AlreadyExists);
+		//printf("deliberately connecting with wrong pw..\n");
+		//res = gs[0]->connect( ztp, "lala2", 8, values );
+		//assert(res == EConnectCallResult::Succes);
+		//res = gs[0]->connect("localhost",27001,"lala", 8, values);
+		//assert(res == EConnectCallResult::AlreadyExists);
 	//	g2->setMaxIncomingConnections(-1);
-		g1->setMaxIncomingConnections(32);
 		std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-		g1->listen(27001, "lala");
+		g1->listen(27001, "lala", 1024);
 
 		ZEndpoint ztp2("127.0.0.1", 27001);
 		ZEndpoint ztp3("localhost", 27001);
@@ -136,15 +135,6 @@ namespace UnitTests
 		});
 
 		std::this_thread::sleep_for(5000ms);
-		int numSuccesful = 0;
-		Result = false;
-		for ( auto g : gs )
-		{
-			if ( g->isConnectedTo(ztp2) ) numSuccesful++;
-		}
-		int kTargetNumConns = (int) roundf(float(kConnections+1)*((float)kConnections/2));
-		Result = ( numSuccesful == kConnections ) && ( kTargetNumConns  == numNewConnections && numInvalidPw == 1 && numTimedout == 0 );
-
 		bClose = true;
 		if ( t.joinable() )
 			t.join();
@@ -173,6 +163,8 @@ namespace UnitTests
 		delete g1;
 		for (auto g : gs) delete g;
 
+		int kTargetNumConns = (int) roundf(float(kConnections+1)*((float)kConnections/2));
+		Result = ( numConnected == kConnections ) && ( kTargetNumConns  == numNewConnections ); // numInvalidPw == 1 && numTimedout == 0 );
 
 		printf("Results: \nNumConnected %d numRemoteConnected %d NumTimedOut %d NumInvalidPw %d NumMaxConnectionReached %d NumDisconnected %d\n", 
 			   numConnected, numNewConnections, numTimedout, numInvalidPw, numMaxConnsReached, numDisconnected);
@@ -670,13 +662,14 @@ namespace UnitTests
 			std::this_thread::sleep_for(2ms);
 		}
 
-		g1->disconnect();
-		g2->disconnect();
-		
 		bThreadClose = true;
 
 		if ( t.joinable() )
 			t.join();
+
+		g1->disconnect();
+		g2->disconnect();
+		
 
 		delete g1;
 		delete g2;
@@ -1108,26 +1101,41 @@ namespace UnitTests
 
 		// add tests
 		tests.emplace_back( new ConnectionLayerTest );
-	//	tests.emplace_back( new MassConnectTest );
-	//	tests.emplace_back( new ReliableOrderTest );
-	//	tests.emplace_back( new RpcTest );
-	//	tests.emplace_back( new SyncGroupTest );
+		tests.emplace_back( new MassConnectTest );
+		tests.emplace_back( new ReliableOrderTest );
+		tests.emplace_back( new RpcTest );
+		tests.emplace_back( new SyncGroupTest );
 			
 		// run them
+		u32_t nSuccesful = 0;
 		for ( auto* t : tests )
 		{
 			t->initialize();
 			printf("Running test %s\n", t->Name.c_str());
 			t->run();
 			if ( t->Result )
+			{
+				nSuccesful++;
 				printf("%s succesful\n", t->Name.c_str());
+			}
 			else
 				printf("%s FAILED\n", t->Name.c_str());
 		}
+
+
+		printf("\n\n----------- RESULTS ----------------\n");
+		printf("Num Tests %d | Succesful %d | Failed %d\n", (u32_t)tests.size(), nSuccesful,(u32_t)tests.size()-nSuccesful);
+		for (auto t : tests)
+		{
+			if ( !t->Result ) printf("\t%s FAILED\n", t->Name.c_str());
+		}
+
 
 		for ( auto* t : tests )
 		{
 			delete t;
 		}
+
+		printf("\nTests END\n\n");
 	}
 }

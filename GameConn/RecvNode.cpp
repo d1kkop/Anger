@@ -99,12 +99,13 @@ namespace Zerodelay
 			return;
 		}
 		bool bWasSent = false;
-		forEachLink( specific, exclude, true, [&] (RUDPLink* link)
+		u32_t listCount;
+		forEachLink( specific, exclude, true, listCount, [&] (RUDPLink* link)
 		{
 			link->addToSendQueue( id, data, len, type, channel, relay );
 			bWasSent = true;
 		});
-		if (!bWasSent)
+		if (!bWasSent && !(exclude && specific && listCount == 1))
 		{
 			Platform::log("WARNING: data with id %d was not sent to anyone.", id);
 		}
@@ -113,7 +114,8 @@ namespace Zerodelay
 	void RecvNode::sendReliableNewest(u8_t id, u32_t groupId, i8_t groupBit, const i8_t* data, i32_t len, const EndPoint* specific, bool exclude)
 	{
 		bool bWasSent = false;
-		forEachLink( specific, exclude, true, [&] (RUDPLink* link)
+		u32_t listCount;
+		forEachLink( specific, exclude, true, listCount, [&] (RUDPLink* link)
 		{
 			link->addReliableNewest( id, data, len, groupId, groupBit );
 			bWasSent = true;

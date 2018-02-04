@@ -64,7 +64,7 @@ namespace Zerodelay
 
 		// for each link (only to b called from main thread)
 		template <typename Callback>
-		void forEachLink( const EndPoint* specific, bool exclude, bool connected, const Callback& cb );
+		void forEachLink( const EndPoint* specific, bool exclude, bool connected, u32_t& listCountOut, const Callback& cb );
 
 		volatile bool m_IsClosing;
 		class ISocket* m_Socket;
@@ -86,9 +86,10 @@ namespace Zerodelay
 
 
 	template <typename Callback>
-	void RecvNode::forEachLink(const EndPoint* specific, bool exclude, bool connected, const Callback& cb)
+	void RecvNode::forEachLink(const EndPoint* specific, bool exclude, bool connected, u32_t& listCountOut, const Callback& cb)
 	{
 		pinList();
+		listCountOut = (u32_t) m_OpenLinksList.size();
 		if ( specific )
 		{
 			if ( exclude )
