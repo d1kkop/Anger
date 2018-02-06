@@ -39,6 +39,12 @@ namespace Zerodelay
 		}
 	}
 
+	const ZEndpoint* NetVariable::getOwner() const
+	{
+		if ( !m_Group ) return nullptr;
+		return m_Group->getOwner();
+	}
+
 	Zerodelay::EVarControl NetVariable::getVarControl() const
 	{
 		// Group becomes null if groups gest destroyed remotely.
@@ -47,11 +53,11 @@ namespace Zerodelay
 		return m_Group->getVarControl();
 	}
 
-	i32_t NetVariable::getGroupId() const
+	u32_t NetVariable::getGroupId() const
 	{
 		// Group becomes null if groups gest destroyed remotely.
 		if ( !m_Group )
-			return 0;
+			return -1;
 		return m_Group->getNetworkId();
 	}
 

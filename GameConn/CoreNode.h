@@ -6,6 +6,9 @@
 #include <atomic>
 
 
+#define CHECK_SERIALIZE( expr ) if ( !(expr) ) { m_CoreNode->setCriticalError(ECriticalError::SerializationError, ZERODELAY_FUNCTION_LINE); return false; }
+
+
 namespace Zerodelay
 {
 	enum class ECriticalError	// bitfield

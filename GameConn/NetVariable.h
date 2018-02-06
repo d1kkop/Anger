@@ -13,8 +13,9 @@ namespace Zerodelay
 		NetVariable(i32_t nBytes, void* data, void* prevData);
 		~NetVariable();
 
+		const ZEndpoint* getOwner() const;
 		enum class EVarControl getVarControl() const;
-		i32_t getGroupId() const;
+		u32_t getGroupId() const;
 		bool read( const i8_t*& buff, i32_t& buffLen);
 		i8_t* data();
 		const i8_t* data() const;

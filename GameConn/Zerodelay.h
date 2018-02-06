@@ -44,6 +44,7 @@ namespace Zerodelay
 		IdPackRequest,
 		IdPackProvide,
 		VariableGroupCreate,
+		VariableGroupCreateList,
 		VariableGroupDestroy,
 		VariableGroupUpdate,
 		UserOffset
@@ -273,7 +274,7 @@ namespace Zerodelay
 
 		/*	This event occurs when a remote endpoint called 'connect'.
 			[directLink]	If true, a connection attempt was made to this Znode. 
-							If false, a non directive link such as a remote connection that connected to the server and
+							If false, a non directive link such as a remote connection connected to the server and
 							the endpoint will not be found when obtaining a list of open connections through getNumOpenConnections(). 
 			[Zendpoint]		The endpoint, either of our direct link or relayed by eg. a server. */
 		void bindOnNewConnection( const std::function<void (bool directLink, const ZEndpoint&, const std::map<std::string, std::string>&)>& cb );
@@ -313,7 +314,7 @@ namespace Zerodelay
 			Causes 'createGroup_xxx' to be called when a network Id is available.
 			Usually this function is only used by the system internally. 
 			Use createGroup directly instead. */
-		void deferredCreateVariableGroup( const i8_t* constructData=nullptr, i32_t constructDataLen=0, i8_t channel=1 );
+		void deferredCreateVariableGroup( const i8_t* constructData=nullptr, i32_t constructDataLen=0 );
 
 
 	private:

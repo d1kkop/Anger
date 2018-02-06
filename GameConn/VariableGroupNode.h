@@ -18,22 +18,19 @@ namespace Zerodelay
 		A VariableGroup becomes a pending group when there are no more network ID's available.
 		In such case, first new ID's have to be obtained, until then, the creation of the 
 		group is suspended remote, but immediately created locally. */
-	struct PendingVariableGroup
+	struct VariableGroupCreateData
 	{
-		static const i32_t MaxParamDataLength = 2048;
+		static const i32_t MaxParamDataLength = 1024;
 		i8_t  ParamData[MaxParamDataLength];
 		i32_t ParamDataLength;
-		i8_t  Channel;
 	};
 
 
 	/** ---------------------------------------------------------------------------------------------------------------------------------
 		The VariableGroupNode maintains variable groups by id. Every group has a unique ID network wide.
 		The VariableGroupNode deliberately knows nothing about connections. 
-		Variable groups that are created from a remote machine are put in a remote map where
-		the endpoint of the remote machine maps to a list of created variable groups for that machine,
-		but it is just for convinience of deleting all groups from a specific endpoint. 
-		No list of connections is bookkept. 
+		Variable groups that are created from a remote endpoint are put in a remote map where
+		the remote endpoint maps to a list of created variable-groups for that endpoint.
 		There should always only be one ID provider in the network, however because the VariableGroupNode
 		does not know who the provider is, the message is just sent to all connections every so often
 		until it gets a reply with a list of free available networkID's. Before it runs out of ID's, it will
@@ -47,7 +44,7 @@ namespace Zerodelay
 	public:
 		VariableGroupNode();
 		~VariableGroupNode();
-		void reset();
+		void reset(bool isConstructorCall);
 
 		void postInitialize(class CoreNode* coreNode);
 		void setupConnectionCallbacks();
@@ -55,11 +52,10 @@ namespace Zerodelay
 		void update();
 		bool processPacket(const struct Packet& pack, const EndPoint& etp);
 
-		void deferredCreateGroup(const i8_t* paramData, i32_t paramDataLen, i8_t channel);
+		void deferredCreateGroup(const i8_t* paramData, i32_t paramDataLen);
 		void beginNewGroup(u32_t nid, const ZEndpoint* ztp);
 		void endNewGroup();
 		void setIsNetworkIdProvider( bool isProvider );
-		void setRelayVariableGroupEvents( bool doIt );
 
 	private:
 		/* recvs */
@@ -69,13 +65,14 @@ namespace Zerodelay
 		void recvVariableGroupDestroy(const Packet& pack, const EndPoint& etp);
 		void recvVariableGroupUpdate(const Packet& pack, const EndPoint& etp);
 		/* sends */
-		void sendCreateVariableGroup( u32_t networkId, const i8_t* paramData, i32_t paramDataLen, i8_t channel );
+		void sendCreateVariableGroup( u32_t networkId, const i8_t* paramData, i32_t paramDataLen );
 		void sendDestroyVariableGroup( u32_t networkId );
 		void sendIdPackProvide(const EndPoint& etp, i32_t numIds);
 		/* flow */
 		void intervalSendIdRequest();
 		void resolvePendingGroups();
-		void sendVariableGroups();
+		void sendUpdatedVariableGroups();
+		void sendAllVariableCreateEventsTo(const ZEndpoint& to);
 		/* support */
 		void callCreateVariableGroup(i8_t* data, i32_t len, bool remote, const ZEndpoint* ztp);
 		bool deserializeGroup(const i8_t*& data, i32_t& buffLen);
@@ -86,10 +83,9 @@ namespace Zerodelay
 
 
 		bool m_IsNetworkIdProvider; // Only 1 node is the owner of all id's, it provides id's on request.
-		bool m_RelayVariableGroupEvents;
 		std::deque<u32_t> m_UniqueIds;
-		std::deque<PendingVariableGroup> m_PendingGroups;
-		std::map<u32_t, class VariableGroup*> m_VariableGroups; // variable groups on this machine
+		std::deque<VariableGroupCreateData> m_PendingGroups;		// When creating a new one, it first becomes pending until network Id's are available.
+		std::map<u32_t, class VariableGroup*> m_VariableGroups;		// Variable groups on this local endpoint.
 		std::map<EndPoint, std::map<u32_t, class VariableGroup*>, EndPoint::STLCompare> m_RemoteVariableGroups; // variable groups per connection of remote machines
 		clock_t m_LastIdPackRequestTS;
 		u32_t   m_UniqueIdCounter;

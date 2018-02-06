@@ -30,7 +30,7 @@ namespace Zerodelay
 		// Returns size that contains host data
 		i32_t   getLowLevelAddrSize() const;
 
-		void setIpAndPortFromNetworkOrder( u32_t ip, u16_t port );
+		void setIpAndPortFromNetworkOrder( u32_t ip, u16_t port ); // network order is big endian
 		void setIpAndPortFromHostOrder( u32_t ip, u16_t port );
 
 		struct STLCompare

@@ -24,6 +24,10 @@ namespace Zerodelay
 		virtual ~NetVar();
 
 
+		/*	Returns the remote owner of this endpoint or nullptr if owned here. */
+		const ZEndpoint* getOwner() const;
+
+
 		/*	Specifies how this variable is controlled.
 			[Full]		This means that the variable is controlled locally, therefore any writes to this variable from this machine
 						will be synchronized to others. The variable will never be overwritten from the network. 
@@ -40,13 +44,13 @@ namespace Zerodelay
 		u32_t getNetworkGroupId() const;
 
 
-		/*	If a variable is written too, this can be called in addition to let the network stream know it has changed
+		/*	If a variable is written to, this can be called in addition to let the network stream know it has changed
 			and should be retransmitted. 
-			The function is automatically called when assigning data using the asignment(=) operator. */
+			NOTE: This function does NOT need to be called when assinging data using the assigment(=) operator.*/
 		void markChanged();
 
 
-		/*	Returns true when the owning group has a valid networkId (not 0) and is not destroyed. 
+		/*	Returns true when the owning group has a valid networkId (not -1) and is not destroyed. 
 			If a group is destroyed remotely, the variables are still in user memory and therefore not
 			destroyed. Usually you want to remove the variable group from user space on destruction. */
 		bool isInNetwork() const;
@@ -74,7 +78,7 @@ namespace Zerodelay
 	public:
 		GenericNetVar(): NetVar( sizeof(T), &m_Data, &m_PrevData ) { forwardCallbacks(); }
 		GenericNetVar(const T& o) : NetVar( sizeof(T) ) { forwardCallbacks(); }
-		virtual ~GenericNetVar<T>() = default;
+		~GenericNetVar<T>() override = default;
 
 		GenericNetVar<T>& operator = (const T& o)
 		{
@@ -91,7 +95,7 @@ namespace Zerodelay
 		std::function<void (const T& oldValue, const T& newValue)> OnPostUpdateCallback;
 
 
-	private: 
+	private:
 		void forwardCallbacks()
 		{
 			bindOnPostUpdateCallback( [this] (const i8_t* oldData, const i8_t* newData)

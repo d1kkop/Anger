@@ -21,7 +21,10 @@ namespace Zerodelay
 
 		// Only when networkId is assigned, the group can be submitted network wide
 		void setNetworkId( u32_t id );
-		bool isNetworkIdValid() const			{ return m_NetworkId != 0; }
+		bool isNetworkIdValid() const			{ return m_NetworkId != -1; }
+
+		void setOwner( const ZEndpoint* etp );
+		const ZEndpoint* getOwner() const;
 
 		void setControl( EVarControl control )	{ m_Control = control; }
 
@@ -46,10 +49,13 @@ namespace Zerodelay
 		bool m_DestroySent;
 		bool m_Dirty;
 	 	u32_t m_NetworkId;
+		ZEndpoint m_Owner;
 		EVarControl m_Control;
 		std::vector<NetVariable*> m_Variables;
 
 	public:
 		static VariableGroup* Last;
+
+		friend class VariableGroupNode;
 	};
 }

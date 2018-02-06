@@ -137,7 +137,7 @@ namespace Zerodelay
 			std::this_thread::sleep_for(std::chrono::milliseconds(lingerTimeMs));
 		}
 		C->rn()->reset();
-		C->vgn()->reset();
+		C->vgn()->reset(false);
 	}
 
 	EDisconnectCallResult ZNode::disconnect(const ZEndpoint& endPoint)
@@ -153,7 +153,6 @@ namespace Zerodelay
 		C->cn()->setRelayConnectAndDisconnectEvents( true );
 		C->cn()->setPassword( pw );
 		C->vgn()->setIsNetworkIdProvider( true );
-		C->vgn()->setRelayVariableGroupEvents( true );
 		EListenCallResult res = C->cn()->listenOn( port );
 		if (res == EListenCallResult::Succes)
 		{
@@ -379,8 +378,8 @@ namespace Zerodelay
 		return C->getUserDataPtr();
 	}
 
-	void ZNode::deferredCreateVariableGroup(const i8_t* paramData, i32_t paramDataLen, i8_t channel)
+	void ZNode::deferredCreateVariableGroup(const i8_t* paramData, i32_t paramDataLen)
 	{
-		C->vgn()->deferredCreateGroup( paramData, paramDataLen, channel );
+		C->vgn()->deferredCreateGroup( paramData, paramDataLen );
 	}
 }

@@ -22,11 +22,11 @@
 			__sgp_call_local_##name( gn ); \
 		}\
 	}\
-	void create_##name( ZNode* gn, u8_t channel=1 )\
+	void create_##name( ZNode* gn )\
 	{\
 		sgp_struct_##name t;\
 		VG_CPY_STR2(#name); \
-		gn->deferredCreateVariableGroup((const i8_t*)&t, sizeof(t), channel); \
+		gn->deferredCreateVariableGroup((const i8_t*)&t, sizeof(t)); \
 	}\
 	void __sgp_call_local_##name( ZNode* _zn )
 
@@ -43,12 +43,12 @@
 			__sgp_call_local_##name( gn, t->_a ); \
 		}\
 	}\
-	void create_##name( ZNode* gn, a at, u8_t channel=1 )\
+	void create_##name( ZNode* gn, a at )\
 	{\
 		sgp_struct_##name t;\
 		VG_CPY_STR2(#name); \
 		t._a = at; \
-		gn->deferredCreateVariableGroup((const i8_t*)&t, sizeof(t), channel); \
+		gn->deferredCreateVariableGroup((const i8_t*)&t, sizeof(t)); \
 	}\
 	void __sgp_call_local_##name( ZNode* _zn, a at )
 
@@ -65,12 +65,12 @@
 			__sgp_call_local_##name( gn, t->_a, t->_b ); \
 		}\
 	}\
-	void create_##name( ZNode* gn, a at, b bt, u8_t channel=1 )\
+	void create_##name( ZNode* gn, a at, b bt )\
 	{\
 		sgp_struct_##name t;\
 		VG_CPY_STR2(#name); \
 		t._a = at; t._b = bt; \
-		gn->deferredCreateVariableGroup((const i8_t*)&t, sizeof(t), channel); \
+		gn->deferredCreateVariableGroup((const i8_t*)&t, sizeof(t)); \
 	}\
 	void __sgp_call_local_##name( ZNode* _zn, a at, b bt )
 
@@ -87,12 +87,12 @@
 			__sgp_call_local_##name( gn, t->_a, t->_b, t->_c ); \
 		}\
 	}\
-	void create_##name( ZNode* gn, a at, b bt, c ct, u8_t channel=1 )\
+	void create_##name( ZNode* gn, a at, b bt, c ct )\
 	{\
 		sgp_struct_##name t;\
 		VG_CPY_STR2(#name); \
 		t._a = at; t._b = bt; t._c = ct; \
-		gn->deferredCreateVariableGroup((const i8_t*)&t, sizeof(t), channel); \
+		gn->deferredCreateVariableGroup((const i8_t*)&t, sizeof(t)); \
 	}\
 	void __sgp_call_local_##name( ZNode* _zn, a at, b bt, c ct )
 
@@ -109,12 +109,12 @@
 			__sgp_call_local_##name( gn, t->_a, t->_b, t->_c, t->_d ); \
 		}\
 	}\
-	void create_##name( ZNode* gn, a at, b bt, c ct, d dt, u8_t channel=1 )\
+	void create_##name( ZNode* gn, a at, b bt, c ct, d dt )\
 	{\
 		sgp_struct_##name t;\
 		VG_CPY_STR2(#name); \
 		t._a = at; t._b = bt; t._c = ct; t._d = dt; \
-		gn->deferredCreateVariableGroup((const i8_t*)&t, sizeof(t), channel); \
+		gn->deferredCreateVariableGroup((const i8_t*)&t, sizeof(t)); \
 	}\
 	void __sgp_call_local_##name( ZNode* _zn, a at, b bt, c ct, d dt )
 
@@ -131,12 +131,12 @@
 			__sgp_call_local_##name( gn, t->_a, t->_b, t->_c, t->_d, t->_e ); \
 		}\
 	}\
-	void create_##name( ZNode* gn, a at, b bt, c ct, d dt, e et, u8_t channel=1 )\
+	void create_##name( ZNode* gn, a at, b bt, c ct, d dt, e et )\
 	{\
 		sgp_struct_##name t;\
 		VG_CPY_STR2(#name); \
 		t._a = at; t._b = bt; t._c = ct; t._d = dt; t._e = et; \
-		gn->deferredCreateVariableGroup((const i8_t*)&t, sizeof(t), channel); \
+		gn->deferredCreateVariableGroup((const i8_t*)&t, sizeof(t)); \
 	}\
 	void __sgp_call_local_##name( ZNode* _zn, a at, b bt, c ct, d dt, e et )
 
@@ -153,12 +153,12 @@
 			__sgp_call_local_##name( gn, t->_a, t->_b, t->_c, t->_d, t->_e, t->_f ); \
 		}\
 	}\
-	void create_##name( ZNode* gn, a at, b bt, c ct, d dt, e et, f ft, u8_t channel=1 )\
+	void create_##name( ZNode* gn, a at, b bt, c ct, d dt, e et, f ft )\
 	{\
 		sgp_struct_##name t;\
 		VG_CPY_STR2(#name); \
 		t._a = at; t._b = bt; t._c = ct; t._d = dt; t._e = et; t._f = ft; \
-		gn->deferredCreateVariableGroup((const i8_t*)&t, sizeof(t), channel); \
+		gn->deferredCreateVariableGroup((const i8_t*)&t, sizeof(t)); \
 	}\
 	void __sgp_call_local_##name( ZNode* _zn, a at, b bt, c ct, d dt, e et, f ft )
 
@@ -175,12 +175,12 @@
 			__sgp_call_local_##name( gn, t->_a, t->_b, t->_c, t->_d, t->_e, t->_f, t->_h ); \
 		}\
 	}\
-	void create_##name( ZNode* gn, a at, b bt, c ct, d dt, e et, f ft, h ht, u8_t channel=1)\
+	void create_##name( ZNode* gn, a at, b bt, c ct, d dt, e et, f ft, h ht)\
 	{\
 		sgp_struct_##name t;\
 		VG_CPY_STR2(#name); \
 		t._a = at; t._b = bt; t._c = ct; t._d = dt; t._e = et; t._f = ft; t._h = ht; \
-		gn->deferredCreateVariableGroup((const i8_t*)&t, sizeof(t), channel); \
+		gn->deferredCreateVariableGroup((const i8_t*)&t, sizeof(t)); \
 	}\
 	void __sgp_call_local_##name( ZNode* _zn, a at, b bt, c ct, d dt, e et, f ft, h ht )
 
@@ -197,12 +197,12 @@
 			__sgp_call_local_##name( gn, t->_a, t->_b, t->_c, t->_d, t->_e, t->_f, t->_h, t->_i ); \
 		}\
 	}\
-	void create_##name( ZNode* gn, a at, b bt, c ct, d dt, e et, f ft, h ht, i it, u8_t channel=1 )\
+	void create_##name( ZNode* gn, a at, b bt, c ct, d dt, e et, f ft, h ht, i it )\
 	{\
 		sgp_struct_##name t;\
 		VG_CPY_STR2(#name); \
 		t._a = at; t._b = bt; t._c = ct; t._d = dt; t._e = et; t._f = ft; t._h = ht; t._i = it; \
-		gn->deferredCreateVariableGroup((const i8_t*)&t, sizeof(t), channel); \
+		gn->deferredCreateVariableGroup((const i8_t*)&t, sizeof(t)); \
 	}\
 	void __sgp_call_local_##name( ZNode* _zn, a at, b bt, c ct, d dt, e et, f ft, h ht, i it )
 
@@ -219,11 +219,11 @@
 			__sgp_call_local_##name( gn, t->_a, t->_b, t->_c, t->_d, t->_e, t->_f, t->_h, t->_i, t->_j ); \
 		}\
 	}\
-	void create_##name( ZNode* gn, a at, b bt, c ct, d dt, e et, f ft, h ht, i it, j jt, u8_t channel=1 )\
+	void create_##name( ZNode* gn, a at, b bt, c ct, d dt, e et, f ft, h ht, i it, j jt )\
 	{\
 		sgp_struct_##name t;\
 		VG_CPY_STR2(#name); \
 		t._a = at; t._b = bt; t._c = ct; t._d = dt; t._e = et; t._f = ft; t._h = ht; t._i = it; t._j = jt; \
-		gn->deferredCreateVariableGroup((const i8_t*)&t, sizeof(t), channel); \
+		gn->deferredCreateVariableGroup((const i8_t*)&t, sizeof(t)); \
 	}\
 	void __sgp_call_local_##name( ZNode* _zn, a at, b bt, c ct, d dt, e et, f ft, h ht, i it, j jt )

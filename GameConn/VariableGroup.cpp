@@ -8,10 +8,11 @@
 #include <cassert>
 
 
+
 namespace Zerodelay
 {
 	VariableGroup::VariableGroup():
-		m_NetworkId(0),
+		m_NetworkId(-1),
 		m_Broken(false),
 		m_DestroySent(false),
 		m_Dirty(false),
@@ -46,10 +47,24 @@ namespace Zerodelay
 
 	void VariableGroup::setNetworkId(u32_t id)
 	{
-		assert ( m_NetworkId == 0 && "network id already set" );
-		if ( m_NetworkId != 0 )
+		assert ( m_NetworkId == -1 && "network id already set" );
+		if ( m_NetworkId != -1 )
 			return;
 		m_NetworkId = id;
+	}
+
+	void VariableGroup::setOwner(const ZEndpoint* ztp)
+	{
+		if ( ztp )
+		{
+			m_Owner = *ztp;
+		}
+	}
+
+	const ZEndpoint* VariableGroup::getOwner() const
+	{
+		if (m_Owner.isZero()) return nullptr;
+		return &m_Owner;
 	}
 
 	void VariableGroup::sendGroup(ZNode* node)

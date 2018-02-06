@@ -14,6 +14,11 @@ namespace Zerodelay
 		delete p;
 	}
 
+	const ZEndpoint* NetVar::getOwner() const
+	{
+		return p->getOwner();
+	}
+
 	EVarControl NetVar::getVarConrol() const
 	{
 		return p->getVarControl();
