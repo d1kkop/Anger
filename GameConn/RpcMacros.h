@@ -5,8 +5,8 @@
 
 using namespace Zerodelay;
 
-#define RPC_NAME_MAX_LENGTH 32
-#define RPC_DATA_MAX 1500
+#define RPC_NAME_MAX_LENGTH 128
+#define RPC_DATA_MAX 1900
 
 #if _WIN32
 	#define RPC_EXPORT __declspec(dllexport)

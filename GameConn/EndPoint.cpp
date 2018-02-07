@@ -178,11 +178,11 @@ namespace Zerodelay
 		return ::memcmp( a.getLowLevelAddr(), b.getLowLevelAddr(), a.getLowLevelAddrSize() ) ;
 	}
 
-	i32_t EndPoint::write(i8_t* buff, i32_t len) const
+	i32_t EndPoint::write(i8_t* buff, i32_t bufSize) const
 	{
 		u16_t port = getPortNetworkOrder();
 		u32_t ipv4 = getIpv4NetworkOrder();
-		if ( len >= 6 )
+		if ( bufSize >= 6 )
 		{
 			Platform::memCpy( buff, 4, &ipv4, 4 );
 			Platform::memCpy( buff+4, 2, &port, 2 );
@@ -191,9 +191,9 @@ namespace Zerodelay
 		return -1;
 	}
 
-	i32_t EndPoint::read(const i8_t* buff, i32_t len)
+	i32_t EndPoint::read(const i8_t* buff, i32_t bufSize)
 	{
-		if ( len >= 6 )
+		if ( bufSize >= 6 )
 		{
 			u32_t ipv4;
 			u16_t port;

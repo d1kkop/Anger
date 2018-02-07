@@ -253,6 +253,11 @@ namespace Zerodelay
 		return (!C->isP2P() && C->isListening()) || (C->isP2P() && C->isSuperPeer());
 	}
 
+	bool ZNode::isClient() const
+	{
+		return !(C->isP2P() || C->isListening());
+	}
+
 	void ZNode::simulatePacketLoss(u32_t percentage)
 	{
 		C->rn()->simulatePacketLoss( percentage );

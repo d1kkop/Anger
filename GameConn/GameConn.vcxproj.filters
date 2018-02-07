@@ -67,6 +67,9 @@
     <ClCompile Include="CoreNode.cpp">
       <Filter>Nodes</Filter>
     </ClCompile>
+    <ClCompile Include="BinSerializer.cpp">
+      <Filter>Assist</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Socket.h">
@@ -116,6 +119,9 @@
     </ClInclude>
     <ClInclude Include="CoreNode.h">
       <Filter>Nodes</Filter>
+    </ClInclude>
+    <ClInclude Include="BinSerializer.h">
+      <Filter>Assist</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

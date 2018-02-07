@@ -121,6 +121,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="BinSerializer.cpp" />
     <ClCompile Include="Connection.cpp" />
     <ClCompile Include="CoreNode.cpp" />
     <ClCompile Include="NetVariable.cpp" />
@@ -141,6 +142,7 @@
     <ClCompile Include="Zerodelay.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="BinSerializer.h" />
     <ClInclude Include="CoreNode.h" />
     <ClInclude Include="NetVariable.h" />
     <ClInclude Include="RpcMacros.h" />

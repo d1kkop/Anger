@@ -46,7 +46,7 @@ namespace Zerodelay
 
 		/*	If a variable is written to, this can be called in addition to let the network stream know it has changed
 			and should be retransmitted. 
-			NOTE: This function does NOT need to be called when assinging data using the assigment(=) operator.*/
+			NOTE: This function does NOT need to be called when assigning data using the assigment(=) operator.*/
 		void markChanged();
 
 

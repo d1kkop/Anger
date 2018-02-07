@@ -40,8 +40,8 @@ namespace Zerodelay
 
 		static i32_t compareLess( const EndPoint& a, const EndPoint& b );
 
-		i32_t write( i8_t* buff, i32_t len ) const;
-		i32_t read( const i8_t* buff, i32_t len );
+		i32_t write( i8_t* buff, i32_t bufSize ) const;
+		i32_t read( const i8_t* buff, i32_t bufSize );
 
 	private:
 		i32_t m_LastError;

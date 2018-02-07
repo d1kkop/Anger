@@ -7,6 +7,7 @@
 #define ZERODELAY_SDL									(1)
 #define ZERODELAY_BUFF_SIZE								(2048)	// send buff size
 #define ZERODELAY_BUFF_RECV_SIZE						(3000)  // recvbuff size
+#define ZERODELAY_SECURE								(1)
 
 #define ZERODELAY_LIL_ENDIAN						(1)
 #define ZERODELAY_BIG_ENDIAN						(0)

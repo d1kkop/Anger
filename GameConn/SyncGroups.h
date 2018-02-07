@@ -3,227 +3,272 @@
 #include <cassert>
 #include "RpcMacros.h"
 
-#define VG_CPY_STR2(cname) \
-	i32_t _k=0; \
-	char*_c = cname; \
-	for (;_c[_k]!='\0' && _k<(RPC_NAME_MAX_LENGTH-1); ++_k) t.sgp_name[_k]=_c[_k]; \
-	t.sgp_name[_k]='\0';
-
 
 #define DECL_VAR_GROUP_0( name, _zn) \
 	void __sgp_call_local_##name( ZNode* _zn );\
-	ALIGN(8) struct sgp_struct_##name { i8_t sgp_name[RPC_NAME_MAX_LENGTH]; u32_t nId; };\
 	extern "C" {\
-		RPC_EXPORT void __sgp_deserialize_##name( ZNode* gn, i8_t* data, i32_t len ) \
+		RPC_EXPORT void __sgp_deserialize_##name( ZNode* gn, const i8_t* data, i32_t len ) \
 		{ \
-			sgp_struct_##name *t = reinterpret_cast<sgp_struct_##name*>(data); \
-			assert( len == sizeof(sgp_struct_##name) && "invalid size" ); \
-			memcpy(t, data, len); \
 			__sgp_call_local_##name( gn ); \
 		}\
 	}\
 	void create_##name( ZNode* gn )\
 	{\
-		sgp_struct_##name t;\
-		VG_CPY_STR2(#name); \
-		gn->deferredCreateVariableGroup((const i8_t*)&t, sizeof(t)); \
+		i8_t data[RPC_DATA_MAX]; \
+		i8_t* p=data;\
+		__sr::writeStr(p, #name); \
+		gn->deferredCreateVariableGroup(data, (i32_t)(p-data)); \
 	}\
 	void __sgp_call_local_##name( ZNode* _zn )
 
 
 #define DECL_VAR_GROUP_1( name, _zn, a, at) \
 	void __sgp_call_local_##name( ZNode* _zn, a at );\
-	ALIGN(8) struct sgp_struct_##name { i8_t sgp_name[RPC_NAME_MAX_LENGTH]; u32_t nId; a _a; };\
 	extern "C" {\
-		RPC_EXPORT void __sgp_deserialize_##name( ZNode* gn, i8_t* data, i32_t len ) \
+		RPC_EXPORT void __sgp_deserialize_##name( ZNode* gn, const i8_t* data, i32_t len ) \
 		{ \
-			sgp_struct_##name *t = reinterpret_cast<sgp_struct_##name*>(data); \
-			assert( len == sizeof(sgp_struct_##name) && "invalid size" ); \
-			memcpy(t, data, len); \
-			__sgp_call_local_##name( gn, t->_a ); \
+			a at; __sr::read(data, at); \
+			__sgp_call_local_##name( gn, at ); \
 		}\
 	}\
 	void create_##name( ZNode* gn, a at )\
 	{\
-		sgp_struct_##name t;\
-		VG_CPY_STR2(#name); \
-		t._a = at; \
-		gn->deferredCreateVariableGroup((const i8_t*)&t, sizeof(t)); \
+		i8_t data[RPC_DATA_MAX]; \
+		i8_t* p=data;\
+		__sr::writeStr(p, #name); \
+		__sr::write(p, at); \
+		gn->deferredCreateVariableGroup(data, (i32_t)(p-data)); \
 	}\
 	void __sgp_call_local_##name( ZNode* _zn, a at )
 
 
 #define DECL_VAR_GROUP_2( name, _zn, a, at, b, bt ) \
 	void __sgp_call_local_##name( ZNode* _zn, a at, b bt );\
-	ALIGN(8) struct sgp_struct_##name { i8_t sgp_name[RPC_NAME_MAX_LENGTH]; u32_t nId; a _a; b _b; };\
 	extern "C" {\
-		RPC_EXPORT void __sgp_deserialize_##name( ZNode* gn, i8_t* data, i32_t len ) \
+		RPC_EXPORT void __sgp_deserialize_##name( ZNode* gn, const i8_t* data, i32_t len ) \
 		{ \
-			sgp_struct_##name *t = reinterpret_cast<sgp_struct_##name*>(data); \
-			assert( len == sizeof(sgp_struct_##name) && "invalid size" ); \
-			memcpy(t, data, len); \
-			__sgp_call_local_##name( gn, t->_a, t->_b ); \
+			a at; __sr::read(data, at); \
+			b bt; __sr::read(data, bt); \
+			__sgp_call_local_##name( gn, at, bt ); \
 		}\
 	}\
 	void create_##name( ZNode* gn, a at, b bt )\
 	{\
-		sgp_struct_##name t;\
-		VG_CPY_STR2(#name); \
-		t._a = at; t._b = bt; \
-		gn->deferredCreateVariableGroup((const i8_t*)&t, sizeof(t)); \
+		i8_t data[RPC_DATA_MAX]; \
+		i8_t* p=data;\
+		__sr::writeStr(p, #name); \
+		__sr::write(p, at); \
+		__sr::write(p, bt); \
+		gn->deferredCreateVariableGroup(data, (i32_t)(p-data)); \
 	}\
 	void __sgp_call_local_##name( ZNode* _zn, a at, b bt )
 
 
 #define DECL_VAR_GROUP_3( name, _zn, a, at, b, bt, c, ct ) \
 	void __sgp_call_local_##name( ZNode* _zn, a at, b bt, c ct );\
-	ALIGN(8) struct sgp_struct_##name { i8_t sgp_name[RPC_NAME_MAX_LENGTH]; u32_t nId; a _a; b _b; c _c; };\
 	extern "C" {\
-		RPC_EXPORT void __sgp_deserialize_##name( ZNode* gn, i8_t* data, i32_t len ) \
+		RPC_EXPORT void __sgp_deserialize_##name( ZNode* gn, const i8_t* data, i32_t len ) \
 		{ \
-			sgp_struct_##name *t = reinterpret_cast<sgp_struct_##name*>(data); \
-			assert( len == sizeof(sgp_struct_##name) && "invalid size" ); \
-			memcpy(t, data, len); \
-			__sgp_call_local_##name( gn, t->_a, t->_b, t->_c ); \
+			a at; __sr::read(data, at); \
+			b bt; __sr::read(data, bt); \
+			c ct; __sr::read(data, ct); \
+			__sgp_call_local_##name( gn, at, bt, ct ); \
 		}\
 	}\
 	void create_##name( ZNode* gn, a at, b bt, c ct )\
 	{\
-		sgp_struct_##name t;\
-		VG_CPY_STR2(#name); \
-		t._a = at; t._b = bt; t._c = ct; \
-		gn->deferredCreateVariableGroup((const i8_t*)&t, sizeof(t)); \
+		i8_t data[RPC_DATA_MAX]; \
+		i8_t* p=data;\
+		__sr::writeStr(p, #name); \
+		__sr::write(p, at); \
+		__sr::write(p, bt); \
+		__sr::write(p, ct); \
+		gn->deferredCreateVariableGroup(data, (i32_t)(p-data)); \
 	}\
 	void __sgp_call_local_##name( ZNode* _zn, a at, b bt, c ct )
 
 
 #define DECL_VAR_GROUP_4( name, _zn, a, at, b, bt, c, ct, d, dt ) \
 	void __sgp_call_local_##name( ZNode* _zn, a at, b bt, c ct, d dt );\
-	ALIGN(8) struct sgp_struct_##name { i8_t sgp_name[RPC_NAME_MAX_LENGTH]; u32_t nId; a _a; b _b; c _c; d _d; };\
 	extern "C" {\
-		RPC_EXPORT void __sgp_deserialize_##name( ZNode* gn, i8_t* data, i32_t len ) \
+		RPC_EXPORT void __sgp_deserialize_##name( ZNode* gn, const i8_t* data, i32_t len ) \
 		{ \
-			sgp_struct_##name *t = reinterpret_cast<sgp_struct_##name*>(data); \
-			assert( len == sizeof(sgp_struct_##name) && "invalid size" ); \
-			memcpy(t, data, len); \
-			__sgp_call_local_##name( gn, t->_a, t->_b, t->_c, t->_d ); \
+			a at; __sr::read(data, at); \
+			b bt; __sr::read(data, bt); \
+			c ct; __sr::read(data, ct); \
+			d dt; __sr::read(data, dt); \
+			__sgp_call_local_##name( gn, at, bt, ct, dt ); \
 		}\
 	}\
 	void create_##name( ZNode* gn, a at, b bt, c ct, d dt )\
 	{\
-		sgp_struct_##name t;\
-		VG_CPY_STR2(#name); \
-		t._a = at; t._b = bt; t._c = ct; t._d = dt; \
-		gn->deferredCreateVariableGroup((const i8_t*)&t, sizeof(t)); \
+		i8_t data[RPC_DATA_MAX]; \
+		i8_t* p=data;\
+		__sr::writeStr(p, #name); \
+		__sr::write(p, at); \
+		__sr::write(p, bt); \
+		__sr::write(p, ct); \
+		__sr::write(p, dt); \
+		gn->deferredCreateVariableGroup(data, (i32_t)(p-data)); \
 	}\
 	void __sgp_call_local_##name( ZNode* _zn, a at, b bt, c ct, d dt )
 
 
 #define DECL_VAR_GROUP_5( name, _zn, a, at, b, bt, c, ct, d, dt, e, et ) \
 	void __sgp_call_local_##name( ZNode* _zn, a at, b bt, c ct, d dt, e et );\
-	ALIGN(8) struct sgp_struct_##name { i8_t sgp_name[RPC_NAME_MAX_LENGTH]; u32_t nId; a _a; b _b; c _c; d _d; e _e; };\
 	extern "C" {\
-		RPC_EXPORT void __sgp_deserialize_##name( ZNode* gn, i8_t* data, i32_t len ) \
+		RPC_EXPORT void __sgp_deserialize_##name( ZNode* gn, const i8_t* data, i32_t len ) \
 		{ \
-			sgp_struct_##name *t = reinterpret_cast<sgp_struct_##name*>(data); \
-			assert( len == sizeof(sgp_struct_##name) && "invalid size" ); \
-			memcpy(t, data, len); \
-			__sgp_call_local_##name( gn, t->_a, t->_b, t->_c, t->_d, t->_e ); \
+			a at; __sr::read(data, at); \
+			b bt; __sr::read(data, bt); \
+			c ct; __sr::read(data, ct); \
+			d dt; __sr::read(data, dt); \
+			e et; __sr::read(data, et); \
+			__sgp_call_local_##name( gn, at, bt, ct, dt, et ); \
 		}\
 	}\
 	void create_##name( ZNode* gn, a at, b bt, c ct, d dt, e et )\
 	{\
-		sgp_struct_##name t;\
-		VG_CPY_STR2(#name); \
-		t._a = at; t._b = bt; t._c = ct; t._d = dt; t._e = et; \
-		gn->deferredCreateVariableGroup((const i8_t*)&t, sizeof(t)); \
+		i8_t data[RPC_DATA_MAX]; \
+		i8_t* p=data;\
+		__sr::writeStr(p, #name); \
+		__sr::write(p, at); \
+		__sr::write(p, bt); \
+		__sr::write(p, ct); \
+		__sr::write(p, dt); \
+		__sr::write(p, et); \
+		gn->deferredCreateVariableGroup(data, (i32_t)(p-data)); \
 	}\
 	void __sgp_call_local_##name( ZNode* _zn, a at, b bt, c ct, d dt, e et )
 
 
 #define DECL_VAR_GROUP_6( name, _zn, a, at, b, bt, c, ct, d, dt, e, et, f, ft ) \
 	void __sgp_call_local_##name( ZNode* _zn, a at, b bt, c ct, d dt, e et, f ft );\
-	ALIGN(8) struct sgp_struct_##name { i8_t sgp_name[RPC_NAME_MAX_LENGTH]; u32_t nId; a _a; b _b; c _c; d _d; e _e; f _f; };\
 	extern "C" {\
-		RPC_EXPORT void __sgp_deserialize_##name( ZNode* gn, i8_t* data, i32_t len ) \
+		RPC_EXPORT void __sgp_deserialize_##name( ZNode* gn, const i8_t* data, i32_t len ) \
 		{ \
-			sgp_struct_##name *t = reinterpret_cast<sgp_struct_##name*>(data); \
-			assert( len == sizeof(sgp_struct_##name) && "invalid size" ); \
-			memcpy(t, data, len); \
-			__sgp_call_local_##name( gn, t->_a, t->_b, t->_c, t->_d, t->_e, t->_f ); \
+			a at; __sr::read(data, at); \
+			b bt; __sr::read(data, bt); \
+			c ct; __sr::read(data, ct); \
+			d dt; __sr::read(data, dt); \
+			e et; __sr::read(data, et); \
+			f ft; __sr::read(data, ft); \
+			__sgp_call_local_##name( gn, at, bt, ct, dt, et, ft ); \
 		}\
 	}\
 	void create_##name( ZNode* gn, a at, b bt, c ct, d dt, e et, f ft )\
 	{\
-		sgp_struct_##name t;\
-		VG_CPY_STR2(#name); \
-		t._a = at; t._b = bt; t._c = ct; t._d = dt; t._e = et; t._f = ft; \
-		gn->deferredCreateVariableGroup((const i8_t*)&t, sizeof(t)); \
+		i8_t data[RPC_DATA_MAX]; \
+		i8_t* p=data;\
+		__sr::writeStr(p, #name); \
+		__sr::write(p, at); \
+		__sr::write(p, bt); \
+		__sr::write(p, ct); \
+		__sr::write(p, dt); \
+		__sr::write(p, et); \
+		__sr::write(p, ft); \
+		gn->deferredCreateVariableGroup(data, (i32_t)(p-data)); \
 	}\
 	void __sgp_call_local_##name( ZNode* _zn, a at, b bt, c ct, d dt, e et, f ft )
 
 
 #define DECL_VAR_GROUP_7( name, _zn, a, at, b, bt, c, ct, d, dt, e, et, f, ft, h, ht ) \
 	void __sgp_call_local_##name( ZNode* _zn, a at, b bt, c ct, d dt, e et, f ft, h ht );\
-	ALIGN(8) struct sgp_struct_##name { i8_t sgp_name[RPC_NAME_MAX_LENGTH]; u32_t nId; a _a; b _b; c _c; d _d; e _e; f _f; h _h; };\
 	extern "C" {\
-		RPC_EXPORT void __sgp_deserialize_##name( ZNode* gn, i8_t* data, i32_t len ) \
+		RPC_EXPORT void __sgp_deserialize_##name( ZNode* gn, const i8_t* data, i32_t len ) \
 		{ \
-			sgp_struct_##name *t = reinterpret_cast<sgp_struct_##name*>(data); \
-			assert( len == sizeof(sgp_struct_##name) && "invalid size" ); \
-			memcpy(t, data, len); \
-			__sgp_call_local_##name( gn, t->_a, t->_b, t->_c, t->_d, t->_e, t->_f, t->_h ); \
+			a at; __sr::read(data, at); \
+			b bt; __sr::read(data, bt); \
+			c ct; __sr::read(data, ct); \
+			d dt; __sr::read(data, dt); \
+			e et; __sr::read(data, et); \
+			f ft; __sr::read(data, ft); \
+			h ht; __sr::read(data, ht); \
+			__sgp_call_local_##name( gn, at, bt, ct, dt, et, ft, ht ); \
 		}\
 	}\
 	void create_##name( ZNode* gn, a at, b bt, c ct, d dt, e et, f ft, h ht)\
 	{\
-		sgp_struct_##name t;\
-		VG_CPY_STR2(#name); \
-		t._a = at; t._b = bt; t._c = ct; t._d = dt; t._e = et; t._f = ft; t._h = ht; \
-		gn->deferredCreateVariableGroup((const i8_t*)&t, sizeof(t)); \
+		i8_t data[RPC_DATA_MAX]; \
+		i8_t* p=data;\
+		__sr::writeStr(p, #name); \
+		__sr::write(p, at); \
+		__sr::write(p, bt); \
+		__sr::write(p, ct); \
+		__sr::write(p, dt); \
+		__sr::write(p, et); \
+		__sr::write(p, ft); \
+		__sr::write(p, ht); \
+		gn->deferredCreateVariableGroup(data, (i32_t)(p-data)); \
 	}\
 	void __sgp_call_local_##name( ZNode* _zn, a at, b bt, c ct, d dt, e et, f ft, h ht )
 
 
 #define DECL_VAR_GROUP_8( name, _zn, a, at, b, bt, c, ct, d, dt, e, et, f, ft, h, ht, i, it ) \
 	void __sgp_call_local_##name( ZNode* _zn, a at, b bt, c ct, d dt, e et, f ft, h ht, i it );\
-	ALIGN(8) struct sgp_struct_##name { i8_t sgp_name[RPC_NAME_MAX_LENGTH]; u32_t nId; a _a; b _b; c _c; d _d; e _e; f _f; h _h; i _i; };\
 	extern "C" {\
-		RPC_EXPORT void __sgp_deserialize_##name( ZNode* gn, i8_t* data, i32_t len ) \
+		RPC_EXPORT void __sgp_deserialize_##name( ZNode* gn, const i8_t* data, i32_t len ) \
 		{ \
-			sgp_struct_##name *t = reinterpret_cast<sgp_struct_##name*>(data); \
-			assert( len == sizeof(sgp_struct_##name) && "invalid size" ); \
-			memcpy(t, data, len); \
-			__sgp_call_local_##name( gn, t->_a, t->_b, t->_c, t->_d, t->_e, t->_f, t->_h, t->_i ); \
+			a at; __sr::read(data, at); \
+			b bt; __sr::read(data, bt); \
+			c ct; __sr::read(data, ct); \
+			d dt; __sr::read(data, dt); \
+			e et; __sr::read(data, et); \
+			f ft; __sr::read(data, ft); \
+			h ht; __sr::read(data, ht); \
+			i it; __sr::read(data, it); \
+			__sgp_call_local_##name( gn, at, bt, ct, dt, et, ft, ht, it ); \
 		}\
 	}\
 	void create_##name( ZNode* gn, a at, b bt, c ct, d dt, e et, f ft, h ht, i it )\
 	{\
-		sgp_struct_##name t;\
-		VG_CPY_STR2(#name); \
-		t._a = at; t._b = bt; t._c = ct; t._d = dt; t._e = et; t._f = ft; t._h = ht; t._i = it; \
-		gn->deferredCreateVariableGroup((const i8_t*)&t, sizeof(t)); \
+		i8_t data[RPC_DATA_MAX]; \
+		i8_t* p=data;\
+		__sr::writeStr(p, #name); \
+		__sr::write(p, at); \
+		__sr::write(p, bt); \
+		__sr::write(p, ct); \
+		__sr::write(p, dt); \
+		__sr::write(p, et); \
+		__sr::write(p, ft); \
+		__sr::write(p, ht); \
+		__sr::write(p, it); \
+		gn->deferredCreateVariableGroup(data, (i32_t)(p-data)); \
 	}\
 	void __sgp_call_local_##name( ZNode* _zn, a at, b bt, c ct, d dt, e et, f ft, h ht, i it )
 
 
 #define DECL_VAR_GROUP_9( name, _zn, a, at, b, bt, c, ct, d, dt, e, et, f, ft, h, ht, i, it, j, jt ) \
 	void __sgp_call_local_##name( ZNode* _zn, a at, b bt, c ct, d dt, e et, f ft, h ht, i it, j jt );\
-	ALIGN(8) struct sgp_struct_##name { i8_t sgp_name[RPC_NAME_MAX_LENGTH]; u32_t nId; a _a; b _b; c _c; d _d; e _e; f _f; h _h; i _i; j _j; };\
 	extern "C" {\
-		RPC_EXPORT void __sgp_deserialize_##name( ZNode* gn, i8_t* data, i32_t len ) \
+		RPC_EXPORT void __sgp_deserialize_##name( ZNode* gn, const i8_t* data, i32_t len ) \
 		{ \
-			sgp_struct_##name *t = reinterpret_cast<sgp_struct_##name*>(data); \
-			assert( len == sizeof(sgp_struct_##name) && "invalid size" ); \
-			memcpy(t, data, len); \
-			__sgp_call_local_##name( gn, t->_a, t->_b, t->_c, t->_d, t->_e, t->_f, t->_h, t->_i, t->_j ); \
+			a at; __sr::read(data, at); \
+			b bt; __sr::read(data, bt); \
+			c ct; __sr::read(data, ct); \
+			d dt; __sr::read(data, dt); \
+			e et; __sr::read(data, et); \
+			f ft; __sr::read(data, ft); \
+			h ht; __sr::read(data, ht); \
+			i it; __sr::read(data, it); \
+			j jt; __sr::read(data, jt); \
+			__sgp_call_local_##name( gn, at, bt, ct, dt, et, ft, ht, it, jt ); \
 		}\
 	}\
 	void create_##name( ZNode* gn, a at, b bt, c ct, d dt, e et, f ft, h ht, i it, j jt )\
 	{\
-		sgp_struct_##name t;\
-		VG_CPY_STR2(#name); \
-		t._a = at; t._b = bt; t._c = ct; t._d = dt; t._e = et; t._f = ft; t._h = ht; t._i = it; t._j = jt; \
-		gn->deferredCreateVariableGroup((const i8_t*)&t, sizeof(t)); \
+		i8_t data[RPC_DATA_MAX]; \
+		i8_t* p=data;\
+		__sr::writeStr(p, #name); \
+		__sr::write(p, at); \
+		__sr::write(p, bt); \
+		__sr::write(p, ct); \
+		__sr::write(p, dt); \
+		__sr::write(p, et); \
+		__sr::write(p, ft); \
+		__sr::write(p, ht); \
+		__sr::write(p, it); \
+		__sr::write(p, jt); \
+		gn->deferredCreateVariableGroup(data, (i32_t)(p-data)); \
 	}\
 	void __sgp_call_local_##name( ZNode* _zn, a at, b bt, c ct, d dt, e et, f ft, h ht, i it, j jt )

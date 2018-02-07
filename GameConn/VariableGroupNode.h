@@ -2,6 +2,7 @@
 
 #include "Zerodelay.h"
 #include "EndPoint.h"
+#include "RpcMacros.h"
 #include "Util.h"
 
 #include <deque>
@@ -11,6 +12,8 @@
 
 namespace Zerodelay
 {
+	class BinSerializer;
+
 	using GroupCallback = std::function<void (const EndPoint*, u32_t)>;
 
 
@@ -18,11 +21,24 @@ namespace Zerodelay
 		A VariableGroup becomes a pending group when there are no more network ID's available.
 		In such case, first new ID's have to be obtained, until then, the creation of the 
 		group is suspended remote, but immediately created locally. */
-	struct VariableGroupCreateData
+	struct GroupPendingData
 	{
-		static const i32_t MaxParamDataLength = 1024;
-		i8_t  ParamData[MaxParamDataLength];
-		i32_t ParamDataLength;
+		i8_t  Data[RPC_DATA_MAX];
+		i32_t TotalDataLength;
+
+		const i8_t* funcName() const  { return Data; }
+		const i8_t* paramData() const { return Data + nameLen()+1; }
+		i32_t nameLen() const { return (i32_t)strlen(Data); }
+		i32_t paramDataLen() const { return TotalDataLength-(nameLen()+1); }
+	};
+
+
+	/*	Group Create data already serialized such that it can be send through to anyone. */
+	struct GroupCreateData
+	{
+		i8_t* Data;
+		i32_t Len;
+		u32_t netId;
 	};
 
 
@@ -65,7 +81,8 @@ namespace Zerodelay
 		void recvVariableGroupDestroy(const Packet& pack, const EndPoint& etp);
 		void recvVariableGroupUpdate(const Packet& pack, const EndPoint& etp);
 		/* sends */
-		void sendCreateVariableGroup( u32_t networkId, const i8_t* paramData, i32_t paramDataLen );
+		void sendCreateVariableGroup( BinSerializer& bs, const ZEndpoint* target );
+		void sendCreateVariableGroup( const i8_t* funcName, const i8_t* paramData, i32_t paramDataLen, u32_t netId, const ZEndpoint* owner );
 		void sendDestroyVariableGroup( u32_t networkId );
 		void sendIdPackProvide(const EndPoint& etp, i32_t numIds);
 		/* flow */
@@ -74,8 +91,10 @@ namespace Zerodelay
 		void sendUpdatedVariableGroups();
 		void sendAllVariableCreateEventsTo(const ZEndpoint& to);
 		/* support */
-		void callCreateVariableGroup(i8_t* data, i32_t len, bool remote, const ZEndpoint* ztp);
+		void callCreateVariableGroup(const i8_t* name, u32_t id, const i8_t* paramData, i32_t paramDataLen, const ZEndpoint* ztp);
+		void bufferCreateVariableGroup(const i8_t* name, u32_t id, const i8_t* paramData, i32_t paramDataLen, const ZEndpoint* ztp);
 		bool deserializeGroup(const i8_t*& data, i32_t& buffLen);
+		void unBufferGroup(u32_t netId);
 		class VariableGroup* findOrRemoveBrokenGroup( u32_t networkId, const EndPoint* etp = nullptr );
 		// group callbacks
 		void bindOnGroupUpdated(const GroupCallback& cb)				{ Util::bindCallback(m_GroupUpdateCallbacks, cb); }
@@ -84,7 +103,8 @@ namespace Zerodelay
 
 		bool m_IsNetworkIdProvider; // Only 1 node is the owner of all id's, it provides id's on request.
 		std::deque<u32_t> m_UniqueIds;
-		std::deque<VariableGroupCreateData> m_PendingGroups;		// When creating a new one, it first becomes pending until network Id's are available.
+		std::deque<GroupPendingData> m_PendingGroups;				// When creating a new one, it first becomes pending until network Id's are available.
+		std::vector<GroupCreateData> m_BufferedGroups;				// When created, keep list so that new incoming connections can get the till then created buffered list of variable groups.
 		std::map<u32_t, class VariableGroup*> m_VariableGroups;		// Variable groups on this local endpoint.
 		std::map<EndPoint, std::map<u32_t, class VariableGroup*>, EndPoint::STLCompare> m_RemoteVariableGroups; // variable groups per connection of remote machines
 		clock_t m_LastIdPackRequestTS;

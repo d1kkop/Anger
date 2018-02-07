@@ -223,6 +223,10 @@ namespace Zerodelay
 		bool isAuthorative() const;
 
 
+		/*	Returns true if is client in client-server architecture. In p2p this never returns true. */
+		bool isClient() const;
+
+
 		/*	Simulate packet loss to test Quality of Service in game. 
 			Precentage is value between 0 and 100. */
 		void simulatePacketLoss( u32_t percentage );
