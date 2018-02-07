@@ -3,6 +3,7 @@
 #include "Zerodelay.h"
 #include "Platform.h"
 #include "EndPoint.h"
+#include "Util.h"
 
 
 #define __CHECKED( expr ) if (!(expr)) { m_CoreNode->setCriticalError(ECriticalError::SerializationError, ZERODELAY_FUNCTION_LINE); return; }
@@ -10,9 +11,6 @@
 
 namespace Zerodelay
 {
-	extern EndPoint toEtp( const ZEndpoint& z );
-	extern ZEndpoint toZpt( const EndPoint& r );
-
 	class BinSerializer
 	{
 	public:
@@ -60,7 +58,7 @@ namespace Zerodelay
 		}
 		template <> bool write(const ZEndpoint& b)
 		{
-			EndPoint etp = toEtp(b);
+			EndPoint etp = Util::toEtp(b);
 			return write(etp);
 		}
 
@@ -82,7 +80,7 @@ namespace Zerodelay
 			EndPoint etp;
 			if (read(etp)) 
 			{
-				b = toZpt(etp);
+				b = Util::toZpt(etp);
 				return true;
 			}
 			return false;

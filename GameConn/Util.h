@@ -1,12 +1,16 @@
 #pragma once
 
 #include "Zerodelay.h"
+#include "EndPoint.h"
 
 
 namespace Zerodelay
 {
 	struct Util
 	{
+		static ZEndpoint toZpt( const EndPoint& r );
+		static EndPoint toEtp( const ZEndpoint& z );
+
 		static i8_t* appendString2(i8_t* dst, i32_t& dstSize, const i8_t* src, bool& bSucces);
 		static i8_t* appendString( i8_t* dst, i32_t dstSize, const i8_t* src );
 
@@ -22,6 +26,8 @@ namespace Zerodelay
 		static i32_t getTimeSince(i32_t timestamp);  // in milliseconds
 
 		static bool deserializeMap( std::map<std::string, std::string>& data, const i8_t* source, i32_t payloadLenIn );
+
+		static void addTraceCallResult( std::vector<ZAckTicket>* deliveryTraceOut, const EndPoint& etp, ETraceCallResult, u32_t trackingSeq, i8_t channel );
 
 		template <typename List, typename Callback>
 		static void bindCallback( List& list, const Callback& cb );

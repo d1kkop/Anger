@@ -92,11 +92,40 @@ namespace Zerodelay
 		Lost
 	};
 
+	enum class ESendCallResult
+	{
+		/*	The packet is, or will be sent soon. It does not mean the packet is delivered. */
+		Succes,
+		/*	Reasons for not sent are:
+				1. Not connected (yet) while the function call was made with a 'connection established' condition.
+				2. The destination count is 1 and is the same endpoint as the one to exclude from the list. 
+				3. The destination was a closed connection and therefore the send was blocked. */
+		NotSend,
+		/*	See log for more info. */
+		InternalError
+	};
+
+	enum class ETraceCallResult
+	{
+		/*  If the packet can be tracked, this is set. However, to see if a packet is delivered use: 
+			ZNode->isPacketDelivered() function. */
+		Tracking,
+		/*	This is set if sending an unreliable packet. These packets cannot be tracked for delivery. */
+		UnreliableWillNotTrack,
+		/*	This is set if sending with 'connected' true while the connection to the specific endpoint was not (yet) established.
+			Eg. Sending to a remote endpoint to which no connection was established. */
+		ConnectionWasRequired,
+		/*	If calling this function after disconnect, this is set. */
+		SendingIsBlocked,
+		/*	Other internal error, see log. */
+		InternalError
+	};
+
 
 	/** ---------------------------------------------------------------------------------------------------------------------------------
 		ZEndpoint is analogical to an address. It is either an Ipv4 or Ipv6 address.
 		Do not keep a pointer to the endpoint but copy the structure instead.
-		It works out of the box with std::map */
+		It works out of the box with std::map. */
 	struct ZDLL_DECLSPEC ZEndpoint
 	{
 		ZEndpoint();
@@ -130,6 +159,18 @@ namespace Zerodelay
 
 	private:
 		i8_t d[32];
+	};
+
+
+	/** ---------------------------------------------------------------------------------------------------------------------------------
+		When sending a reliable ordered packet. This ticket is returned which can be used
+		to track if a packet is delivered. */
+	struct ZDLL_DECLSPEC ZAckTicket
+	{
+		ZEndpoint endpoint;
+		ETraceCallResult traceCallResult;
+		u32_t sequence;
+		i8_t channel;
 	};
 
 
@@ -241,8 +282,11 @@ namespace Zerodelay
 						- If not nullptr and exclude is true, then message is sent to all except the specific.
 			[channel]	On what channel to sent the message. Packets are sequenced and ordered per channel. Max of 8 channels, 0 to 7.
 			[relay]		Whether to relay the message to other connected clients when it arrives. 
-			[requiresConnection] If false, the packet is sent regardless of whether the endpoint(s) are in connected state. Default true. */
-		void sendReliableOrdered( u8_t packId, const i8_t* data, i32_t len, const ZEndpoint* specific=nullptr, bool exclude=false, u8_t channel=0, bool relay=true, bool requiresConnection=true );
+			[requiresConnection] If false, the packet is sent regardless of whether the endpoint(s) are in connected state. Default true. 
+			[deliveryTraceOut]  If not null, for every endpoint the packet is sent, a ticket is stored which can be used to
+								check if the packet was delivered at the designated endpoint. */
+		ESendCallResult sendReliableOrdered( u8_t packId, const i8_t* data, i32_t len, const ZEndpoint* specific=nullptr, bool exclude=false, u8_t channel=0, 
+											 bool relay=true, bool requiresConnection=true, std::vector<ZAckTicket>* deliveryTraceOut=nullptr);
 
 
 		/*	The last message of a certain 'dataId' is guarenteed to arrive. That is, if twice data is sent with the same 'dataId' the first one may not arrive.
@@ -268,7 +312,7 @@ namespace Zerodelay
 			[channel]	On what channel to sent the message. Packets are sequenced and ordered per channel. Max of 8 channels, 0 to 7.
 			[relay]		Whether to relay the message to other connected clients when it arrives. 
 			[requiresConnection] If false, the packet is sent regardless of whether the endpoint(s) are in connected state. Default is true. */
-		void sendUnreliableSequenced( u8_t packId, const i8_t* data, i32_t len, const ZEndpoint* specific=nullptr, bool exclude=false, u8_t channel=0, bool relay=true, bool requiresConnection=true );
+		ESendCallResult sendUnreliableSequenced( u8_t packId, const i8_t* data, i32_t len, const ZEndpoint* specific=nullptr, bool exclude=false, u8_t channel=0, bool relay=true, bool requiresConnection=true );
 
 		/*	----- Callbacks ----------------------------------------------------------------------------------------------- */
 

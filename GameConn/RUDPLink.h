@@ -76,7 +76,7 @@ namespace Zerodelay
 
 		// Maximum channels in case of normal packet types
 		static const i32_t sm_NumChannels  = 8;
-
+		
 
 	public:
 		RUDPLink(class RecvNode* recvNode, const EndPoint& endPoint, u32_t linkId);
@@ -84,7 +84,7 @@ namespace Zerodelay
 
 		// ------ Called from main thread -------
 
-		void addToSendQueue( u8_t id, const i8_t* data, i32_t len, EHeaderPacketType packetType, u8_t channel=0, bool relay=true );
+		u32_t addToSendQueue( ESendCallResult& result, u8_t id, const i8_t* data, i32_t len, EHeaderPacketType packetType, u8_t channel=0, bool relay=true );
 		void addReliableNewest( u8_t id, const i8_t* data, i32_t len, u32_t groupId, i8_t groupBit );
 		void blockAllUpcomingSends();
 		

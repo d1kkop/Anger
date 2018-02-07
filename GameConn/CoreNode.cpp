@@ -9,10 +9,6 @@
 
 namespace Zerodelay
 {
-	extern ZEndpoint toZpt( const EndPoint& r );
-	extern EndPoint  toEtp( const ZEndpoint& z );
-
-
 	CoreNode::CoreNode(class ZNode* zn, class RecvNode* rn, class ConnectionNode* cn, class VariableGroupNode* vgn):
 		m_UserPtr(nullptr),
 		m_IsP2P(false),
@@ -64,7 +60,7 @@ namespace Zerodelay
 			// function signature
 			void (*pfunc)(const ZEndpoint&, void*, const i8_t*, i32_t);
 			pfunc = (decltype(pfunc)) pf;
-			ZEndpoint ztp = toZpt(etp);
+			ZEndpoint ztp = Util::toZpt(etp);
 			pfunc( ztp, m_UserPtr, payload+kRead, len );
 		}
 		else
@@ -81,7 +77,7 @@ namespace Zerodelay
 			// except self
 			m_RecvNode->send( pack.data[0], pack.data+1, pack.len-1, &etp, true, pack.type, pack.channel, false /* relay only once */ );
 		}
-		ZEndpoint ztp = toZpt(etp);
+		ZEndpoint ztp = Util::toZpt(etp);
 		Util::forEachCallback(m_CustomDataCallbacks, [&](auto& fcb)
 		{
 			(fcb)(ztp, pack.data[0], pack.data+1, pack.len-1, pack.channel);

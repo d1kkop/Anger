@@ -35,8 +35,9 @@ namespace Zerodelay
 		bool openSocketOnPort(u16_t port);
 
 	public:
-		void send( u8_t id, const i8_t* data, i32_t len, const EndPoint* specific=nullptr, bool exclude=false, 
-				   EHeaderPacketType type=EHeaderPacketType::Reliable_Ordered, u8_t channel=0, bool relay=true );
+		ESendCallResult send( u8_t id, const i8_t* data, i32_t len, const EndPoint* specific=nullptr, bool exclude=false, 
+							  EHeaderPacketType type=EHeaderPacketType::Reliable_Ordered, u8_t channel=0, bool relay=true, 
+							  std::vector<ZAckTicket>* deliveryTraceOut=nullptr );
 		void sendReliableNewest( u8_t id, u32_t groupId, i8_t groupBit, const i8_t* data, i32_t len, const EndPoint* specific=nullptr, bool exclude=false );
 
 		class RUDPLink* getLinkAndPinIt(u32_t idx);
@@ -64,7 +65,7 @@ namespace Zerodelay
 
 		// for each link (only to b called from main thread)
 		template <typename Callback>
-		void forEachLink( const EndPoint* specific, bool exclude, bool connected, u32_t& listCountOut, const Callback& cb );
+		void forEachLink( const EndPoint* specific, bool exclude, bool connected, u32_t& linkCount, const Callback& cb );
 
 		volatile bool m_IsClosing;
 		class ISocket* m_Socket;
@@ -86,10 +87,10 @@ namespace Zerodelay
 
 
 	template <typename Callback>
-	void RecvNode::forEachLink(const EndPoint* specific, bool exclude, bool connected, u32_t& listCountOut, const Callback& cb)
+	void RecvNode::forEachLink(const EndPoint* specific, bool exclude, bool connected, u32_t& linkCount, const Callback& cb)
 	{
 		pinList();
-		listCountOut = (u32_t) m_OpenLinksList.size();
+		linkCount = (u32_t) m_OpenLinksList.size();
 		if ( specific )
 		{
 			if ( exclude )

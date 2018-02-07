@@ -42,27 +42,31 @@ namespace Zerodelay
 		for (auto & groupIdGroupPair : m_SendQueue_reliable_newest ) for (auto & groupItem : groupIdGroupPair.second.groupItems) delete [] groupItem.data;
 	}
 
-	void RUDPLink::addToSendQueue(u8_t id, const i8_t* data, i32_t len, EHeaderPacketType packetType, u8_t channel, bool relay)
+	u32_t RUDPLink::addToSendQueue(ESendCallResult& result, u8_t id, const i8_t* data, i32_t len, EHeaderPacketType packetType, u8_t channel, bool relay)
 	{
 		if ( m_BlockNewSends ) // discard new packets in this case
 		{
 			Platform::log("WARNING: Trying to send id %d with sendType %d while send is blocked.", id, (u32_t)packetType);
-			return; 
+			result = ESendCallResult::NotSend;
+			return 0;
 		}
 		// user not allowed to send acks
 		if ( packetType == EHeaderPacketType::Ack || packetType == EHeaderPacketType::Reliable_Newest )
 		{
 			assert( false && "Invalid packet type" );
 			m_RecvNode->getCoreNode()->setCriticalError( ECriticalError::InvalidLogic, ZERODELAY_FUNCTION_LINE );
-			return;
+			result = ESendCallResult::InternalError;
+			return 0;
 		}
 		Packet pack;
 		serializeNormalPacket( pack, m_LinkId, packetType, id, data, len, off_Norm_Data, channel, relay );
+		u32_t trackingSeq = 0;
 		if ( packetType == EHeaderPacketType::Reliable_Ordered )
 		{
 			{
 				std::lock_guard<std::mutex> lock(m_ReliableOrderedQueueMutex);
-				*(u32_t*)&pack.data[off_Norm_Seq] = m_SendSeq_reliable[channel]++;
+				trackingSeq = m_SendSeq_reliable[channel]++;
+				*(u32_t*)&pack.data[off_Norm_Seq] = trackingSeq;
 				m_RetransmitQueue_reliable[channel].emplace_back( pack );
 			}
 			m_RecvNode->getSocket()->send( m_EndPoint, pack.data, pack.len );
@@ -72,6 +76,8 @@ namespace Zerodelay
 			*(u32_t*)&pack.data[off_Norm_Seq] = m_SendSeq_unreliable[channel]++;
 			m_RecvNode->getSocket()->send( m_EndPoint, pack.data, pack.len );
 		}
+		result = ESendCallResult::Succes;
+		return trackingSeq;
 	}
 
 	void RUDPLink::addReliableNewest(u8_t id, const i8_t* data, i32_t len, u32_t groupId, i8_t groupBit)

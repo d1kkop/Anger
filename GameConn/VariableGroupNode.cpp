@@ -14,9 +14,6 @@
 
 namespace Zerodelay
 {
-	extern ZEndpoint toZpt( const EndPoint& r );
-	extern EndPoint  toEtp( const ZEndpoint& z );
-
 	constexpr i8_t VGChannel = 1;
 
 
@@ -82,7 +79,7 @@ namespace Zerodelay
 		// on new connect, put variable group map (with empty set of groups) in list so that we know the set of known EndPoints
 		m_ZNode->bindOnNewConnection( [this] (bool directLink, auto& ztp, auto& additionalData)
 		{
-			EndPoint etp = toEtp( ztp );
+			EndPoint etp = Util::toEtp( ztp );
 			if ( m_RemoteVariableGroups.count(etp) != 1 )
 			{
 				std::map<u32_t, VariableGroup*> newMap;
@@ -104,7 +101,7 @@ namespace Zerodelay
 		{
 			if ( thisConnection )
 				return;
-			EndPoint etp = toEtp( ztp );
+			EndPoint etp = Util::toEtp( ztp );
 			auto it = m_RemoteVariableGroups.find( etp );
 			if ( it != m_RemoteVariableGroups.end() )
 			{
@@ -118,7 +115,7 @@ namespace Zerodelay
 			}
 			else
 			{
-				Platform::log("WARNING: received disconnect multiple times from: %s", etp.toIpAndPort().c_str());
+				Platform::log("WARNING: Received disconnect multiple times from: %s.", etp.toIpAndPort().c_str());
 			}
 		});
 	}
@@ -185,7 +182,7 @@ namespace Zerodelay
 		// ----------------------------
 		if (owner) // is remote group
 		{
-			EndPoint etp = toEtp ( *owner );
+			EndPoint etp = Util::toEtp ( *owner );
 			auto remoteGroupIt = m_RemoteVariableGroups.find( etp );
 			if ( remoteGroupIt != m_RemoteVariableGroups.end() ) // see if remote endpoint is know
 			{
@@ -263,7 +260,7 @@ namespace Zerodelay
 		{
 			__CHECKED( bs.read(ztp) );
 		}
-		else ztp = toZpt(etp);
+		else ztp = Util::toZpt(etp);
 
 		// if 'true' server in client-server arch, dispatch to all
 		if ( m_ZNode->isAuthorative() && !m_CoreNode->isP2P() )
@@ -271,12 +268,13 @@ namespace Zerodelay
 			// Copy binstream as we may need append data while the pack.len buffer may not be big enough
 			BinSerializer bs2;
 			__CHECKED( bs.getWrite() <= bs.getMaxSize() );
-			__CHECKED( bs.write(bs.data(), bs.getWrite()) );
+			__CHECKED( bs2.write(bs.data()+1, bs.length()-1) );
 			if (!remote) // write remote etp
 			{
 				__CHECKED( bs2.write(etp) );
 			}
-			m_ZNode->sendReliableOrdered( (u8_t)pack.type, bs2.data(), bs2.getWrite(), &ztp, true, VGChannel, false );
+			// Confusing, but take first byte of first stream (data packet hdr) and take payload stream2
+			m_ZNode->sendReliableOrdered( bs.data()[0], bs2.data(), bs2.length(), &ztp, true, VGChannel, false );
 
 			// Buffer the creation
 			GroupCreateData gcd;
@@ -301,7 +299,7 @@ namespace Zerodelay
 		// if 'true' server in client-server arch, dispatch to all
 		if ( m_ZNode->isAuthorative() || m_CoreNode->isP2P() )
 		{
-			ZEndpoint ztp = toZpt( etp );
+			ZEndpoint ztp = Util::toZpt( etp );
 			m_ZNode->sendReliableOrdered( (u8_t)pack.data[0], pack.data+1, pack.len-1, &ztp, true, pack.channel, false );
 			unBufferGroup( netId );
 		}
@@ -414,7 +412,7 @@ namespace Zerodelay
 		// Send reliable ordered. If connection is dropped just after sending, the connection is removed and no retransmission will take place.
 		m_ZNode->sendReliableOrdered((u8_t)EDataPacketType::IdPackProvide,
 									(const i8_t*)idPack, sizeof(u32_t)*numIds,
-									&toZpt(etp), false, 0, false, true);
+									&Util::toZpt(etp), false, 0, false, true);
 	}
 
 	void VariableGroupNode::intervalSendIdRequest()

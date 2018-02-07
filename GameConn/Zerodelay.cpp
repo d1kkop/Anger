@@ -12,22 +12,6 @@ namespace Zerodelay
 
 	// -------- Support --------------------------------------------------------------------------------------------------
 
-	EndPoint toEtp( const ZEndpoint& z )
-	{
-		static_assert( sizeof(EndPoint) <= sizeof(ZEndpoint), "ZEndpoint size to small" );
-		EndPoint r;
-		memcpy( &r, &z, sizeof(EndPoint) ); 
-		return r;
-	}
-
-	ZEndpoint toZpt( const EndPoint& r )
-	{
-		static_assert( sizeof(EndPoint) <= sizeof(ZEndpoint), "Zendpoint size is too small" );
-		ZEndpoint z;
-		memcpy( &z, &r, sizeof(EndPoint) ); 
-		return z;
-	}
-
 	void storeEtp( const EndPoint& r, ZEndpoint& z )
 	{
 		static_assert( sizeof(EndPoint) <= sizeof(ZEndpoint), "Zendpoint size is too small" );
@@ -121,7 +105,7 @@ namespace Zerodelay
 
 	EConnectCallResult ZNode::connect(const ZEndpoint& endPoint, const std::string& pw, u32_t timeoutSeconds, const std::map<std::string, std::string>& additionalData, bool sendRequest)
 	{
-		return C->cn()->connect( toEtp(endPoint), pw, timeoutSeconds, sendRequest, additionalData );
+		return C->cn()->connect( Util::toEtp(endPoint), pw, timeoutSeconds, sendRequest, additionalData );
 	}
 
 	EConnectCallResult ZNode::connect(const std::string& name, u16_t port, const std::string& pw, u32_t timeoutSeconds, const std::map<std::string, std::string>& additionalData, bool sendRequest)
@@ -142,7 +126,7 @@ namespace Zerodelay
 
 	EDisconnectCallResult ZNode::disconnect(const ZEndpoint& endPoint)
 	{
-		return C->cn()->disconnect( toEtp(endPoint), EDisconnectReason::Closed, EConnectionState::Disconnected, true, true );
+		return C->cn()->disconnect( Util::toEtp(endPoint), EDisconnectReason::Closed, EConnectionState::Disconnected, true, true );
 	}
 
 	EListenCallResult ZNode::listen(i32_t port, const std::string& pw, i32_t maxConnections)
@@ -179,8 +163,8 @@ namespace Zerodelay
 
 	bool ZNode::isConnectionKnown(const ZEndpoint& ztp) const
 	{
-		auto res = C->rn()->getLink(toEtp(ztp), true) != nullptr;
-		//bool res = (C->cn()->isInConnectionList(ztp) || C->rn()->getLink(toEtp(ztp), true) != nullptr);
+		auto res = C->rn()->getLink(Util::toEtp(ztp), true) != nullptr;
+		//bool res = (C->cn()->isInConnectionList(ztp) || C->rn()->getLink(Util::toEtp(ztp), true) != nullptr);
 		return res;
 	}
 
@@ -263,24 +247,43 @@ namespace Zerodelay
 		C->rn()->simulatePacketLoss( percentage );
 	}
 
-	void ZNode::sendReliableOrdered(u8_t id, const i8_t* data, i32_t len, const ZEndpoint* specific, bool exclude, u8_t channel, bool relay, bool requiresConnection)
+	ESendCallResult ZNode::sendReliableOrdered(u8_t id, const i8_t* data, i32_t len, const ZEndpoint* specific, bool exclude, u8_t channel, 
+											   bool relay, bool requiresConnection, std::vector<ZAckTicket>* deliveryTraceOut)
 	{
+		ESendCallResult sendResult = ESendCallResult::NotSend;
 		if (requiresConnection)
 		{
 			C->cn()->forConnections(asEpt(specific), exclude, [&](Connection& c)
 			{
-				if (!c.isConnected()) return;
-				c.getLink()->addToSendQueue( id, data, len, EHeaderPacketType::Reliable_Ordered, channel, relay );
+				if (!c.isConnected())
+				{
+					Util::addTraceCallResult( deliveryTraceOut, c.getEndPoint(), ETraceCallResult::ConnectionWasRequired, 0, 0 );
+					return;
+				}
+				ESendCallResult individualSendResult;
+				u32_t trackingSeq = c.getLink()->addToSendQueue( individualSendResult, id, data, len, EHeaderPacketType::Reliable_Ordered, channel, relay );
+				Util::addTraceCallResult( deliveryTraceOut, c.getEndPoint(), ETraceCallResult::Tracking, trackingSeq, channel );
+				// If at least a single is send to, consider succes call
+				if ( sendResult == ESendCallResult::NotSend && individualSendResult == ESendCallResult::Succes ) 
+				{
+					sendResult = ESendCallResult::Succes;
+				}
 			});
 		}
 		else
 		{
 			ISocket* sock = C->rn()->getSocket();
-			if ( sock )
-				C->rn()->send( id, data, len, asEpt(specific), exclude, EHeaderPacketType::Reliable_Ordered, channel, relay );
+			if ( sock ) // send on recvNode does not check if the link is connected
+			{
+				sendResult = C->rn()->send( id, data, len, asEpt(specific), exclude, EHeaderPacketType::Reliable_Ordered, channel, relay, deliveryTraceOut );
+			}
 			else
+			{
 				C->setCriticalError(ECriticalError::SocketIsNull, ZERODELAY_FUNCTION_LINE);
+				sendResult = ESendCallResult::InternalError;
+			}
 		}
+		return sendResult;
 	}
 
 	void ZNode::sendReliableNewest(u8_t packId, u32_t groupId, i8_t groupBit, const i8_t* data, i32_t len, const ZEndpoint* specific, bool exclude, bool requiresConnection)
@@ -303,24 +306,36 @@ namespace Zerodelay
 		}
 	}
 
-	void ZNode::sendUnreliableSequenced(u8_t packId, const i8_t* data, i32_t len, const ZEndpoint* specific, bool exclude, u8_t channel, bool relay, bool requiresConnection)
+	ESendCallResult ZNode::sendUnreliableSequenced(u8_t packId, const i8_t* data, i32_t len, const ZEndpoint* specific, bool exclude, u8_t channel, bool relay, bool requiresConnection)
 	{
+		ESendCallResult sendResult = ESendCallResult::NotSend;
 		if (requiresConnection)
 		{
 			C->cn()->forConnections(asEpt(specific), exclude, [&](Connection& c)
 			{
 				if (!c.isConnected()) return;
-				c.getLink()->addToSendQueue( packId, data, len, EHeaderPacketType::Unreliable_Sequenced, channel, relay );
+				ESendCallResult individualResult;
+				c.getLink()->addToSendQueue( individualResult, packId, data, len, EHeaderPacketType::Unreliable_Sequenced, channel, relay );
+				if ( sendResult == ESendCallResult::NotSend && individualResult == ESendCallResult::Succes )
+				{
+					sendResult = ESendCallResult::Succes;
+				}
 			});
 		}
 		else // send raw without requiring a connection
 		{
 			ISocket* sock = C->rn()->getSocket();
 			if ( sock )
-				C->rn()->send( packId, data, len, asEpt(specific), exclude, EHeaderPacketType::Unreliable_Sequenced, channel, relay );
+			{
+			 	sendResult = C->rn()->send( packId, data, len, asEpt(specific), exclude, EHeaderPacketType::Unreliable_Sequenced, channel, relay );
+			}
 			else
+			{
 				C->setCriticalError(ECriticalError::SocketIsNull, ZERODELAY_FUNCTION_LINE);
+				sendResult = ESendCallResult::InternalError;
+			}
 		}
+		return sendResult;
 	}
 
 	void ZNode::bindOnConnectResult(const std::function<void(const ZEndpoint&, EConnectResult)>& cb)
@@ -351,7 +366,7 @@ namespace Zerodelay
 			ZEndpoint* zeptr = nullptr;
 			if ( etp )
 			{
-				zept  = toZpt(*etp);
+				zept  = Util::toZpt(*etp);
 				zeptr = &zept;
 			}
 			cb( zeptr, id );
@@ -366,7 +381,7 @@ namespace Zerodelay
 			ZEndpoint* zeptr = nullptr;
 			if ( etp )
 			{
-				zept  = toZpt(*etp);
+				zept  = Util::toZpt(*etp);
 				zeptr = &zept;
 			}
 			cb( zeptr, id );

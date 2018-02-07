@@ -3,8 +3,26 @@
 
 #include <cassert>
 
+
 namespace Zerodelay
 {
+
+	ZEndpoint Util::toZpt(const EndPoint& r)
+	{
+		static_assert( sizeof(EndPoint) <= sizeof(ZEndpoint), "Zendpoint size is too small" );
+		ZEndpoint z;
+		memcpy( &z, &r, sizeof(EndPoint) ); 
+		return z;
+
+	}
+
+	EndPoint Util::toEtp(const ZEndpoint& z)
+	{
+		static_assert( sizeof(EndPoint) <= sizeof(ZEndpoint), "ZEndpoint size to small" );
+		EndPoint r;
+		memcpy( &r, &z, sizeof(EndPoint) ); 
+		return r;
+	}
 
 	i8_t* Util::appendString2(i8_t* dst, i32_t& dstSize, const i8_t* src, bool& bSucces)
 	{
@@ -114,6 +132,18 @@ namespace Zerodelay
 			data.insert(std::make_pair(key[0], key[1]));
 		}
 		return true;
+	}
+
+	void Util::addTraceCallResult(std::vector<ZAckTicket>* deliveryTraceOut, const EndPoint& etp,
+								  ETraceCallResult trCallRes, u32_t trackingSeq, i8_t channel)
+	{
+		if ( !deliveryTraceOut ) return;
+		ZAckTicket t;
+		t.endpoint = toZpt(etp);
+		t.traceCallResult = trCallRes;
+		t.sequence = trackingSeq;
+		t.channel  = channel;
+		deliveryTraceOut->emplace_back(t);
 	}
 
 }

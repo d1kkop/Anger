@@ -10,10 +10,6 @@
 
 namespace Zerodelay
 {
-	extern ZEndpoint toZpt( const EndPoint& r );
-	extern EndPoint toEtp( const ZEndpoint& z );
-
-
 	ConnectionNode::ConnectionNode(i32_t keepAliveIntervalSeconds):
 		m_DispatchNode(nullptr),
 		m_ProcessingConnection(nullptr),
@@ -152,13 +148,13 @@ namespace Zerodelay
 
 	bool ConnectionNode::isInConnectionList(const ZEndpoint& ztp) const
 	{
-		EndPoint etp = toEtp(ztp);
+		EndPoint etp = Util::toEtp(ztp);
 		return m_Connections.count(etp) != 0;
 	}
 
 	Zerodelay::Connection* ConnectionNode::getConnection(const ZEndpoint& ztp) const
 	{
-		EndPoint etp = toEtp(ztp);
+		EndPoint etp = Util::toEtp(ztp);
 		auto it = m_Connections.find(etp);
 		if (it != m_Connections.end()) return it->second;
 		return nullptr;
@@ -238,7 +234,7 @@ namespace Zerodelay
 			Connection* c = kvp.second;
 			if ( c->isConnected() )
 			{
-				endpoints.emplace_back( toZpt(c->getEndPoint()) );
+				endpoints.emplace_back( Util::toZpt(c->getEndPoint()) );
 			}
 		}
 	}
@@ -287,7 +283,7 @@ namespace Zerodelay
 
 	void ConnectionNode::doConnectResultCallbacks(const EndPoint& remote, EConnectResult result)
 	{
-		ZEndpoint ztp = toZpt(remote);
+		ZEndpoint ztp = Util::toZpt(remote);
 		Util::forEachCallback(m_ConnectResultCallbacks,[&](const ConnectResultCallback& crb)
 		{
 			(crb)(ztp, result);
@@ -296,7 +292,7 @@ namespace Zerodelay
 
 	void ConnectionNode::doDisconnectCallbacks(bool directLink, const EndPoint& remote,EDisconnectReason reason)
 	{
-		ZEndpoint ztp = toZpt(remote);
+		ZEndpoint ztp = Util::toZpt(remote);
 		Util::forEachCallback(m_DisconnectCallbacks,[&](const DisconnectCallback& dcb)
 		{
 			(dcb)(directLink, ztp, reason);
@@ -305,7 +301,7 @@ namespace Zerodelay
 
 	void ConnectionNode::doNewIncomingConnectionCallbacks(bool directLink, const EndPoint& remote, const std::map<std::string, std::string>& additionalData)
 	{
-		ZEndpoint ztp = toZpt(remote);
+		ZEndpoint ztp = Util::toZpt(remote);
 		Util::forEachCallback(m_NewConnectionCallbacks,[&](const NewConnectionCallback& ncb)
 		{
 			(ncb)(directLink, ztp, additionalData);
@@ -352,7 +348,8 @@ namespace Zerodelay
 		forConnections(&g->getEndPoint(), true, [&](Connection& c)
 		{
 			if (!c.isConnected()) return;
-			c.getLink()->addToSendQueue( (u8_t)EDataPacketType::RemoteConnected, buff, ZERODELAY_BUFF_SIZE-dstSize, 
+			ESendCallResult sendResult;
+			c.getLink()->addToSendQueue( sendResult, (u8_t)EDataPacketType::RemoteConnected, buff, ZERODELAY_BUFF_SIZE-dstSize, 
 										 EHeaderPacketType::Reliable_Ordered, 0, false );
 		});
 	}
@@ -381,13 +378,15 @@ namespace Zerodelay
 		{
 			if (!c.isConnected()) return; // skip 
 			// one added byte because of disconnect reason (8 bits)
-			c.getLink()->addToSendQueue( (u8_t)EDataPacketType::RemoteDisconnected, buff, offs+1, EHeaderPacketType::Reliable_Ordered, 0, false );
+			ESendCallResult sendResult;
+			c.getLink()->addToSendQueue( sendResult, (u8_t)EDataPacketType::RemoteDisconnected, buff, offs+1, EHeaderPacketType::Reliable_Ordered, 0, false );
 		});
 	}
 
 	void ConnectionNode::sendSystemMessage(RUDPLink& link, EDataPacketType state, const i8_t* payload, i32_t len)
 	{
-		link.addToSendQueue( (u8_t)state, payload, len, EHeaderPacketType::Reliable_Ordered );
+		ESendCallResult sendResult;
+		link.addToSendQueue( sendResult, (u8_t)state, payload, len, EHeaderPacketType::Reliable_Ordered );
 	}
 
 	bool ConnectionNode::recvPacket(const Packet& pack, class Connection* g, RUDPLink& link)
@@ -575,7 +574,7 @@ namespace Zerodelay
 	void ConnectionNode::recvAlreadyConnected(class Connection* g, const i8_t* payload, i32_t payloadLen)
 	{
 		// No state change on the connection in this case, could already be successfully connected before.
-		ZEndpoint ztp = toZpt(g->getEndPoint());
+		ZEndpoint ztp = Util::toZpt(g->getEndPoint());
 		Util::forEachCallback(m_ConnectResultCallbacks, [&](const ConnectResultCallback& crc)
 		{
 			(crc)(ztp, EConnectResult::AlreadyConnected);

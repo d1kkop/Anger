@@ -90,25 +90,32 @@ namespace Zerodelay
 		return true;
 	}
 
-	void RecvNode::send(u8_t id,const i8_t* data,i32_t len,const EndPoint* specific,bool exclude,EHeaderPacketType type,u8_t channel,bool relay)
+	ESendCallResult RecvNode::send(u8_t id, const i8_t* data,i32_t len, const EndPoint* specific, bool exclude, EHeaderPacketType type,
+								   u8_t channel, bool relay, std::vector<ZAckTicket>* deliveryTraceOut)
 	{
 		assert( type == EHeaderPacketType::Reliable_Ordered || type == EHeaderPacketType::Unreliable_Sequenced );
 		if ( !(type == EHeaderPacketType::Reliable_Ordered || type == EHeaderPacketType::Unreliable_Sequenced) )
 		{
 			m_CoreNode->setCriticalError(ECriticalError::InvalidLogic, ZERODELAY_FUNCTION_LINE);
-			return;
+			return ESendCallResult::InternalError;
 		}
-		bool bWasSent = false;
 		u32_t listCount;
+		ESendCallResult sendResult = ESendCallResult::NotSend;
 		forEachLink( specific, exclude, true, listCount, [&] (RUDPLink* link)
 		{
-			link->addToSendQueue( id, data, len, type, channel, relay );
-			bWasSent = true;
+			ESendCallResult individualResult;
+			u32_t trackSeq = link->addToSendQueue( individualResult, id, data, len, type, channel, relay );
+			Util::addTraceCallResult(deliveryTraceOut, link->getEndPoint(), ETraceCallResult::Tracking, trackSeq, channel);
+			if ( sendResult == ESendCallResult::NotSend && individualResult == sendResult )
+			{
+				sendResult = ESendCallResult::Succes;
+			}
 		});
-		if (!bWasSent && !(exclude && specific && listCount == 1))
+		if (sendResult == ESendCallResult::NotSend && !(exclude && specific && listCount == 1))
 		{
 			Platform::log("WARNING: data with id %d was not sent to anyone.", id);
 		}
+		return sendResult;
 	}
 
 	void RecvNode::sendReliableNewest(u8_t id, u32_t groupId, i8_t groupBit, const i8_t* data, i32_t len, const EndPoint* specific, bool exclude)
