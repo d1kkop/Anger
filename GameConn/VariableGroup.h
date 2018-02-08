@@ -11,25 +11,24 @@ namespace Zerodelay
 	class VariableGroup
 	{
 	public:
-		VariableGroup();
+		VariableGroup(ZNode* znode);
 		~VariableGroup();
 
 		bool read( const i8_t*& data, i32_t& buffLen, u16_t groupBits );
 		void addVariable( NetVariable* nv ) { m_Variables.emplace_back( nv ); }
-		EVarControl getVarControl() const	{ return m_Control; }
-		u32_t getNetworkId() const   { return m_NetworkId; }
 
-		// Only when networkId is assigned, the group can be submitted network wide
-		void setNetworkId( u32_t id );
-		bool isNetworkIdValid() const			{ return m_NetworkId != -1; }
+		void setControl( EVarControl control )	{ m_Control = control; }
+		EVarControl getVarControl() const	{ return m_Control; }
+
+		void  setNetworkId( u32_t id );
+		u32_t getNetworkId() const { return m_NetworkId; }
+		bool  isNetworkIdValid() const { return m_NetworkId != -1; }
 
 		void setOwner( const ZEndpoint* etp );
 		const ZEndpoint* getOwner() const;
-
-		void setControl( EVarControl control )	{ m_Control = control; }
-
+		
 		// Group is broken if one the variable's destructors is called. In that case, the group is no longer complete/valid.
-		void markBroken()	  { m_Broken = true; /* lose all refs */ m_Variables.clear(); }
+		void markBroken()	  { m_Broken = true; /* loose all refs */ m_Variables.clear(); }
 		bool isBroken() const { return m_Broken; }
 
 		// If set dirty, it means that at least a single variable was changed in the group since the last time the group was submitted to the 
@@ -44,7 +43,10 @@ namespace Zerodelay
 		void sendGroup(ZNode* node);
 		void unrefGroup(); // decouples variables from as group is about to be deleted and marks it broken
 
+		bool isRemoteCreated() const;
+
 	private:
+		ZNode* m_ZNode;
 		bool m_Broken;
 		bool m_DestroySent;
 		bool m_Dirty;
@@ -52,6 +54,8 @@ namespace Zerodelay
 		ZEndpoint m_Owner;
 		EVarControl m_Control;
 		std::vector<NetVariable*> m_Variables;
+		ZAckTicket m_RemoteCreatedTicked;
+		mutable bool m_RemoteCreated;
 
 	public:
 		static VariableGroup* Last;

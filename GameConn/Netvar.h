@@ -50,12 +50,6 @@ namespace Zerodelay
 		void markChanged();
 
 
-		/*	Returns true when the owning group has a valid networkId (not -1) and is not destroyed. 
-			If a group is destroyed remotely, the variables are still in user memory and therefore not
-			destroyed. Usually you want to remove the variable group from user space on destruction. */
-		bool isInNetwork() const;
-
-
 	protected:
 		void bindOnPostUpdateCallback( const std::function<void (const i8_t*, const i8_t*)>& rawCallback );
 

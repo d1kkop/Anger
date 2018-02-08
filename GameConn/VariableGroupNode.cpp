@@ -175,7 +175,7 @@ namespace Zerodelay
 	void VariableGroupNode::beginNewGroup(u32_t networkId, const ZEndpoint* owner)
 	{
 		assert( VariableGroup::Last == nullptr && "should be NULL" );
-		VariableGroup::Last = new VariableGroup();
+		VariableGroup::Last = new VariableGroup(m_ZNode);
 		VariableGroup::Last->setNetworkId( networkId );
 		VariableGroup::Last->setControl( owner ? EVarControl::Remote : (m_ZNode->isAuthorative() ? EVarControl::Full : EVarControl::Semi) );
 		VariableGroup::Last->setOwner( owner );
@@ -465,7 +465,7 @@ namespace Zerodelay
 		for ( auto vgIt = m_VariableGroups.begin(); vgIt!= m_VariableGroups.end();  )
 		{
 			VariableGroup* vg = vgIt->second;
-			if ( vg->getNetworkId() == -1 ) // is the case when no free id's available yet
+			if ( vg->getNetworkId() == -1 || !vg->isRemoteCreated() ) // is the case when no free id's available yet
 			{
 				vgIt++;
 				continue;

@@ -40,8 +40,9 @@ namespace Zerodelay
 							  std::vector<ZAckTicket>* deliveryTraceOut=nullptr );
 		void sendReliableNewest( u8_t id, u32_t groupId, i8_t groupBit, const i8_t* data, i32_t len, const EndPoint* specific=nullptr, bool exclude=false );
 
-		class RUDPLink* getLinkAndPinIt(u32_t idx);
-		void unpinLink(RUDPLink* link);
+		class RUDPLink* getLinkAndPinIt(u32_t idx) const;
+		class RUDPLink* getLinkAndPinIt( const EndPoint& endpoint ) const;
+		void unpinLink(RUDPLink* link) const;
 
 		// This functionality can only be called from one thread (the main usually)
 		void pinList(); // call from main
@@ -51,11 +52,12 @@ namespace Zerodelay
 		void simulatePacketLoss( i32_t percentage );
 		class ISocket* getSocket() const { return m_Socket; }
 
-		class RUDPLink* getLink( const EndPoint& endPoint, bool getIfIsPendingDelete ) const;
+		class RUDPLink* getLink( const EndPoint& endPoint, bool getIfIsPendingDelete ) const; // only safe to use by recv thread as recv thread is responsible for deleting the links
 		class RUDPLink* addLink( const EndPoint& endPoint, const u32_t* linkPtr ); // returns nullptr if already exists
 		void startThreads();
 
 		i32_t getNumOpenLinks() const;
+		bool isPacketDelivered(const ZEndpoint& ztp, u32_t sequence, i8_t channel) const;
 		CoreNode* getCoreNode() const { return m_CoreNode; }
 
 	private:

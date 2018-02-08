@@ -398,6 +398,11 @@ namespace Zerodelay
 		return C->getUserDataPtr();
 	}
 
+	bool ZNode::isPacketDelivered(const ZAckTicket& ticket) const
+	{
+		return C->rn()->isPacketDelivered(ticket.endpoint, ticket.sequence, ticket.channel);
+	}
+
 	void ZNode::deferredCreateVariableGroup(const i8_t* paramData, i32_t paramDataLen)
 	{
 		C->vgn()->deferredCreateGroup( paramData, paramDataLen );

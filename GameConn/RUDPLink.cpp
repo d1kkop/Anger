@@ -210,6 +210,17 @@ namespace Zerodelay
 		return true;
 	}
 
+	bool RUDPLink::isSequenceDelivered(u32_t sequence, i8_t channel) const
+	{
+		std::lock_guard<std::mutex> lock(m_ReliableOrderedQueueMutex);
+		auto& queue = m_RetransmitQueue_reliable[channel];
+		auto it = std::find_if(queue.begin(), queue.end(), [&](auto& pack)
+		{
+			return *(u32_t*)&pack.data[off_Norm_Seq] == sequence;
+		});
+		return it == queue.end();
+	}
+
 	void RUDPLink::simulatePacketLoss(u8_t percentage)
 	{
 		m_PacketLossPercentage = percentage;

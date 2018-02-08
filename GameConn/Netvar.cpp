@@ -34,11 +34,6 @@ namespace Zerodelay
 		p->markChanged();
 	}
 
-	bool NetVar::isInNetwork() const
-	{
-		return p->isInNetwork();
-	}
-
 	void NetVar::bindOnPostUpdateCallback(const std::function<void(const i8_t*, const i8_t*)>& rawCallback)
 	{
 		p->bindOnPostUpdateCallback( rawCallback );

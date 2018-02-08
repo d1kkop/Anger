@@ -142,7 +142,7 @@ namespace Zerodelay
 		};
 
 
-		/*	Use to see if a host can be connected to. If false is erturned, use getLastError to obtain more info. */
+		/*	Use to see if a host can be connected to. If false is returned, use getLastError to obtain more info. */
 		bool resolve( const std::string& name, u16_t port );
 
 
@@ -356,6 +356,9 @@ namespace Zerodelay
 		/*	Custom ptr to provide a way to get from a 'global' variable group or rpc functions to application code. */
 		void  setUserDataPtr( void* ptr );
 		void* getUserDataPtr() const;
+
+
+		bool isPacketDelivered(const ZAckTicket& ticket) const;
 
 
 		/*	Deferred create variable group from serialized data.

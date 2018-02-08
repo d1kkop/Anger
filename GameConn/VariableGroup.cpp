@@ -11,12 +11,14 @@
 
 namespace Zerodelay
 {
-	VariableGroup::VariableGroup():
+	VariableGroup::VariableGroup(ZNode* znode):
+		m_ZNode(znode),
 		m_NetworkId(-1),
 		m_Broken(false),
 		m_DestroySent(false),
 		m_Dirty(false),
-		m_Control(EVarControl::Full)
+		m_Control(EVarControl::Full),
+		m_RemoteCreated(false)
 	{
 	}
 
@@ -91,6 +93,15 @@ namespace Zerodelay
 			}
 		}
 		markBroken();
+	}
+
+	bool VariableGroup::isRemoteCreated() const
+	{
+		if ( !m_RemoteCreated && m_ZNode->isPacketDelivered( m_RemoteCreatedTicked ) )
+		{
+			m_RemoteCreated = true;
+		}
+		return m_RemoteCreated;
 	}
 
 	VariableGroup* VariableGroup::Last = nullptr;

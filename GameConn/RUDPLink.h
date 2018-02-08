@@ -104,6 +104,7 @@ namespace Zerodelay
 
 		u32_t id() const { return m_LinkId; }
 		bool areAllQueuesEmpty() const;
+		bool isSequenceDelivered(u32_t sequence, i8_t channel) const;
 
 		// Set to 0, to turn off. Default is off.
 		void simulatePacketLoss( u8_t percentage = 10 );						// Not thread safe, but only for debugging purposes so deliberately no atomic_int.

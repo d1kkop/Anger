@@ -25,7 +25,7 @@ namespace Zerodelay
 		// Mark changed when variable changes data.
 		void markChanged();
 		void markUnchanged(); // mark unchanged when variable is written to network stream
-		bool isInNetwork() const;
+		bool isRemoteCreated() const; // if creation has been acked this returns true
 		bool isChanged() const { return m_Changed; }
 		void sendNewest(ZNode* node, i32_t groupBit);
 		void bindOnPostUpdateCallback( const std::function<void (const i8_t*, const i8_t*)>& callback );

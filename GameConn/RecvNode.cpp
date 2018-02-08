@@ -133,7 +133,7 @@ namespace Zerodelay
 		}
 	}
 
-	RUDPLink* RecvNode::getLinkAndPinIt(u32_t idx)
+	RUDPLink* RecvNode::getLinkAndPinIt(u32_t idx) const
 	{
 		std::lock_guard<std::mutex> lock(m_OpenLinksMutex); // pin requries this lock
 		if ( idx < m_OpenLinksList.size() )
@@ -145,7 +145,20 @@ namespace Zerodelay
 		return nullptr;
 	}
 
-	void RecvNode::unpinLink(RUDPLink* link)
+	class RUDPLink* RecvNode::getLinkAndPinIt(const EndPoint& endpoint) const
+	{
+		std::lock_guard<std::mutex> lock(m_OpenLinksMutex); // pin requries this lock
+		auto it = m_OpenLinksMap.find(endpoint);
+		if ( it != m_OpenLinksMap.end() )
+		{
+			RUDPLink* link = it->second;
+			link->pin();
+			return link;
+		}
+		return nullptr;
+	}
+
+	void RecvNode::unpinLink(RUDPLink* link) const
 	{
 		std::lock_guard<std::mutex> lock(m_OpenLinksMutex); // unpin requires this lock
 		assert(link);
@@ -193,6 +206,18 @@ namespace Zerodelay
 	{
 		std::lock_guard<std::mutex> lock(m_OpenLinksMutex);
 		return (i32_t)m_OpenLinksList.size();
+	}
+
+	bool RecvNode::isPacketDelivered(const ZEndpoint& ztp, u32_t sequence, i8_t channel) const
+	{
+		RUDPLink* link = getLinkAndPinIt( Util::toEtp(ztp) );
+		if ( link ) 
+		{
+			bool delivered = link->isSequenceDelivered(sequence, channel);
+			unpinLink( link );
+			return delivered;
+		}
+		return false;
 	}
 
 	void RecvNode::recvThread()

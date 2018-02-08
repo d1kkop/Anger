@@ -110,9 +110,9 @@ namespace Zerodelay
 		m_Changed = false;
 	}
 
-	bool NetVariable::isInNetwork() const
+	bool NetVariable::isRemoteCreated() const
 	{
-		return m_Group != nullptr && m_Group->getNetworkId() != 0;
+		return m_Group && m_Group->isRemoteCreated();
 	}
 
 	void NetVariable::sendNewest(ZNode* node, i32_t groupBit)
