@@ -28,7 +28,7 @@ namespace Zerodelay
 		const ZEndpoint* getOwner() const;
 		
 		// Group is broken if one the variable's destructors is called. In that case, the group is no longer complete/valid.
-		void markBroken()	  { m_Broken = true; /* loose all refs */ m_Variables.clear(); }
+		void markBroken()	  { m_Broken = true; }
 		bool isBroken() const { return m_Broken; }
 
 		// If set dirty, it means that at least a single variable was changed in the group since the last time the group was submitted to the 
@@ -41,7 +41,7 @@ namespace Zerodelay
 		void markDestroySent()		{ m_DestroySent = true; }
 
 		void sendGroup(ZNode* node);
-		void unrefGroup(); // decouples variables from as group is about to be deleted and marks it broken
+		void unrefVariables(); // decouples variables from as group is about to be deleted and marks it broken
 
 		bool isRemoteCreated() const;
 

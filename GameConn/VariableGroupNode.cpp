@@ -108,7 +108,7 @@ namespace Zerodelay
 				for ( auto& kvp : it->second )
 				{
 					auto* vg = kvp.second;
-					vg->unrefGroup();
+					unBufferGroup( vg->getNetworkId() );
 					delete vg;
 				}
 				m_RemoteVariableGroups.erase( it );
@@ -277,10 +277,7 @@ namespace Zerodelay
 			m_ZNode->sendReliableOrdered( bs.data()[0], bs2.data(), bs2.length(), &ztp, true, VGChannel, false );
 
 			// Buffer the creation
-			GroupCreateData gcd;
-			gcd.netId = netId;
-			bs2.toRaw(gcd.Data, gcd.Len);
-			m_BufferedGroups.emplace_back(gcd);
+			bufferGroup( netId, bs2 );
 		}
 
 		// as this is the receive func for creating a var group, it has always a remote endpoint owner
@@ -304,14 +301,18 @@ namespace Zerodelay
 			unBufferGroup( netId );
 		}
 
-		VariableGroup* vg = findOrRemoveBrokenGroup( netId, nullptr );
+		VariableGroup* vg = findGroup( netId );
 		if ( vg )
 		{
-			vg->unrefGroup();
+			removeGroup( netId );
+
 		#if _DEBUG
-			vg =  findOrRemoveBrokenGroup( netId, nullptr );
+			vg =  findGroup( netId );
 			assert( vg == nullptr && "vg still available" );
 		#endif
+
+			delete vg;
+
 			// call callbacks after all is done
 			Util::forEachCallback(m_GroupDestroyCallbacks, [&] (const GroupCallback& gc)
 			{
@@ -361,13 +362,14 @@ namespace Zerodelay
 		}				
 	}
 
-	void VariableGroupNode::sendCreateVariableGroup(BinSerializer& bs, const ZEndpoint* target)
+	void VariableGroupNode::sendCreateVariableGroup(BinSerializer& bs, const ZEndpoint* target, std::vector<ZAckTicket>* traceTickets)
 	{
-		m_ZNode->sendReliableOrdered( (u8_t)EDataPacketType::VariableGroupCreate, bs.data(), bs.getWrite(), target, false, VGChannel, true, true );
+		m_ZNode->sendReliableOrdered( (u8_t)EDataPacketType::VariableGroupCreate, bs.data(), bs.getWrite(), target, false, VGChannel, true, true, traceTickets );
 	}
 
 	void VariableGroupNode::sendCreateVariableGroup(const i8_t* funcName, const i8_t* paramData, i32_t paramDataLen, 
-													u32_t netId, const ZEndpoint* owner)
+													u32_t netId, const ZEndpoint* owner, bool buffer,
+													std::vector<ZAckTicket>* traceTickets)
 	{
 		// [funcName][paramData][netId][remote]<endpoint>
 		BinSerializer bs;
@@ -380,13 +382,10 @@ namespace Zerodelay
 		{
 			__CHECKED( bs.write(*owner) );
 		}
-		sendCreateVariableGroup( bs, nullptr );
-		if ( m_CoreNode->isP2P() || m_ZNode->isAuthorative() )
+		sendCreateVariableGroup( bs, nullptr, traceTickets );
+		if ( buffer )
 		{
-			GroupCreateData gcd;
-			gcd.netId = netId;
-			bs.toRaw(gcd.Data, gcd.Len);
-			m_BufferedGroups.emplace_back( gcd );
+			bufferGroup(netId, bs);
 		}
 	}
 
@@ -395,7 +394,6 @@ namespace Zerodelay
 		BinSerializer bs;
 		bs.write(netId);
 		m_ZNode->sendReliableOrdered( (u8_t)EDataPacketType::VariableGroupDestroy, bs.data(), bs.length(), nullptr, false, VGChannel, true, true );
-		unBufferGroup(netId);
 		return;
 	}
 
@@ -455,8 +453,12 @@ namespace Zerodelay
 			m_UniqueIds.pop_front();
 			m_PendingGroups.pop_front();
 			i32_t paramDataLen = pvg.paramDataLen();
-			sendCreateVariableGroup( pvg.funcName(), pvg.paramData(), paramDataLen, netId, nullptr );
-			callCreateVariableGroup( pvg.funcName(), netId, pvg.paramData(), paramDataLen, nullptr );
+			std::vector<ZAckTicket> traceTickets;
+			sendCreateVariableGroup( pvg.funcName(), pvg.paramData(), paramDataLen, netId, nullptr, true, &traceTickets );
+			VariableGroup* vg = callCreateVariableGroup( pvg.funcName(), netId, pvg.paramData(), paramDataLen, nullptr );
+			if (!vg) return; // this is critical
+			__CHECKED(!traceTickets.empty() && traceTickets[0].traceCallResult == ETraceCallResult::Tracking);
+			vg->m_RemoteCreatedTicked = traceTickets[0];
 		}
 	}
 
@@ -485,12 +487,13 @@ namespace Zerodelay
 			{
 				vg->markDestroySent();
 				sendDestroyVariableGroup( vg->getNetworkId() );
+				unBufferGroup( vg->getNetworkId() );
 				Util::forEachCallback(m_GroupDestroyCallbacks, [&] (const GroupCallback& gc)
 				{
 					(gc)(nullptr, vg->getNetworkId());
 				});
-				delete vg;
 				vgIt = m_VariableGroups.erase(vgIt);
+				delete vg;
 			}
 			else // group not dirty and not broken, skip
 			{
@@ -509,7 +512,7 @@ namespace Zerodelay
 		}
 	}
 
-	void VariableGroupNode::callCreateVariableGroup(const i8_t* name, u32_t id, const i8_t* paramData, i32_t paramDataLen, const ZEndpoint* ztp)
+	VariableGroup* VariableGroupNode::callCreateVariableGroup(const i8_t* name, u32_t id, const i8_t* paramData, i32_t paramDataLen, const ZEndpoint* ztp)
 	{
 		// append name to prefix
 		i8_t fname[RPC_NAME_MAX_LENGTH * 2];
@@ -517,10 +520,12 @@ namespace Zerodelay
 		Util::appendString(ptNxt, RPC_NAME_MAX_LENGTH, name);
 
 		// try find function from name
+		VariableGroup* lastCreatedGroup = nullptr;
 		void* ptrUserCb = Platform::getPtrFromName(fname);
 		if (ptrUserCb)
 		{
 			beginNewGroup( id, ztp );
+			lastCreatedGroup = VariableGroup::Last;
 			// Call user code for variable group
 			void(*userCallback)(ZNode*, const i8_t*, i32_t);
 			userCallback = (decltype(userCallback))ptrUserCb;
@@ -532,6 +537,7 @@ namespace Zerodelay
 			Platform::log("CRITICAL: Serialize group function: %s not found, from: %s, no remote variable group was created!", fname, ZERODELAY_FUNCTION_LINE);
 			m_CoreNode->setCriticalError(ECriticalError::CannotFindExternalCFunction, ZERODELAY_FUNCTION_LINE);
 		}
+		return lastCreatedGroup;
 	}
 
 	bool VariableGroupNode::deserializeGroup(const i8_t*& data, i32_t& buffLen)
@@ -546,9 +552,8 @@ namespace Zerodelay
 		data += 2;	buffLen -= 2;
 		u16_t skipBytes = *(u16_t*)data; 
 		data += 2;	buffLen -= 2;
-		VariableGroup* vg = findOrRemoveBrokenGroup( groupId, nullptr );
-		assert( !vg || (vg && !vg->isBroken()) );
-		bool bSkip   = vg == nullptr;
+		VariableGroup* vg = findGroup( groupId );
+		bool bSkip   = vg == nullptr || vg->isBroken();
 		bool bResult = true;
 		if ( !bSkip )
 		{
@@ -566,6 +571,17 @@ namespace Zerodelay
 			buffLen = oldBuffLen - skipBytes;
 		}
 		return bResult;
+	}
+
+	void VariableGroupNode::bufferGroup(u32_t netId, BinSerializer& bs)
+	{
+		if (m_CoreNode->isP2P() || m_ZNode->isAuthorative())
+		{
+			GroupCreateData gcd;
+			gcd.netId = netId;
+			bs.toRaw(gcd.Data, gcd.Len);
+			m_BufferedGroups.emplace_back(gcd);
+		}
 	}
 
 	void VariableGroupNode::unBufferGroup(u32_t netId)
@@ -586,44 +602,49 @@ namespace Zerodelay
 		}
 	}
 
-	VariableGroup* VariableGroupNode::findOrRemoveBrokenGroup(u32_t networkId, const EndPoint* etp)
+	VariableGroup* VariableGroupNode::findGroup(u32_t networkId) const
 	{
-		auto fnCheckBrokenAndReturn = [] (auto& it, auto& nVars)
+		for (auto& kvp : m_RemoteVariableGroups)
 		{
-			if ( it->second->isBroken() )
+			const std::map<u32_t, VariableGroup*>& group = kvp.second;
+			auto it = group.find(networkId);
+			if (it != group.end())
 			{
-				delete it->second;
-				nVars.erase(it);
-				return (VariableGroup*)nullptr;
+				return it->second;
 			}
-			return it->second;
-		};
+		}
 
-		if ( etp )
+		auto it = m_VariableGroups.find(networkId);
+		if (it != m_VariableGroups.end())
 		{
-			auto remoteGroupIt = m_RemoteVariableGroups.find( *etp );
-			if ( remoteGroupIt != m_RemoteVariableGroups.end() )
-			{
-				auto& networkVariables = remoteGroupIt->second;
-				auto& groupIt = networkVariables.find( networkId );
-				if ( groupIt != networkVariables.end() )
-				{
-					return fnCheckBrokenAndReturn( groupIt, networkVariables );
-				}
-			}
+			return it->second;
 		}
-		else
-		{
-			for ( auto& kvp : m_RemoteVariableGroups )
-			{
-				auto& networkVariables = kvp.second;
-				auto& groupIt = networkVariables.find( networkId );
-				if ( groupIt != networkVariables.end() )
-				{
-					return fnCheckBrokenAndReturn( groupIt, networkVariables );
-				}
-			}
-		}
+
 		return nullptr;
 	}
+
+	bool VariableGroupNode::removeGroup(u32_t networkId)
+	{
+		for (auto& kvp : m_RemoteVariableGroups)
+		{
+			std::map<u32_t, VariableGroup*>& group = kvp.second;
+			auto it = group.find(networkId);
+			if (it != group.end())
+			{
+				group.erase(it);
+				return true;
+			}
+		}
+
+		auto it = m_VariableGroups.find(networkId);
+		if (it != m_VariableGroups.end())
+		{
+			m_VariableGroups.erase(it);
+			return true;
+		}
+
+		Platform::log("WARNING: Did not remove a group with id %d while this was expected.", networkId);
+		return false;
+	}
+
 }

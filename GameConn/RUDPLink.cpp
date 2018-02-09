@@ -218,7 +218,12 @@ namespace Zerodelay
 		{
 			return *(u32_t*)&pack.data[off_Norm_Seq] == sequence;
 		});
-		return it == queue.end();
+		bool bDelivered = it == queue.end();
+		//if ( bDelivered )
+		//{
+		//	Platform::log("Delivered seq: %d chan: %d\n", sequence, channel);
+		//}
+		return bDelivered;
 	}
 
 	void RUDPLink::simulatePacketLoss(u8_t percentage)
@@ -554,6 +559,7 @@ namespace Zerodelay
 			});
 			if (it != queue.end())
 			{
+		//		Platform::log("Packet with seq: %d chan %d, acked.", seq, channel);
 				auto& pack = (*it);
 				delete [] pack.data;
 				queue.erase(it);

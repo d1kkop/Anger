@@ -35,7 +35,7 @@ namespace Zerodelay
 		// Group becomes null if groups gest destroyed remotely.
 		if ( m_Group )
 		{
-			m_Group->markBroken();
+			m_Group->unrefVariables();
 		}
 	}
 

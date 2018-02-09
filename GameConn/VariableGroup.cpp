@@ -24,6 +24,8 @@ namespace Zerodelay
 
 	VariableGroup::~VariableGroup()
 	{
+		unrefVariables();
+	//	Platform::log("VariableGroup %d is destructed", m_NetworkId);
 	}
 
 	bool VariableGroup::read(const i8_t*& data, i32_t& buffLen, u16_t groupBits )
@@ -83,7 +85,7 @@ namespace Zerodelay
 		setDirty(false);
 	}
 
-	void VariableGroup::unrefGroup()
+	void VariableGroup::unrefVariables()
 	{
 		for (auto* v : m_Variables)
 		{
@@ -92,6 +94,7 @@ namespace Zerodelay
 				v->unrefGroup(); // sets group ptr to null as group is about to be deleted
 			}
 		}
+		m_Variables.clear();
 		markBroken();
 	}
 

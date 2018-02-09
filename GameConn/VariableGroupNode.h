@@ -81,9 +81,9 @@ namespace Zerodelay
 		void recvVariableGroupDestroy(const Packet& pack, const EndPoint& etp);
 		void recvVariableGroupUpdate(const Packet& pack, const EndPoint& etp);
 		/* sends */
-		void sendCreateVariableGroup( BinSerializer& bs, const ZEndpoint* target );
-		void sendCreateVariableGroup( const i8_t* funcName, const i8_t* paramData, i32_t paramDataLen, u32_t netId, const ZEndpoint* owner );
-		void sendDestroyVariableGroup( u32_t networkId );
+		void sendCreateVariableGroup( BinSerializer& bs, const ZEndpoint* target, std::vector<ZAckTicket>* traceTickets = nullptr );
+		void sendCreateVariableGroup( const i8_t* funcName, const i8_t* paramData, i32_t paramDataLen, u32_t netId, const ZEndpoint* owner, bool buffer, std::vector<ZAckTicket>* traceTickets = nullptr );
+		void sendDestroyVariableGroup(u32_t networkId);
 		void sendIdPackProvide(const EndPoint& etp, i32_t numIds);
 		/* flow */
 		void intervalSendIdRequest();
@@ -91,11 +91,12 @@ namespace Zerodelay
 		void sendUpdatedVariableGroups();
 		void sendAllVariableCreateEventsTo(const ZEndpoint& to);
 		/* support */
-		void callCreateVariableGroup(const i8_t* name, u32_t id, const i8_t* paramData, i32_t paramDataLen, const ZEndpoint* ztp);
-		void bufferCreateVariableGroup(const i8_t* name, u32_t id, const i8_t* paramData, i32_t paramDataLen, const ZEndpoint* ztp);
+		class VariableGroup* callCreateVariableGroup(const i8_t* name, u32_t id, const i8_t* paramData, i32_t paramDataLen, const ZEndpoint* ztp);
 		bool deserializeGroup(const i8_t*& data, i32_t& buffLen);
+		void bufferGroup(u32_t netId, BinSerializer &bs);
 		void unBufferGroup(u32_t netId);
-		class VariableGroup* findOrRemoveBrokenGroup( u32_t networkId, const EndPoint* etp = nullptr );
+		class VariableGroup* findGroup( u32_t networkId) const;
+		bool removeGroup( u32_t networkId );
 		// group callbacks
 		void bindOnGroupUpdated(const GroupCallback& cb)				{ Util::bindCallback(m_GroupUpdateCallbacks, cb); }
 		void bindOnGroupDestroyed(const GroupCallback& cb)				{ Util::bindCallback(m_GroupDestroyCallbacks, cb); }
