@@ -100,7 +100,7 @@ namespace Zerodelay
 				1. Not connected (yet) while the function call was made with a 'connection established' condition.
 				2. The destination count is 1 and is the same endpoint as the one to exclude from the list. 
 				3. The destination was a closed connection and therefore the send was blocked. */
-		NotSend,
+		NotSent,
 		/*	See log for more info. */
 		InternalError
 	};
@@ -286,7 +286,7 @@ namespace Zerodelay
 			[deliveryTraceOut]  If not null, for every endpoint the packet is sent, a ticket is stored which can be used to
 								check if the packet was delivered at the designated endpoint. */
 		ESendCallResult sendReliableOrdered( u8_t packId, const i8_t* data, i32_t len, const ZEndpoint* specific=nullptr, bool exclude=false, u8_t channel=0, 
-											 bool relay=true, bool requiresConnection=true, std::vector<ZAckTicket>* deliveryTraceOut=nullptr);
+											 bool relay=true, bool requiresConnection=true, std::vector<ZAckTicket>* deliveryTraceOut=nullptr );
 
 
 		/*	The last message of a certain 'dataId' is guarenteed to arrive. That is, if twice data is sent with the same 'dataId' the first one may not arrive.

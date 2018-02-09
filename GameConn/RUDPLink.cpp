@@ -47,7 +47,7 @@ namespace Zerodelay
 		if ( m_BlockNewSends ) // discard new packets in this case
 		{
 			Platform::log("WARNING: Trying to send id %d with sendType %d while send is blocked.", id, (u32_t)packetType);
-			result = ESendCallResult::NotSend;
+			result = ESendCallResult::NotSent;
 			return 0;
 		}
 		// user not allowed to send acks

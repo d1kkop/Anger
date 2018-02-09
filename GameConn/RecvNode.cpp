@@ -100,18 +100,18 @@ namespace Zerodelay
 			return ESendCallResult::InternalError;
 		}
 		u32_t listCount;
-		ESendCallResult sendResult = ESendCallResult::NotSend;
+		ESendCallResult sendResult = ESendCallResult::NotSent;
 		forEachLink( specific, exclude, true, listCount, [&] (RUDPLink* link)
 		{
 			ESendCallResult individualResult;
 			u32_t trackSeq = link->addToSendQueue( individualResult, id, data, len, type, channel, relay );
 			Util::addTraceCallResult(deliveryTraceOut, link->getEndPoint(), ETraceCallResult::Tracking, trackSeq, channel);
-			if ( sendResult == ESendCallResult::NotSend && individualResult == sendResult )
+			if ( sendResult == ESendCallResult::NotSent && individualResult == sendResult )
 			{
 				sendResult = ESendCallResult::Succes;
 			}
 		});
-		if (sendResult == ESendCallResult::NotSend && !(exclude && specific && listCount == 1))
+		if (sendResult == ESendCallResult::NotSent && !(exclude && specific && listCount == 1))
 		{
 			Platform::log("WARNING: data with id %d was not sent to anyone.", id);
 		}

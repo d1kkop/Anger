@@ -250,7 +250,7 @@ namespace Zerodelay
 	ESendCallResult ZNode::sendReliableOrdered(u8_t id, const i8_t* data, i32_t len, const ZEndpoint* specific, bool exclude, u8_t channel, 
 											   bool relay, bool requiresConnection, std::vector<ZAckTicket>* deliveryTraceOut)
 	{
-		ESendCallResult sendResult = ESendCallResult::NotSend;
+		ESendCallResult sendResult = ESendCallResult::NotSent;
 		if (requiresConnection)
 		{
 			C->cn()->forConnections(asEpt(specific), exclude, [&](Connection& c)
@@ -264,7 +264,7 @@ namespace Zerodelay
 				u32_t trackingSeq = c.getLink()->addToSendQueue( individualSendResult, id, data, len, EHeaderPacketType::Reliable_Ordered, channel, relay );
 				Util::addTraceCallResult( deliveryTraceOut, c.getEndPoint(), ETraceCallResult::Tracking, trackingSeq, channel );
 				// If at least a single is send to, consider succes call
-				if ( sendResult == ESendCallResult::NotSend && individualSendResult == ESendCallResult::Succes ) 
+				if ( sendResult == ESendCallResult::NotSent && individualSendResult == ESendCallResult::Succes ) 
 				{
 					sendResult = ESendCallResult::Succes;
 				}
@@ -308,7 +308,7 @@ namespace Zerodelay
 
 	ESendCallResult ZNode::sendUnreliableSequenced(u8_t packId, const i8_t* data, i32_t len, const ZEndpoint* specific, bool exclude, u8_t channel, bool relay, bool requiresConnection)
 	{
-		ESendCallResult sendResult = ESendCallResult::NotSend;
+		ESendCallResult sendResult = ESendCallResult::NotSent;
 		if (requiresConnection)
 		{
 			C->cn()->forConnections(asEpt(specific), exclude, [&](Connection& c)
@@ -316,7 +316,7 @@ namespace Zerodelay
 				if (!c.isConnected()) return;
 				ESendCallResult individualResult;
 				c.getLink()->addToSendQueue( individualResult, packId, data, len, EHeaderPacketType::Unreliable_Sequenced, channel, relay );
-				if ( sendResult == ESendCallResult::NotSend && individualResult == ESendCallResult::Succes )
+				if ( sendResult == ESendCallResult::NotSent && individualResult == ESendCallResult::Succes )
 				{
 					sendResult = ESendCallResult::Succes;
 				}
