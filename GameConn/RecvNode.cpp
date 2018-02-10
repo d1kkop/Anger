@@ -5,6 +5,7 @@
 #include "CoreNode.h"
 #include "Platform.h"
 #include "ConnectionNode.h"
+#include "Util.h"
 
 #include <cassert>
 #include <chrono>
@@ -328,9 +329,9 @@ namespace Zerodelay
 			for (auto l : m_OpenLinksList)
 			{
 				u32_t lat = l->getLatency();
-				lowestLatency = min(lat, lowestLatency);
+				lowestLatency = Util::min(lat, lowestLatency);
 			}
-			u32_t waitTime = min(lowestLatency, min(m_SendRelNewestIntervalMs, m_AckAggregateTimeMs));
+			u32_t waitTime = Util::min(lowestLatency, Util::min(m_SendRelNewestIntervalMs, m_AckAggregateTimeMs));
 			m_SendThreadCv.wait_for( lock, std::chrono::milliseconds(waitTime) );
 			if ( m_IsClosing )
 				return;

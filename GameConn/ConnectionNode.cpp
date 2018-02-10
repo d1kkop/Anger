@@ -116,7 +116,7 @@ namespace Zerodelay
 	EDisconnectCallResult ConnectionNode::disconnect(const EndPoint& endPoint, EDisconnectReason reason, EConnectionState newState, bool sendMsg, bool deleteAndRemove)
 	{
 		// check if exists
-		auto& it = m_Connections.find( endPoint );
+		auto it = m_Connections.find( endPoint );
 		if ( it != m_Connections.end() )
 		{
 			Connection* conn = it->second;

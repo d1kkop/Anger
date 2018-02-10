@@ -306,7 +306,7 @@ namespace Zerodelay
 		{
 			removeGroup( netId );
 
-		#if _DEBUG
+		#if ZERODELAY_DEBUG
 			vg =  findGroup( netId );
 			assert( vg == nullptr && "vg still available" );
 		#endif
@@ -408,9 +408,10 @@ namespace Zerodelay
 			idPack[i] = m_UniqueIdCounter++;			
 		}
 		// Send reliable ordered. If connection is dropped just after sending, the connection is removed and no retransmission will take place.
+		ZEndpoint ztp = Util::toZpt(etp);
 		m_ZNode->sendReliableOrdered((u8_t)EDataPacketType::IdPackProvide,
 									(const i8_t*)idPack, sizeof(u32_t)*numIds,
-									&Util::toZpt(etp), false, 0, false, true);
+									&ztp, false, 0, false, true);
 	}
 
 	void VariableGroupNode::intervalSendIdRequest()

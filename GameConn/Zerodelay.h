@@ -1,15 +1,15 @@
 #pragma once
 
 
-#ifdef _WIN32
-	#ifdef ZDLL_EXPORTING
-		#define ZDLL_DECLSPEC __declspec(dllexport)
-	#else
-		#define ZDLL_DECLSPEC __declspec(dllimport)
-	#endif
-#else
+//#if ZERODELAY_FROMSOURCE==0
+//	#ifdef ZDLL_EXPORTING
+//		#define ZDLL_DECLSPEC __declspec(dllexport)
+//	#else
+//		#define ZDLL_DECLSPEC __declspec(dllimport)
+//	#endif
+//#else
 	#define ZDLL_DECLSPEC
-#endif
+//#endif
 
 
 #include <map>

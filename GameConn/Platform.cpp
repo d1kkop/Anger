@@ -36,7 +36,7 @@ namespace Zerodelay
 
 	#else
 
-	#if _WIN32
+	#if ZERODELAY_INCWINDOWS
 
 			WORD wVersionRequested;
 			WSADATA wsaData;
@@ -79,7 +79,7 @@ namespace Zerodelay
 		SDLNet_Quit();
 		SDL_Quit();
 	#else
-		#if _WIN32
+		#if ZERODELAY_INCWINDOWS
 			WSACleanup();
 		#endif
 	#endif
@@ -100,7 +100,7 @@ namespace Zerodelay
 	#if ZERODELAY_SDL
 			pf = SDL_LoadFunction(nullptr, name);
 	#else
-		#if _WIN32
+		#if ZERODELAY_INCWINDOWS
 			HMODULE hModule = ::GetModuleHandle(NULL);
 			pf = ::GetProcAddress( hModule, name );
 		#endif
@@ -124,7 +124,7 @@ namespace Zerodelay
 		i8_t buff[2048];
 		va_list myargs;
 		va_start(myargs, fmt);
-#if _WIN32
+#if ZERODELAY_SECURECRT
 		vsprintf_s(buff, 2048, fmt, myargs);
 		strcat_s(buff, 2048, "\n");
 #else
@@ -133,12 +133,15 @@ namespace Zerodelay
 #endif
 		va_end(myargs);
 
-#if _WIN32
 		static bool isFirstOpen = true;
 		if ( isFirstOpen )
 			::remove( "ZerodelayLog.txt" );
 		FILE* f;
+	#if ZERODELAY_SECURECRT
 		fopen_s( &f, "ZerodelayLog.txt", "a" );
+	#else
+		f = fopen("ZerodelayLog.txt", "a");
+	#endif
 		if ( f )
 		{
 			time_t rawtime;
@@ -153,13 +156,23 @@ namespace Zerodelay
 			if ( isFirstOpen )
 			{
 				isFirstOpen = false;
+			#if ZERODELAY_SECURECRT
 				fprintf_s( f, "--------- NEW SESSION ---------\n" );
 				fprintf_s( f, "-------------------------------\n" );
+			#else
+				fprintf( f, "--------- NEW SESSION ---------\n" );
+				fprintf( f, "-------------------------------\n" );
+			#endif
 			}
+		#if ZERODELAY_SECURECRT
 			fprintf_s( f, "%s\t\t%s", asciitime, buff );
+		#else
+			fprintf( f, "%s\t\t%s", asciitime, buff );
+		#endif
 			fflush(f);
 			fclose(f);
 		}
+#if ZERODELAY_INCWINDOWS
 		::OutputDebugString(buff);
 #endif
 	}
@@ -172,7 +185,7 @@ namespace Zerodelay
 			return false;
 		}
 		i32_t res;
-	#ifdef _WIN32
+	#ifdef ZERODELAY_INCWINDOWS
 		res = memcpy_s( dst, dstSize, src, srcSize );
 	#else
 		res = memcpy( dst, src, srcSize );
@@ -185,7 +198,7 @@ namespace Zerodelay
 	{
 		va_list myargs;
 		va_start(myargs, fmt);
-	#if _WIN32
+	#if ZERODELAY_SECURECRT
 		vsprintf_s(dst, dstSize, fmt, myargs);
 	#else
 		vsprintf(dst, fmt, myargs);

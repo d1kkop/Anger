@@ -153,10 +153,10 @@ namespace Zerodelay
 		// try reliable ordered packets
 		for (i32_t i=0; i<sm_NumChannels; ++i)
 		{
-			auto& queue = m_RecvQueue_reliable_order[i];
+			std::map<u32_t, Packet>& queue = m_RecvQueue_reliable_order[i];
 			if ( !queue.empty() )
 			{
-				auto& it = queue.find( m_RecvSeq_reliable_gameThread[i] );
+				auto it = queue.find( m_RecvSeq_reliable_gameThread[i] );
 				if ( it != queue.end() )
 				{
 					pack = it->second;
@@ -296,7 +296,7 @@ namespace Zerodelay
 		i32_t kNumGroupsWritten = 0;  // keeps track of num groups as is not know yet
 		i32_t kBytesWritten = off_RelNew_GroupId; // skip 4 bytes, as num groups is not yet known
 		std::unique_lock<std::mutex> lock(m_ReliableNewestQueueMutex);
-		for (auto& it = m_SendQueue_reliable_newest.begin(); it != m_SendQueue_reliable_newest.end(); it++)
+		for (auto it = m_SendQueue_reliable_newest.begin(); it != m_SendQueue_reliable_newest.end(); it++)
 		{
 			auto& kvp = *it;
 			i32_t kBytesWrittenBeforeGroup = kBytesWritten; // remember this in case the group has no changed items
