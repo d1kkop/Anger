@@ -1,15 +1,15 @@
 #pragma once
 
 
-//#if ZERODELAY_FROMSOURCE==0
-//	#ifdef ZDLL_EXPORTING
-//		#define ZDLL_DECLSPEC __declspec(dllexport)
-//	#else
-//		#define ZDLL_DECLSPEC __declspec(dllimport)
-//	#endif
-//#else
+#if !(ZDLL_EXPORTING || ZDLL_IMPORTING)
 	#define ZDLL_DECLSPEC
-//#endif
+#else
+	#if ZDLL_EXPORTING
+		#define ZDLL_DECLSPEC __declspec(dllexport)
+	#else
+		#define ZDLL_DECLSPEC __declspec(dllimport)
+	#endif
+#endif
 
 
 #include <map>
@@ -27,10 +27,21 @@ namespace Zerodelay
 	using i32_t = int;
 	using u32_t = unsigned int;
 
+
+	enum class ECriticalError	// bitfield
+	{
+		None = 0,
+		SerializationError = 1,
+		CannotFindExternalCFunction = 2,
+		SocketIsNull = 4,
+		TooMuchDataToSend = 8,
+		InvalidLogic = 16
+	};
+
 	enum class EDataPacketType: u8_t
 	{
-		ConnectRequest = 50,
-		ConnectAccept = 51,
+		ConnectRequest,
+		ConnectAccept,
 		Disconnect,
 		RemoteConnected,
 		RemoteDisconnected,
@@ -47,6 +58,10 @@ namespace Zerodelay
 		VariableGroupCreateList,
 		VariableGroupDestroy,
 		VariableGroupUpdate,
+		MSServerListRequest,
+		MSServerListBegin,
+		MSServerList,
+		MSServerListEnd,
 		UserOffset
 	};
 
@@ -134,12 +149,11 @@ namespace Zerodelay
 
 		bool operator==(const ZEndpoint& other) const;
 		bool operator!=(const ZEndpoint& other) const { return !(*this == other); }
+		bool operator() (const ZEndpoint& left, const ZEndpoint& right) const;
 
 
-		struct STLCompare
-		{
-			bool operator() (const ZEndpoint& left, const ZEndpoint& right) const;
-		};
+		i32_t write( i8_t* buff, i32_t bufSize ) const;
+		i32_t read( const i8_t* buff, i32_t bufSize );
 
 
 		/*	Use to see if a host can be connected to. If false is returned, use getLastError to obtain more info. */
@@ -170,6 +184,7 @@ namespace Zerodelay
 		ZEndpoint endpoint;
 		ETraceCallResult traceCallResult;
 		u32_t sequence;
+		u32_t numFragments; 
 		i8_t channel;
 	};
 
@@ -314,43 +329,49 @@ namespace Zerodelay
 			[requiresConnection] If false, the packet is sent regardless of whether the endpoint(s) are in connected state. Default is true. */
 		ESendCallResult sendUnreliableSequenced( u8_t packId, const i8_t* data, i32_t len, const ZEndpoint* specific=nullptr, bool exclude=false, u8_t channel=0, bool relay=true, bool requiresConnection=true );
 
-		/*	----- Callbacks ----------------------------------------------------------------------------------------------- */
 
-		/*	For handling connect request results. This callback is invoked as a result of calling 'connect'. */
-		void bindOnConnectResult( const std::function<void (const ZEndpoint&, EConnectResult)>& cb );
+		/*	----- Connection Layer Callbacks ----------------------------------------------------------------------------------------------- */
 
-
-		/*	This event occurs when a remote endpoint called 'connect'.
-			[directLink]	If true, a connection attempt was made to this Znode. 
-							If false, a non directive link such as a remote connection connected to the server and
-							the endpoint will not be found when obtaining a list of open connections through getNumOpenConnections(). 
-			[Zendpoint]		The endpoint, either of our direct link or relayed by eg. a server. */
-		void bindOnNewConnection( const std::function<void (bool directLink, const ZEndpoint&, const std::map<std::string, std::string>&)>& cb );
+			/*	For handling connect request results. This callback is invoked as a result of calling 'connect'. */
+			void bindOnConnectResult( const std::function<void (const ZEndpoint&, EConnectResult)>& cb );
 
 
-		/*	This event occurs when we or a remote endpoint called 'disconnect'.
-			[directLink]	If true, one of the endpoints that this Znode connected to disconnected to us our we disconnected to them.
-							If false, the message is relayed by an authorative node such as the server and
-							the endpoint will not be found when obtaining a list of open connections through getNumOpenConnections(). 
-			[Zendpoint]		The endpoint, either of our direct link or relayed by eg. the server. */
-		void bindOnDisconnect( const std::function<void (bool directLink, const ZEndpoint&, EDisconnectReason)>& cb );
+			/*	This event occurs when a remote endpoint called 'connect'.
+				[directLink]	If true, a connection attempt was made to this Znode. 
+								If false, a non directive link such as a remote connection connected to the server and
+								the endpoint will not be found when obtaining a list of open connections through getNumOpenConnections(). 
+				[Zendpoint]		The endpoint, either of our direct link or relayed by eg. a server. */
+			void bindOnNewConnection( const std::function<void (bool directLink, const ZEndpoint&, const std::map<std::string, std::string>&)>& cb );
+
+
+			/*	This event occurs when we or a remote endpoint called 'disconnect'.
+				[directLink]	If true, one of the endpoints that this Znode connected to disconnected to us our we disconnected to them.
+								If false, the message is relayed by an authorative node such as the server and
+								the endpoint will not be found when obtaining a list of open connections through getNumOpenConnections(). 
+				[Zendpoint]		The endpoint, either of our direct link or relayed by eg. the server. */
+			void bindOnDisconnect( const std::function<void (bool directLink, const ZEndpoint&, EDisconnectReason)>& cb );
+
+		/*	----- END -------------------------------------------------------------------------------------------------------------------- */
+
+
+
+		/*	----- Variable Group Callbacks ----------------------------------------------------------------------------------------------- */
+
+			/*	If at least a single variable inside the group is updated, this callback is invoked.
+				Note that varialbes can also have custom callbacks that are called per variable. 
+				If called locally, ZEndpoint is a nullptr. */
+			void bindOnGroupUpdated( const std::function<void (const ZEndpoint*, u8_t id)>& cb );
+
+
+			/*	Called when group gets destroyed. If called locally, ZEndpoint is a nullptr. */
+			void bindOnGroupDestroyed( const std::function<void (const ZEndpoint*, u8_t id)>& cb );
+
+		/*	----- END ----------------------------------------------------------------------------------------------- */
+
 
 
 		/*	For all application specific data that was transmitted with an id >= USER_ID_OFFSET. */
 		void bindOnCustomData( const std::function<void (const ZEndpoint&, u8_t id, const i8_t* data, i32_t length, u8_t channel)>& cb );
-
-
-		/*	If at least a single variable inside the group is updated, this callback is invoked.
-			Note that varialbes can also have custom callbacks that are called per variable. 
-			If called locally, ZEndpoint is a nullptr. */
-		void bindOnGroupUpdated( const std::function<void (const ZEndpoint*, u8_t id)>& cb );
-
-
-		/*	Called when group gets destroyed. If called locally, ZEndpoint is a nullptr. */
-		void bindOnGroupDestroyed( const std::function<void (const ZEndpoint*, u8_t id)>& cb );
-
-
-		/*	----- End Callbacks ----------------------------------------------------------------------------------------------- */
 
 
 		/*	Custom ptr to provide a way to get from a 'global' variable group or rpc functions to application code. */
@@ -358,17 +379,14 @@ namespace Zerodelay
 		void* getUserDataPtr() const;
 
 
+		/*	Returns true if packet is delivered. Works only for reliable ordered packets. */
 		bool isPacketDelivered(const ZAckTicket& ticket) const;
 
 
-		/*	Deferred create variable group from serialized data.
-			Causes 'createGroup_xxx' to be called when a network Id is available.
-			Usually this function is only used by the system internally. 
-			Use createGroup directly instead. */
+	
+
+		/*	--- !!! FOR INTERNAL USES !!! --- */
 		void deferredCreateVariableGroup( const i8_t* constructData=nullptr, i32_t constructDataLen=0 );
-
-
-	private:
 		class CoreNode* C;
 	};
 }

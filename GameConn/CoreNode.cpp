@@ -4,12 +4,12 @@
 #include "RpcMacros.h"
 #include "ConnectionNode.h"
 #include "VariableGroupNode.h"
-
+#include "MasterServer.h"
 
 
 namespace Zerodelay
 {
-	CoreNode::CoreNode(class ZNode* zn, class RecvNode* rn, class ConnectionNode* cn, class VariableGroupNode* vgn):
+	CoreNode::CoreNode(class ZNode* zn, class RecvNode* rn, class ConnectionNode* cn, class VariableGroupNode* vgn, class MasterServer* ms):
 		m_UserPtr(nullptr),
 		m_IsP2P(false),
 		m_IsListening(false),
@@ -18,16 +18,19 @@ namespace Zerodelay
 		m_ZNode(zn),
 		m_RecvNode(rn), 
 		m_ConnectionNode(cn),
-		m_VariableGroupNode(vgn)
+		m_VariableGroupNode(vgn),
+		m_MasterServer(ms)
 	{
 		assert(m_ZNode && m_RecvNode && m_ConnectionNode && m_VariableGroupNode && "Not all Ptrs set");
 		m_RecvNode->postInitialize(this);
 		m_ConnectionNode->postInitialize(this);
 		m_VariableGroupNode->postInitialize(this);
+		m_MasterServer->postInitialize(this);
 	}
 
 	CoreNode::~CoreNode()
 	{
+		delete m_MasterServer;
 		delete m_ConnectionNode;
 		delete m_VariableGroupNode;
 		delete m_RecvNode;
@@ -58,10 +61,10 @@ namespace Zerodelay
 		if ( pf )
 		{
 			// function signature
-			void (*pfunc)(const ZEndpoint&, void*, const i8_t*, i32_t);
+			void (*pfunc)(ZNode*, const ZEndpoint&, void*, const i8_t*, i32_t);
 			pfunc = (decltype(pfunc)) pf;
 			ZEndpoint ztp = Util::toZpt(etp);
-			pfunc( ztp, m_UserPtr, payload+kRead, len );
+			pfunc( m_ZNode, ztp, m_UserPtr, payload+kRead, len );
 		}
 		else
 		{
@@ -72,7 +75,7 @@ namespace Zerodelay
 
 	void CoreNode::recvUserPacket(const Packet& pack, const EndPoint& etp)
 	{
-		if ( pack.relay && isListening() && !isP2P() ) // send through to others
+		if ( (pack.flags & RelayBit) && isListening() && !isP2P() ) // send through to others
 		{
 			// except self
 			m_RecvNode->send( pack.data[0], pack.data+1, pack.len-1, &etp, true, pack.type, pack.channel, false /* relay only once */ );
@@ -107,7 +110,7 @@ namespace Zerodelay
 		}
 	}
 
-	void CoreNode::setCriticalError(ECriticalError error, const char* fn, u32_t line)
+	void CoreNode::setCriticalError(ECriticalError error, const i8_t* fn, u32_t line)
 	{
 		m_CriticalErrors |= (u32_t)error;
 		m_FunctionInError = fn;

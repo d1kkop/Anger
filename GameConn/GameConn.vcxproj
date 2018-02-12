@@ -124,6 +124,7 @@
     <ClCompile Include="BinSerializer.cpp" />
     <ClCompile Include="Connection.cpp" />
     <ClCompile Include="CoreNode.cpp" />
+    <ClCompile Include="MasterServer.cpp" />
     <ClCompile Include="NetVariable.cpp" />
     <ClCompile Include="Platform.cpp" />
     <ClCompile Include="RecvNode.cpp" />
@@ -144,6 +145,7 @@
   <ItemGroup>
     <ClInclude Include="BinSerializer.h" />
     <ClInclude Include="CoreNode.h" />
+    <ClInclude Include="MasterServer.h" />
     <ClInclude Include="NetVariable.h" />
     <ClInclude Include="RpcMacros.h" />
     <ClInclude Include="Connection.h" />

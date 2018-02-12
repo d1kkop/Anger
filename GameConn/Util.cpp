@@ -135,13 +135,14 @@ namespace Zerodelay
 	}
 
 	void Util::addTraceCallResult(std::vector<ZAckTicket>* deliveryTraceOut, const EndPoint& etp,
-								  ETraceCallResult trCallRes, u32_t trackingSeq, i8_t channel)
+								  ETraceCallResult trCallRes, u32_t sequence, u32_t numFragments, i8_t channel)
 	{
 		if ( !deliveryTraceOut ) return;
 		ZAckTicket t;
 		t.endpoint = toZpt(etp);
 		t.traceCallResult = trCallRes;
-		t.sequence = trackingSeq;
+		t.sequence = sequence;
+		t.numFragments = numFragments;
 		t.channel  = channel;
 		deliveryTraceOut->emplace_back(t);
 	}

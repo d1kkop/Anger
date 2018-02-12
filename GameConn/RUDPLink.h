@@ -46,11 +46,11 @@ namespace Zerodelay
 		
 
 		// Normal packet overhead
-		static const i32_t off_Norm_Chan = 5;		// Normal, Channel (least 7 bits) & Relay (hi bit)
+		static const i32_t off_Norm_ChanNFlags = 5;		// Normal, Channel (least 7 bits) & Relay (hi bit) & Fragment Start/End bit
 		static const i32_t off_Norm_Seq  = 6;		// Normal, Seq numb
 		static const i32_t off_Norm_Id   = 10;		// Normal/Data, Packet Id 
 		static const i32_t off_Norm_Data = 11;		// Normal, Payload
-		static const i32_t hdr_Norm_Size = (off_Norm_Id - off_Norm_Chan); // Note, payload includes ID (1byte)
+		static const i32_t hdr_Norm_Size = (off_Norm_Id - off_Norm_ChanNFlags); // Note, payload includes ID (1byte)
 
 		// Reliable newest packet overhead
 		static const i32_t off_RelNew_Seq  = 5;		// RelNew, sequence
@@ -84,7 +84,7 @@ namespace Zerodelay
 
 		// ------ Called from main thread -------
 
-		u32_t addToSendQueue( ESendCallResult& result, u8_t id, const i8_t* data, i32_t len, EHeaderPacketType packetType, u8_t channel=0, bool relay=true );
+		ESendCallResult addToSendQueue( u8_t id, const i8_t* data, i32_t len, EHeaderPacketType packetType, u8_t channel=0, bool relay=true, u32_t* sequence=nullptr, u32_t* numFragments=nullptr);
 		void addReliableNewest( u8_t id, const i8_t* data, i32_t len, u32_t groupId, i8_t groupBit );
 		void blockAllUpcomingSends();
 		
@@ -132,10 +132,12 @@ namespace Zerodelay
 		void receiveAckRelNewest(const i8_t* buff, i32_t rawSize);
 
 		// serialize functions
-		static void serializeNormalPacket( Packet& pack, u32_t linkId, EHeaderPacketType packetType, u8_t dataId, const i8_t* data, i32_t len, i32_t hdrSize, i8_t channel, bool relay );
+		static void serializeNormalPacket( std::vector<Packet>& packs, u32_t linkId, EHeaderPacketType packetType, u8_t dataId, const i8_t* data, i32_t len, i32_t fragmentSize, i8_t channel, bool relay );
 		static bool deserializeGenericHdr(const i8_t* buff, i32_t rawSize, u32_t& linkIdOut, EHeaderPacketType& packetType);
-		static bool deserializeNormalHdr(const i8_t* buff, i32_t rawSize, i8_t& channOut, bool& relayOut, u32_t& seqOut );
+		static bool deserializeNormalHdr(const i8_t* buff, i32_t rawSize, i8_t& channOut, bool& relayOut, u32_t& seqOut, bool& firstFragment, bool& lastFragment );
 		static void createNormalPacket(Packet& pack, const i8_t* buff, i32_t dataSize, u32_t linkId, i8_t channel, bool relay, EHeaderPacketType type);
+		static void unfragmentUnreliablePacket(Packet& pack, const std::vector<std::pair<Packet, u32_t>>& fragments);
+		static void unfragmentReliablePacket(Packet& pack, u32_t beginSeq, u32_t lastSeq, std::map<u32_t, Packet>& fragments);
 
 		// sequence newer support
 		static bool isSequenceNewer( u32_t incoming, u32_t having );
@@ -152,8 +154,11 @@ namespace Zerodelay
 		std::map<u32_t, reliableNewestDataGroup> m_SendQueue_reliable_newest;
 		// recv queues
 		std::deque<Packet>		m_RecvQueue_unreliable_sequenced[sm_NumChannels];
-		std::map<u32_t, Packet> m_RecvQueue_reliable_order[sm_NumChannels];
+		std::map<u32_t, std::pair<Packet, u32_t>> m_RecvQueue_reliable_order[sm_NumChannels]; // packet/num fragments
 		std::deque<Packet>		m_RecvQueue_reliable_newest;
+		// fragment buffers
+		std::vector<std::pair<Packet, u32_t>>		m_Ureliable_fragments[sm_NumChannels];
+		std::map<u32_t, Packet>						m_Reliable_fragments[sm_NumChannels];
 		// ack queue
 		std::deque<u32_t> m_AckQueue[sm_NumChannels];
 		// sequencers
@@ -172,8 +177,9 @@ namespace Zerodelay
 		mutable std::mutex m_RecvQueuesMutex;
 		mutable std::mutex m_AckMutex;
 		// statistics
-		u32_t m_retransmitWaitingTime;
+		u32_t m_RetransmitWaitingTime;
 		u8_t  m_PacketLossPercentage;
+		u32_t m_FragmentSize;
 		// pinned
 		u32_t m_PinnedCount;
 		// on delete

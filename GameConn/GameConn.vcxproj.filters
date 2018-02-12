@@ -22,6 +22,9 @@
     <Filter Include="Nodes\RecvNode">
       <UniqueIdentifier>{ccb84b75-8808-478e-9eb7-484ef405862a}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Nodes\MasterNode">
+      <UniqueIdentifier>{a80d9c59-567c-482a-bafc-baa76996bfd9}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Socket.cpp">
@@ -69,6 +72,9 @@
     </ClCompile>
     <ClCompile Include="BinSerializer.cpp">
       <Filter>Assist</Filter>
+    </ClCompile>
+    <ClCompile Include="MasterServer.cpp">
+      <Filter>Nodes\MasterNode</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -122,6 +128,9 @@
     </ClInclude>
     <ClInclude Include="BinSerializer.h">
       <Filter>Assist</Filter>
+    </ClInclude>
+    <ClInclude Include="MasterServer.h">
+      <Filter>Nodes\MasterNode</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

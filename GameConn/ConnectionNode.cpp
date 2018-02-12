@@ -348,8 +348,7 @@ namespace Zerodelay
 		forConnections(&g->getEndPoint(), true, [&](Connection& c)
 		{
 			if (!c.isConnected()) return;
-			ESendCallResult sendResult;
-			c.getLink()->addToSendQueue( sendResult, (u8_t)EDataPacketType::RemoteConnected, buff, ZERODELAY_BUFF_SIZE-dstSize, 
+			c.getLink()->addToSendQueue( (u8_t)EDataPacketType::RemoteConnected, buff, ZERODELAY_BUFF_SIZE-dstSize, 
 										 EHeaderPacketType::Reliable_Ordered, 0, false );
 		});
 	}
@@ -378,15 +377,13 @@ namespace Zerodelay
 		{
 			if (!c.isConnected()) return; // skip 
 			// one added byte because of disconnect reason (8 bits)
-			ESendCallResult sendResult;
-			c.getLink()->addToSendQueue( sendResult, (u8_t)EDataPacketType::RemoteDisconnected, buff, offs+1, EHeaderPacketType::Reliable_Ordered, 0, false );
+			c.getLink()->addToSendQueue( (u8_t)EDataPacketType::RemoteDisconnected, buff, offs+1, EHeaderPacketType::Reliable_Ordered, 0, false );
 		});
 	}
 
 	void ConnectionNode::sendSystemMessage(RUDPLink& link, EDataPacketType state, const i8_t* payload, i32_t len)
 	{
-		ESendCallResult sendResult;
-		link.addToSendQueue( sendResult, (u8_t)state, payload, len, EHeaderPacketType::Reliable_Ordered );
+		link.addToSendQueue( (u8_t)state, payload, len, EHeaderPacketType::Reliable_Ordered );
 	}
 
 	bool ConnectionNode::recvPacket(const Packet& pack, class Connection* g, RUDPLink& link)

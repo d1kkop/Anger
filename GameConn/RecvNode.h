@@ -13,13 +13,17 @@
 
 namespace Zerodelay
 {
+	constexpr u32_t RelayBit = 1;
+	constexpr u32_t FirstFragmentBit = 2;
+	constexpr u32_t LastFragmentBit  = 4;
+
 	struct Packet 
 	{
 		u32_t linkId;
 		i32_t len; 
 		i8_t* data;
 		i8_t channel;
-		bool relay;
+		u8_t flags; // Relay | firstFragmant | lastFragment
 		EHeaderPacketType type;
 	};
 
@@ -57,7 +61,7 @@ namespace Zerodelay
 		void startThreads();
 
 		i32_t getNumOpenLinks() const;
-		bool isPacketDelivered(const ZEndpoint& ztp, u32_t sequence, i8_t channel) const;
+		bool isPacketDelivered(const ZEndpoint& ztp, u32_t sequences, u32_t numFragments, i8_t channel) const;
 		CoreNode* getCoreNode() const { return m_CoreNode; }
 
 	private:
@@ -81,7 +85,7 @@ namespace Zerodelay
 		// Currently opened links are put in a list so that reopend links on same address can not depend on a previously opened session
 		std::map<EndPoint, class RUDPLink*, EndPoint::STLCompare> m_OpenLinksMap;
 		std::vector<class RUDPLink*> m_OpenLinksList;
-		volatile bool m_ListPinned;
+		volatile u32_t m_ListPinned;
 		// -- Ptrs to other managers
 		class CoreNode* m_CoreNode;
 		class ConnectionNode* m_ConnectionNode;

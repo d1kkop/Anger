@@ -15,8 +15,9 @@ namespace Zerodelay
 		m_LinkId(linkId),
 		m_EndPoint(endPoint),
 		m_BlockNewSends(false),
-		m_retransmitWaitingTime(0),
+		m_RetransmitWaitingTime(0),
 		m_PacketLossPercentage(0),
+		m_FragmentSize(ZERODELAY_INITALFRAGSIZE),
 		m_IsPendingDelete(false),
 		m_MarkDeleteTS(0)
 	{
@@ -37,47 +38,61 @@ namespace Zerodelay
 	RUDPLink::~RUDPLink()
 	{
 		for (auto & queue : m_RetransmitQueue_reliable) for (auto& pack : queue) delete [] pack.data;
-		for (auto & queue : m_RecvQueue_reliable_order) for (auto& seqPacketPair : queue) delete [] seqPacketPair.second.data;
+		for (auto & queue : m_RecvQueue_reliable_order) for (auto& seqPacketPair : queue) delete [] seqPacketPair.second.first.data;
 		for (auto & queue : m_RecvQueue_unreliable_sequenced ) for (auto& pack : queue) delete [] pack.data;
 		for (auto & groupIdGroupPair : m_SendQueue_reliable_newest ) for (auto & groupItem : groupIdGroupPair.second.groupItems) delete [] groupItem.data;
+		for (auto & buffer : m_Ureliable_fragments) for (auto& pair : buffer) delete [] pair.first.data;
+		for (auto & buffer : m_Reliable_fragments) for (auto& pair : buffer) delete [] pair.second.data;
 	}
 
-	u32_t RUDPLink::addToSendQueue(ESendCallResult& result, u8_t id, const i8_t* data, i32_t len, EHeaderPacketType packetType, u8_t channel, bool relay)
+	ESendCallResult RUDPLink::addToSendQueue(u8_t id, const i8_t* data, i32_t len, EHeaderPacketType packetType, u8_t channel, bool relay,
+											 u32_t* sequence, u32_t* numFragments)
 	{
 		if ( m_BlockNewSends ) // discard new packets in this case
 		{
 			Platform::log("WARNING: Trying to send id %d with sendType %d while send is blocked.", id, (u32_t)packetType);
-			result = ESendCallResult::NotSent;
-			return 0;
+			return ESendCallResult::NotSent;
 		}
 		// user not allowed to send acks
 		if ( packetType == EHeaderPacketType::Ack || packetType == EHeaderPacketType::Reliable_Newest )
 		{
 			assert( false && "Invalid packet type" );
 			m_RecvNode->getCoreNode()->setCriticalError( ECriticalError::InvalidLogic, ZERODELAY_FUNCTION_LINE );
-			result = ESendCallResult::InternalError;
-			return 0;
+			return ESendCallResult::InternalError;
 		}
-		Packet pack;
-		serializeNormalPacket( pack, m_LinkId, packetType, id, data, len, off_Norm_Data, channel, relay );
-		u32_t trackingSeq = 0;
+		std::vector<Packet> packs;
+		serializeNormalPacket( packs, m_LinkId, packetType, id, data, len, m_FragmentSize, channel, relay );
 		if ( packetType == EHeaderPacketType::Reliable_Ordered )
 		{
+			// add to resend queue (reliable)
 			{
 				std::lock_guard<std::mutex> lock(m_ReliableOrderedQueueMutex);
-				trackingSeq = m_SendSeq_reliable[channel]++;
-				*(u32_t*)&pack.data[off_Norm_Seq] = trackingSeq;
-				m_RetransmitQueue_reliable[channel].emplace_back( pack );
+				if (sequence)
+				{
+					*sequence = m_SendSeq_reliable[channel];
+					*numFragments = (u32_t)packs.size();
+				}
+				for (auto& fragment : packs)
+				{
+					*(u32_t*)&fragment.data[off_Norm_Seq] = m_SendSeq_reliable[channel]++;
+					m_RetransmitQueue_reliable[channel].emplace_back( fragment );
+				}
 			}
-			m_RecvNode->getSocket()->send( m_EndPoint, pack.data, pack.len );
+			// immediate send after adding to resend queue as we need the sequence printed in the data
+			for (auto& fragment : packs)
+			{
+				m_RecvNode->getSocket()->send( m_EndPoint, fragment.data, fragment.len );
+			}
 		}
 		else
 		{
-			*(u32_t*)&pack.data[off_Norm_Seq] = m_SendSeq_unreliable[channel]++;
-			m_RecvNode->getSocket()->send( m_EndPoint, pack.data, pack.len );
+			for (auto& fragment : packs)
+			{
+				*(u32_t*)&fragment.data[off_Norm_Seq] = m_SendSeq_unreliable[channel]++;
+				m_RecvNode->getSocket()->send( m_EndPoint, fragment.data, fragment.len );
+			}
 		}
-		result = ESendCallResult::Succes;
-		return trackingSeq;
+		return ESendCallResult::Succes;
 	}
 
 	void RUDPLink::addReliableNewest(u8_t id, const i8_t* data, i32_t len, u32_t groupId, i8_t groupBit)
@@ -151,17 +166,17 @@ namespace Zerodelay
 	bool RUDPLink::poll(Packet& pack)
 	{
 		// try reliable ordered packets
-		for (i32_t i=0; i<sm_NumChannels; ++i)
+		for (i32_t chn=0; chn<sm_NumChannels; ++chn)
 		{
-			std::map<u32_t, Packet>& queue = m_RecvQueue_reliable_order[i];
+			std::map<u32_t, std::pair<Packet, u32_t>>& queue = m_RecvQueue_reliable_order[chn];
 			if ( !queue.empty() )
 			{
-				auto it = queue.find( m_RecvSeq_reliable_gameThread[i] );
+				auto it = queue.find( m_RecvSeq_reliable_gameThread[chn] );
 				if ( it != queue.end() )
 				{
-					pack = it->second;
+					pack = it->second.first;
+					m_RecvSeq_reliable_gameThread[chn] += it->second.second; // for unfragmented packets 1, numFragments otherwise
 					queue.erase( it );
-					m_RecvSeq_reliable_gameThread[i]++;
 					return true;
 				}
 			}
@@ -264,11 +279,11 @@ namespace Zerodelay
 
 	void RUDPLink::dispatchRelOrderedQueueIfLatencyTimePassed(u32_t deltaTime, ISocket* socket)
 	{
-		m_retransmitWaitingTime += deltaTime;
+		m_RetransmitWaitingTime += deltaTime;
 		u32_t latencyTime = (u32_t)( 1.3f*getLatency() );
-		if ( m_retransmitWaitingTime >= latencyTime )
+		if ( m_RetransmitWaitingTime >= latencyTime )
 		{
-			m_retransmitWaitingTime -= latencyTime;
+			m_RetransmitWaitingTime -= latencyTime;
 			dispatchReliableOrderedQueue(socket);
 		}
 	}
@@ -425,7 +440,7 @@ namespace Zerodelay
 
 		case EHeaderPacketType::Reliable_Ordered:
 			// ack it (even if we already processed this packet)
-			addAckToAckQueue( buff[off_Norm_Chan] & 7, *(u32_t*)&buff[off_Norm_Seq] );
+			addAckToAckQueue( buff[off_Norm_ChanNFlags] & 7, *(u32_t*)&buff[off_Norm_Seq] );
 			receiveReliableOrdered( linkId, buff, rawSize );	
 			break;
 
@@ -458,9 +473,11 @@ namespace Zerodelay
 		i8_t channel;
 		bool relay;
 		u32_t seq;
-		if ( !deserializeNormalHdr(buff, rawSize, channel, relay, seq) )
+		bool firstFragment, lastFragment;
+		if ( !deserializeNormalHdr(buff, rawSize, channel, relay, seq, firstFragment, lastFragment) )
 		{
-			Platform::log("WARNING: Serialization error in %s, line %d.", ZERODELAY_FUNCTION, ZERODELAY_LINE);
+			// Critical because packet is already acked while it cannot be reliably handled.
+			m_RecvNode->getCoreNode()->setCriticalError(ECriticalError::SerializationError, ZERODELAY_FUNCTION, ZERODELAY_LINE);
 			return;
 		}
 
@@ -468,16 +485,66 @@ namespace Zerodelay
 		if ( !isSequenceNewer(seq, recvSeq) )
 			return;
 
-		std::lock_guard<std::mutex> lock(m_RecvQueuesMutex);
-		// only insert if received data is not already stored, but waiting to be processed as is out of order
 		auto& queue = m_RecvQueue_reliable_order[channel];
-		if ( queue.count( seq ) == 0 )
+		if ( firstFragment && lastFragment ) // not fragmented
 		{
-			Packet pack; // Offset off_Norm_Id is correct data packet type (EDataPacketType) (not EHeaderPacketType!) is included in the data
-			createNormalPacket( pack, buff + off_Norm_Id, rawSize-off_Norm_Id, linkId, channel, relay, EHeaderPacketType::Reliable_Ordered );
-			queue.insert( std::make_pair(seq, pack) );
+			// packet may arrive multiple time (if is not next expected sequence)
+			std::lock_guard<std::mutex> lock(m_RecvQueuesMutex);
+			if ( queue.count( seq ) == 0 )
+			{
+				Packet pack; // Offset off_Norm_Id is correct data packet type (EDataPacketType) (not EHeaderPacketType!) is included in the data
+				createNormalPacket( pack, buff + off_Norm_Id, rawSize-off_Norm_Id, linkId, channel, relay, EHeaderPacketType::Reliable_Ordered );
+				queue.insert( std::make_pair(seq, std::make_pair(pack, 1)) );
+			}
 		}
-		// update recv seq to most recent possible
+		else // fragmented
+		{
+			auto& fragments = m_Reliable_fragments[channel];
+			if ( fragments.count( seq ) == 0 )
+			{
+				Packet pack; // Offset off_Norm_Id is correct data packet type (EDataPacketType) (not EHeaderPacketType!) is included in the data
+				createNormalPacket( pack, buff + off_Norm_Id, rawSize-off_Norm_Id, linkId, channel, relay, EHeaderPacketType::Reliable_Ordered );
+				fragments.insert( std::make_pair(seq, pack) );
+				if ( firstFragment ) pack.flags |= (FirstFragmentBit);
+				if ( lastFragment )  pack.flags |= (LastFragmentBit);
+			}
+
+			// while expected in order sequence is received as a fragment, try to defragment into a single packet
+			while ( fragments.count( recvSeq ) != 0 && (fragments[recvSeq].flags & FirstFragmentBit) != 0 )
+			{
+				u32_t nxtFragSeq = recvSeq+1;
+				while ( fragments.count( nxtFragSeq ) != 0 )
+				{
+					if ( fragments[nxtFragSeq].flags & LastFragmentBit )
+					{
+						Packet finalPack;
+						unfragmentReliablePacket( finalPack, recvSeq, nxtFragSeq, fragments );
+
+						// insert defragmented packet into 'normal' queue
+						{
+							std::lock_guard<std::mutex> lock(m_RecvQueuesMutex);
+							queue.insert( std::make_pair(recvSeq, std::make_pair(finalPack, 1+(nxtFragSeq-recvSeq))) );
+						}
+
+						// cleanup defragmented fragments
+						while (recvSeq != nxtFragSeq+1) // seq wraps!
+						{
+							auto fragIt = fragments.find(recvSeq);
+							delete [] fragIt->second.data;
+							fragments.erase(fragIt);
+							recvSeq++;
+						}
+
+						// break out to next possible range of fragments
+						break;
+					}
+					nxtFragSeq++;
+				}
+			}
+		}
+
+		// update recv seq to most recent possible (sliding window) to avoid processing redundent (already processed) packets
+		std::lock_guard<std::mutex> lock(m_RecvQueuesMutex);
 		while ( queue.count( recvSeq ) != 0 )
 		{
 			recvSeq++;
@@ -489,7 +556,8 @@ namespace Zerodelay
 		i8_t channel;
 		bool relay;
 		u32_t seq;
-		if ( !deserializeNormalHdr(buff, rawSize, channel, relay, seq) )
+		bool firstFragment, lastFragment;
+		if ( !deserializeNormalHdr(buff, rawSize, channel, relay, seq, firstFragment, lastFragment) )
 		{
 			Platform::log("WARNING: Serialization error in %s, line %d.", ZERODELAY_FUNCTION, ZERODELAY_LINE );
 			return;
@@ -505,8 +573,54 @@ namespace Zerodelay
 		Packet pack;  // Id offset of Norm_ID is correct as id is enclosed in payload/data
 		createNormalPacket( pack, buff + off_Norm_Id, rawSize-off_Norm_Id, linkId, channel, relay, EHeaderPacketType::Unreliable_Sequenced );
 
-		std::lock_guard<std::mutex> lock(m_RecvQueuesMutex);
-		m_RecvQueue_unreliable_sequenced[channel].emplace_back( pack );
+		if ( firstFragment && lastFragment )
+		{ // not fragmented
+			std::lock_guard<std::mutex> lock(m_RecvQueuesMutex);
+			m_RecvQueue_unreliable_sequenced[channel].emplace_back( pack );
+		}
+		else
+		{ // unreliable fragmented packet
+			auto& fragmentBuffer = m_Ureliable_fragments[channel];
+			if ( firstFragment )
+			{
+				fragmentBuffer.clear();
+				fragmentBuffer.emplace_back( std::make_pair(pack, seq) );
+			}
+			else if (!firstFragment && !fragmentBuffer.empty())
+			{
+				fragmentBuffer.emplace_back( std::make_pair(pack, seq) );
+				if ( lastFragment )
+				{
+					// validate that all sequences between first and last were received
+					bool validRange = true;
+					for (i32_t i=1; i<(i32_t)fragmentBuffer.size(); i++)
+					{
+						u32_t prevFragSeq = fragmentBuffer[i-1].second;
+						u32_t fragSeq = fragmentBuffer[i].second;
+						if ( fragSeq - prevFragSeq != 1 )
+						{
+							validRange = false;
+							break;
+						}
+					}
+					if (validRange)
+					{
+						Packet finalPack;
+						unfragmentUnreliablePacket(finalPack, fragmentBuffer);
+						// put in queue accessed by other thread
+						std::lock_guard<std::mutex> lock(m_RecvQueuesMutex);
+						m_RecvQueue_unreliable_sequenced[channel].emplace_back( finalPack );
+					}
+					// handled or invalid range -> not all fragments received, cannot recover, clear fragment buffer
+					fragmentBuffer.clear();
+				}
+			}
+			else
+			{
+				// invalid state, cannot recover, clear fragment buffer (big unreliable packet lost)
+				fragmentBuffer.clear();
+			}
+		}
 	}
 
 	void RUDPLink::receiveReliableNewest(u32_t linkId, const i8_t* buff, i32_t rawSize)
@@ -611,16 +725,29 @@ namespace Zerodelay
 
 	// ----------------- Support functions (does not touch class data) -----------------------------------------------
 
-	void RUDPLink::serializeNormalPacket(Packet& pack, u32_t linkId, EHeaderPacketType packetType, u8_t dataId, const i8_t* data, i32_t len, i32_t hdrSize, i8_t channel, bool relay)
+	void RUDPLink::serializeNormalPacket(std::vector<Packet>& packs, u32_t linkId, EHeaderPacketType packetType, u8_t dataId, const i8_t* data, i32_t len, i32_t fragmentSize, i8_t channel, bool relay)
 	{
-		pack.data = new i8_t[len+hdrSize];
-		*(u32_t*)(pack.data + off_Link) = linkId;
-		pack.data[off_Type] = (i8_t)packetType;
-		pack.data[off_Norm_Chan] = channel;
-		pack.data[off_Norm_Chan] |= ((i8_t)relay) << 3; // skip over the bits for channel, 0 to 7
-		pack.data[off_Norm_Id] = dataId;
-		Platform::memCpy(pack.data + off_Norm_Data, len, data, len);
-		pack.len = len + off_Norm_Data;
+		bool bStartFragment = true;
+		while (len > 0 || bStartFragment) // allow zero length payload packets
+		{
+			Packet pack;
+			u32_t payloadLen = Util::min(len, fragmentSize);
+			pack.data = new i8_t[payloadLen+off_Norm_Data];
+			*(u32_t*)(pack.data + off_Link) = linkId;
+			pack.data[off_Type] = (i8_t)packetType;
+			pack.data[off_Norm_ChanNFlags] = channel;
+			pack.data[off_Norm_ChanNFlags] |= ((i8_t)relay) << 3; // skip over the bits for channel, 0 to 7
+			pack.data[off_Norm_ChanNFlags] |= ((i8_t)bStartFragment) << 4; // first fragment bit
+			pack.data[off_Norm_Id] = dataId;
+			Platform::memCpy(pack.data + off_Norm_Data, len, data, len);
+			pack.len = len + off_Norm_Data;
+			packs.emplace_back(pack);
+			// prepare next fragment
+			bStartFragment = false;
+			len -= payloadLen;
+		}
+		// set last fragment bit in last packet
+		packs.back().data[off_Norm_ChanNFlags] |= ((i8_t)1) << 5; // last fragment bit
 	}
 
 	bool RUDPLink::deserializeGenericHdr(const i8_t* buff, i32_t rawSize, u32_t& linkIdOut, EHeaderPacketType& packetType)
@@ -631,24 +758,80 @@ namespace Zerodelay
 		return true;
 	}
 
-	bool RUDPLink::deserializeNormalHdr(const i8_t* buff, i32_t rawSize, i8_t& channel, bool& relay, u32_t& seq)
+	bool RUDPLink::deserializeNormalHdr(const i8_t* buff, i32_t rawSize, i8_t& channel, bool& relay, u32_t& seq, bool& firstFragment, bool& lastFragment)
 	{
 		if ( rawSize <= hdr_Norm_Size ) return false; 
-		channel = (buff[off_Norm_Chan] & 7);
-		relay   = (buff[off_Norm_Chan] & 8) != 0;
+		channel = (buff[off_Norm_ChanNFlags] & 7);		// first 3 bits [0 - 2]
+		relay   = (buff[off_Norm_ChanNFlags] & 8) != 0;	// 3rth bit
+		firstFragment = (buff[off_Norm_ChanNFlags] & 16) != 0; // 4th bit
+		lastFragment  = (buff[off_Norm_ChanNFlags] & 32) != 0; // 5th bit
 		seq		= *(u32_t*)(buff + off_Norm_Seq);
 		return true;
 	}
 
-	void RUDPLink::createNormalPacket(Packet& pack, const i8_t* buff, i32_t dataSize, u32_t linkId, i8_t channel, bool relay, EHeaderPacketType type)
+	void RUDPLink::createNormalPacket(Packet& pack, const i8_t* buff, i32_t dataSize, u32_t linkId, i8_t channel, 
+									  bool relay, EHeaderPacketType type)
 	{
 		pack.linkId = linkId;
 		pack.len  = dataSize;
 		pack.data = new i8_t[pack.len];
 		pack.channel = channel;
-		pack.relay = relay;
 		pack.type  = type;
+		pack.flags = relay;
 		Platform::memCpy(pack.data, pack.len, buff, pack.len); 
+	}
+
+	void RUDPLink::unfragmentUnreliablePacket(Packet& pack, const std::vector<std::pair<Packet, u32_t>>& fragments)
+	{
+		// copy id, type etc from first fragment
+		pack = fragments.front().first;
+		u32_t len = 0;
+		for (auto& pair : fragments)
+		{
+			len += pair.first.len-1; // length includes data hdr id
+		}
+		pack.data = new i8_t[len+1];
+		pack.len  = len+1;
+		pack.data[0] = fragments.front().first.data[0]; // data hdr id
+		u32_t curLen = 1;
+		for (auto& pair : fragments)
+		{
+			const Packet& frag = pair.first;
+			u32_t copySize = frag.len-1; // subtract data id (-1)
+			Platform::memCpy(pack.data + curLen, (len+1-curLen), frag.data, copySize);
+			delete [] frag.data;
+			curLen += copySize;
+		}
+	}
+
+	void RUDPLink::unfragmentReliablePacket(Packet& pack, u32_t beginSeq, u32_t lastSeq, std::map<u32_t, Packet>& fragments)
+	{
+		// copy id, type etc from first fragment
+		pack = fragments.begin()->second;
+		u32_t len = 0;
+		u32_t curSeq = beginSeq;
+		while (curSeq != lastSeq+1) // take into account that seq wraps
+		{
+			len += fragments[curSeq].len - 1; // length includes data hdr id
+			curSeq++;
+		}
+		pack.data = new i8_t[len+1]; // + 1 for data hdr id
+		pack.len  = len+1;
+		pack.data[0] = fragments.begin()->second.data[0]; // data hdr id
+		u32_t curLen = 1;
+		curSeq = beginSeq;
+		while (curSeq != lastSeq+1) // take into account that seq wraps
+		{
+			const Packet& frag = fragments[curSeq];
+			u32_t copySize = frag.len-1; // subtract data id (-1)
+			Platform::memCpy(pack.data + curLen, (len+1-curLen), frag.data, copySize);
+			delete [] frag.data;
+			curLen += copySize;
+			curSeq++;
+		}
+		// zero out the first/last fragment bit in the flags for cleanness (upper layer is not interested in this)
+		pack.flags &= ~FirstFragmentBit;
+		pack.flags &= ~LastFragmentBit;
 	}
 
 	bool RUDPLink::isSequenceNewer(u32_t incoming, u32_t having)

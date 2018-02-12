@@ -11,16 +11,6 @@
 
 namespace Zerodelay
 {
-	enum class ECriticalError	// bitfield
-	{
-		None = 0,
-		SerializationError = 1,
-		CannotFindExternalCFunction = 2,
-		SocketIsNull = 4,
-		TooMuchDataToSend = 8,
-		InvalidLogic = 16
-	};
-
 	// Not be confused with EDataPacketType
 	enum class EHeaderPacketType : u8_t
 	{
@@ -38,7 +28,7 @@ namespace Zerodelay
 
 
 	public:
-		CoreNode(class ZNode* zn, class RecvNode* rn, class ConnectionNode* cn, class VariableGroupNode* vgn);
+		CoreNode(class ZNode* zn, class RecvNode* rn, class ConnectionNode* cn, class VariableGroupNode* vgn, class MasterServer* ms);
 		~CoreNode();
 		void reset();
 
@@ -58,7 +48,7 @@ namespace Zerodelay
 		void setIsSuperPeer(bool superPeer) { m_IsSuperPeer = superPeer; }
 		bool isSuperPeer() const { return m_IsSuperPeer; } // server or authorative peer in p2p
 
-		void setCriticalError(ECriticalError error, const char* fn, u32_t line);
+		void setCriticalError(ECriticalError error, const i8_t* fn, u32_t line);
 		bool hasCriticalErrors() const { return m_CriticalErrors != 0; }
 		const char* getCriticalErrorMsg(ECriticalError error) const;
 		const char* getFunctionInError() const { return m_FunctionInError.c_str(); }
@@ -70,6 +60,7 @@ namespace Zerodelay
 		class RecvNode* rn() const { return m_RecvNode; } // Internal (raw dispatch & send)
 		class ConnectionNode* cn() const { return m_ConnectionNode; } // Controls state of connections
 		class VariableGroupNode* vgn() const { return m_VariableGroupNode; } // Controls state of variable groups
+		class MasterServer* ms() const { return m_MasterServer; }
 
 	private:
 		void* m_UserPtr;
@@ -82,6 +73,7 @@ namespace Zerodelay
 		class RecvNode* m_RecvNode;
 		class ConnectionNode* m_ConnectionNode;
 		class VariableGroupNode* m_VariableGroupNode;
+		class MasterServer* m_MasterServer;
 		std::vector<CustomDataCallback>	m_CustomDataCallbacks;
 	};
 }

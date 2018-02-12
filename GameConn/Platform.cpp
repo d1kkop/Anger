@@ -36,7 +36,7 @@ namespace Zerodelay
 
 	#else
 
-	#if ZERODELAY_INCWINDOWS
+	#if ZERODELAY_WIN32SOCKET
 
 			WORD wVersionRequested;
 			WSADATA wsaData;
@@ -79,7 +79,7 @@ namespace Zerodelay
 		SDLNet_Quit();
 		SDL_Quit();
 	#else
-		#if ZERODELAY_INCWINDOWS
+		#if ZERODELAY_WIN32SOCKET
 			WSACleanup();
 		#endif
 	#endif
@@ -185,7 +185,7 @@ namespace Zerodelay
 			return false;
 		}
 		i32_t res;
-	#ifdef ZERODELAY_INCWINDOWS
+	#ifdef ZERODELAY_SECURECRT
 		res = memcpy_s( dst, dstSize, src, srcSize );
 	#else
 		res = memcpy( dst, src, srcSize );

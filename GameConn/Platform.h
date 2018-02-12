@@ -1,21 +1,23 @@
 #pragma once
 
+// On/Off switches
 #define ZERODELAY_DEBUG									(1)
-
-#define ZERODELAY_INCWINDOWS							(0)
+#define ZERODELAY_INCWINDOWS							(1)
 #define ZERODELAY_SECURECRT								(1)
-
 #define ZERODELAY_FAKESOCKET							(0)
 #define ZERODELAY_WIN32SOCKET							(0)
 #define ZERODELAY_SDLSOCKET								(1)
 #define ZERODELAY_SDL									(1)
+#define ZERODELAY_LIL_ENDIAN							(1)
+#define ZERODELAY_BIG_ENDIAN							(0)
+
+// Constants
+#define ZERODELAY_INITALFRAGSIZE						(1900)
 #define ZERODELAY_BUFF_SIZE								(2048)	// send buff size
 #define ZERODELAY_BUFF_RECV_SIZE						(3000)  // recvbuff size
 
-#define ZERODELAY_LIL_ENDIAN						(1)
-#define ZERODELAY_BIG_ENDIAN						(0)
 
-
+// Macros
 #if _WIN32
 #define ZERODELAY_LINE __LINE__
 #define ZERODELAY_FUNCTION __FUNCTION__
@@ -28,23 +30,21 @@
 
 
 #if ZERODELAY_INCWINDOWS
-	
 	#include <ws2tcpip.h>
 	#include <ws2ipdef.h>
-
+	#undef min
+	#undef max
 	#pragma comment(lib, "Ws2_32.lib")
 	#pragma comment(lib, "User32.lib")
-
-#else
-
-	#if ZERODELAY_SDL // if windows and SDL 
-		#include "SDL.h"
-		#include "SDL_net.h"
-		#pragma  comment(lib, "SDL2.lib")
-		#pragma  comment(lib, "SDL2_net.lib")
-	#endif
-
 #endif
+
+#if ZERODELAY_SDL // if windows and SDL 
+	#include "../3rdParty/SDL2/include/SDL.h"
+	#include "../3rdParty/SDL2_net/include/SDL_net.h"
+	#pragma  comment(lib, "SDL2.lib")
+	#pragma  comment(lib, "SDL2_net.lib")
+#endif
+
 
 
 #include <string>

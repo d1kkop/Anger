@@ -433,9 +433,9 @@ namespace UnitTests
 	//////////////////////////////////////////////////////////////////////////
 
 #if _DEBUG
-	constexpr int nRpcs=10000;
+	constexpr int nRpcs=100000;
 #else
-	constexpr int nRpcs=1000000;
+	constexpr int nRpcs=10000000;
 #endif
 	int __high[nRpcs];				int hR=0, hS=0;
 	float __fltMax[nRpcs];			int hR1=0, hS1=0;
@@ -625,19 +625,12 @@ namespace UnitTests
 		g2->listen( 27000 );
 		g2->setUserDataPtr( this );
 
-		volatile bool bThreadClose = false;
-		std::thread t( [&] () 
+		while (g2->getNumOpenConnections() == 0)
 		{
-			while ( !bThreadClose ) 
-			{
-				g1->update();
-				g2->update();
-				//std::this_thread::sleep_for(2ms);
-			}
-		});
-
-		// wait to be connected
-		std::this_thread::sleep_for(1000ms);
+			g1->update();
+			g2->update();
+			std:: this_thread::sleep_for(2ms);
+		}
 
 		int k = 0; 
 		int p = nRpcs;
@@ -657,15 +650,14 @@ namespace UnitTests
 		//	std::this_thread::sleep_for(1ms);
 		}
 
-		while (g1->hasPendingData() || g2->hasPendingData())
+		while (
+				g1->hasPendingData() || 
+			    g2->hasPendingData())
 		{
+			g2->update();
+			g1->update();
 			std::this_thread::sleep_for(2ms);
 		}
-
-		bThreadClose = true;
-
-		if ( t.joinable() )
-			t.join();
 
 		g1->disconnect();
 		g2->disconnect();
@@ -1073,7 +1065,7 @@ namespace UnitTests
 			if ( kTicks == 300 )
 				clients[0]->disconnect();
 
-			if ( kTicks > 15000 )
+			if ( kTicks > 1500 )
 				break;
 
 			std::this_thread::sleep_for(std::chrono::milliseconds(1));

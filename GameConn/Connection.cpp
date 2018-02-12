@@ -220,8 +220,7 @@ namespace Zerodelay
 	{
 		assert(m_Link);
 		if (!m_Link) return;
-		ESendCallResult sendResult;
-		m_Link->addToSendQueue( sendResult, (u8_t)packType, payload, payloadLen, EHeaderPacketType::Reliable_Ordered );
+		m_Link->addToSendQueue( (u8_t)packType, payload, payloadLen, EHeaderPacketType::Reliable_Ordered );
 	}
 
 }

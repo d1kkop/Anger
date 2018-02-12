@@ -11,7 +11,7 @@
 
 namespace Zerodelay
 {
-	class BinSerializer
+	class ZDLL_DECLSPEC BinSerializer
 	{
 	public:
 		BinSerializer();

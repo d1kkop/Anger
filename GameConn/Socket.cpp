@@ -335,7 +335,7 @@ namespace Zerodelay
 		if (!m_Socket || !m_SocketSet)
 			return ERecvResult::SocketClosed;
 
-		i32_t res = SDLNet_CheckSockets( m_SocketSet, 10000000 );
+		i32_t res = SDLNet_CheckSockets( m_SocketSet, 100 );
 		if (!m_Open || !m_Socket) // if closing, ignore error
 			return ERecvResult::SocketClosed;
 		if ( res == -1 )

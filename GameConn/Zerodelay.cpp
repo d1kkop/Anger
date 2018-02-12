@@ -6,6 +6,8 @@
 #include "Connection.h"
 #include "ConnectionNode.h"
 #include "VariableGroupNode.h"
+#include "MasterServer.h"
+
 
 namespace Zerodelay
 {
@@ -50,9 +52,21 @@ namespace Zerodelay
 		return ::memcmp( this, &other, sizeof(ZEndpoint) ) == 0;
 	}
 
-	bool ZEndpoint::STLCompare::operator()(const ZEndpoint& left, const ZEndpoint& right) const
+	bool ZEndpoint::operator()(const ZEndpoint& left, const ZEndpoint& right) const
 	{
 		return memcmp( &left, &right, sizeof(ZEndpoint) ) < 0;
+	}
+
+	i32_t ZEndpoint::write(i8_t* buff, i32_t bufSize) const
+	{
+		EndPoint* e = (EndPoint*)(this);
+		return e->write(buff, bufSize);
+	}
+
+	i32_t ZEndpoint::read(const i8_t* buff, i32_t bufSize)
+	{
+		EndPoint* e = (EndPoint*)(this);
+		return e->read(buff, bufSize);
 	}
 
 	bool ZEndpoint::resolve(const std::string& name, u16_t port)
@@ -92,7 +106,8 @@ namespace Zerodelay
 			this,
 			(new RecvNode(reliableNewestUpdateIntervalMs, ackAggregateTimeMs)),
 			(new ConnectionNode(keepAliveIntervalSeconds)),
-			(new VariableGroupNode())
+			(new VariableGroupNode()),
+			(new MasterServer())
 		))
 	{
 		C->vgn()->setupConnectionCallbacks();
@@ -206,6 +221,7 @@ namespace Zerodelay
 						C->processUnhandledPacket(pack, link->getEndPoint());
 					}
 				}
+				delete [] pack.data;
 			}
 			link->endPoll();
 			C->cn()->endProcessPackets();
@@ -257,13 +273,22 @@ namespace Zerodelay
 			{
 				if (!c.isConnected())
 				{
-					Util::addTraceCallResult( deliveryTraceOut, c.getEndPoint(), ETraceCallResult::ConnectionWasRequired, 0, 0 );
+					Util::addTraceCallResult( deliveryTraceOut, c.getEndPoint(), ETraceCallResult::ConnectionWasRequired, 0, 0, channel );
 					return;
 				}
 				ESendCallResult individualSendResult;
-				u32_t trackingSeq = c.getLink()->addToSendQueue( individualSendResult, id, data, len, EHeaderPacketType::Reliable_Ordered, channel, relay );
-				Util::addTraceCallResult( deliveryTraceOut, c.getEndPoint(), ETraceCallResult::Tracking, trackingSeq, channel );
-				// If at least a single is send to, consider succes call
+				if ( deliveryTraceOut )
+				{
+					u32_t sequence;
+					u32_t numFragments;
+					individualSendResult = c.getLink()->addToSendQueue( id, data, len, EHeaderPacketType::Reliable_Ordered, channel, relay, &sequence, &numFragments );
+					Util::addTraceCallResult( deliveryTraceOut, c.getEndPoint(), ETraceCallResult::Tracking, sequence, numFragments, channel );
+				}
+				else
+				{
+					individualSendResult = c.getLink()->addToSendQueue( id, data, len, EHeaderPacketType::Reliable_Ordered, channel, relay );
+				}
+				// If at least a single is sent to, consider succes call
 				if ( sendResult == ESendCallResult::NotSent && individualSendResult == ESendCallResult::Succes ) 
 				{
 					sendResult = ESendCallResult::Succes;
@@ -314,8 +339,7 @@ namespace Zerodelay
 			C->cn()->forConnections(asEpt(specific), exclude, [&](Connection& c)
 			{
 				if (!c.isConnected()) return;
-				ESendCallResult individualResult;
-				c.getLink()->addToSendQueue( individualResult, packId, data, len, EHeaderPacketType::Unreliable_Sequenced, channel, relay );
+				ESendCallResult individualResult = c.getLink()->addToSendQueue( packId, data, len, EHeaderPacketType::Unreliable_Sequenced, channel, relay );
 				if ( sendResult == ESendCallResult::NotSent && individualResult == ESendCallResult::Succes )
 				{
 					sendResult = ESendCallResult::Succes;
@@ -400,11 +424,12 @@ namespace Zerodelay
 
 	bool ZNode::isPacketDelivered(const ZAckTicket& ticket) const
 	{
-		return C->rn()->isPacketDelivered(ticket.endpoint, ticket.sequence, ticket.channel);
+		return C->rn()->isPacketDelivered(ticket.endpoint, ticket.sequence, ticket.numFragments, ticket.channel);
 	}
 
 	void ZNode::deferredCreateVariableGroup(const i8_t* paramData, i32_t paramDataLen)
 	{
 		C->vgn()->deferredCreateGroup( paramData, paramDataLen );
 	}
+
 }

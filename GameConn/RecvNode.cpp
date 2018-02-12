@@ -20,7 +20,7 @@ namespace Zerodelay
 		m_Socket(nullptr),
 		m_RecvThread(nullptr),
 		m_SendThread(nullptr),
-		m_ListPinned(false)
+		m_ListPinned(0)
 	{
 		m_CaptureSocketErrors = true;
 	}
@@ -105,8 +105,17 @@ namespace Zerodelay
 		forEachLink( specific, exclude, true, listCount, [&] (RUDPLink* link)
 		{
 			ESendCallResult individualResult;
-			u32_t trackSeq = link->addToSendQueue( individualResult, id, data, len, type, channel, relay );
-			Util::addTraceCallResult(deliveryTraceOut, link->getEndPoint(), ETraceCallResult::Tracking, trackSeq, channel);
+			if (deliveryTraceOut)
+			{
+				u32_t sequence;
+				u32_t numFragments;
+				individualResult = link->addToSendQueue( id, data, len, type, channel, relay, &sequence, &numFragments );
+				Util::addTraceCallResult(deliveryTraceOut, link->getEndPoint(), ETraceCallResult::Tracking, sequence, numFragments, channel);
+			}
+			else
+			{
+				individualResult = link->addToSendQueue( id, data, len, type, channel, relay );
+			}
 			if ( sendResult == ESendCallResult::NotSent && individualResult == sendResult )
 			{
 				sendResult = ESendCallResult::Succes;
@@ -170,17 +179,17 @@ namespace Zerodelay
 	void RecvNode::pinList()
 	{
 		std::lock_guard<std::mutex> lock(m_OpenLinksMutex);
-		m_ListPinned = true;
+		m_ListPinned++;
 	}
 
 	bool RecvNode::isListPinned() const
 	{
-		return m_ListPinned;
+		return m_ListPinned != 0;
 	}
 
 	void RecvNode::unpinList()
 	{
-		m_ListPinned = false;
+		m_ListPinned--;
 	}
 
 	void RecvNode::simulatePacketLoss(i32_t percentage)
@@ -209,14 +218,22 @@ namespace Zerodelay
 		return (i32_t)m_OpenLinksList.size();
 	}
 
-	bool RecvNode::isPacketDelivered(const ZEndpoint& ztp, u32_t sequence, i8_t channel) const
+	bool RecvNode::isPacketDelivered(const ZEndpoint& ztp, u32_t sequence, u32_t numFragments, i8_t channel) const
 	{
 		RUDPLink* link = getLinkAndPinIt( Util::toEtp(ztp) );
 		if ( link ) 
 		{
-			bool delivered = link->isSequenceDelivered(sequence, channel);
+			bool bAllDelivered = true;
+			for (u32_t i=0; i<numFragments; i++)
+			{
+				if (!link->isSequenceDelivered(sequence + i, channel))
+				{
+					bAllDelivered = false;
+					break;
+				}
+			}
 			unpinLink( link );
-			return delivered;
+			return bAllDelivered;
 		}
 		return false;
 	}
@@ -240,6 +257,8 @@ namespace Zerodelay
 			if ( m_IsClosing )
 				break;
 
+			updatePendingDeletes();
+
 			if ( eResult != ERecvResult::Succes )
 			{
 				// optionally capture the socket errors
@@ -261,7 +280,7 @@ namespace Zerodelay
 			}
 
 			// get link, even if is pending delete
-			RUDPLink* link = getLink(endPoint, true);
+			RUDPLink* link = getLink (endPoint, true);
 			if ( link && link->isPendingDelete() )
 			{
 				// Only report messages after the link has stopped lingering, otherwise we may end up with many messages that were just send after disconnect
@@ -356,13 +375,12 @@ namespace Zerodelay
 				for (auto l : m_OpenLinksList)
 					l->dispatchRelNewestAckQueue(m_Socket);
 			}
-			updatePendingDeletes();
 		}
 	}
 
 	void RecvNode::updatePendingDeletes()
 	{
-		// std::lock_guard<std::mutex> lock(m_OpenLinksMutex); Already acquired by send thread
+		std::lock_guard<std::mutex> lock(m_OpenLinksMutex);
 		if ( isListPinned() ) 
 			return;
 
@@ -382,7 +400,7 @@ namespace Zerodelay
 			}
 
 			// Keep lingering for some time..
-			if ( link->getTimeSincePendingDelete() > RUDPLink::sm_MaxLingerTimeMs )
+			if ( link->getTimeSincePendingDelete() > RUDPLink::sm_MaxLingerTimeMs*2 )
 			{
 				// Actually delete the connection
 				Platform::log("Link to %s id: %d deleted.", link->getEndPoint().toIpAndPort().c_str(), link->id());

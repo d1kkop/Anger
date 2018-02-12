@@ -33,7 +33,7 @@ namespace Zerodelay
 
 		static bool deserializeMap( std::map<std::string, std::string>& data, const i8_t* source, i32_t payloadLenIn );
 
-		static void addTraceCallResult( std::vector<ZAckTicket>* deliveryTraceOut, const EndPoint& etp, ETraceCallResult, u32_t trackingSeq, i8_t channel );
+		static void addTraceCallResult( std::vector<ZAckTicket>* deliveryTraceOut, const EndPoint& etp, ETraceCallResult, u32_t sequence, u32_t numFragments,  i8_t channel );
 
 		template <typename List, typename Callback>
 		static void bindCallback( List& list, const Callback& cb );
