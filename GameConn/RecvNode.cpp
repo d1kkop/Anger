@@ -121,9 +121,9 @@ namespace Zerodelay
 				sendResult = ESendCallResult::Succes;
 			}
 		});
-		if (sendResult == ESendCallResult::NotSent && !(exclude && specific && listCount == 1))
+		if (sendResult == ESendCallResult::NotSent && !exclude && listCount == 1)
 		{
-			Platform::log("WARNING: data with id %d was not sent to anyone.", id);
+			Platform::log("WARNING: Data with id %d was not sent to anyone.", id);
 		}
 		return sendResult;
 	}
@@ -139,7 +139,7 @@ namespace Zerodelay
 		});
 		if (!bWasSent)
 		{
-			Platform::log("WARNING: reliable newest data with id %d, group id %d and groupBit %d was not sent to anyone.", id, groupId, groupBit);
+			Platform::log("WARNING: Reliable newest data with id %d, group id %d and groupBit %d was not sent to anyone.", id, groupId, groupBit);
 		}
 	}
 
@@ -241,6 +241,7 @@ namespace Zerodelay
 	void RecvNode::recvThread()
 	{
 		EndPoint endPoint;
+		i32_t lastUpdateTS = 0;
 		while ( !m_IsClosing )
 		{
 			// non blocking sockets for testing purposes
@@ -257,7 +258,12 @@ namespace Zerodelay
 			if ( m_IsClosing )
 				break;
 
-			updatePendingDeletes();
+			// do occasional administration updates k times/sec
+			if (Util::getTimeSince(lastUpdateTS) >= 200)
+			{
+				updatePendingDeletes();
+				lastUpdateTS = Util::timeNow();
+			}
 
 			if ( eResult != ERecvResult::Succes )
 			{

@@ -299,12 +299,13 @@ namespace UnitTests
 
 	void ReliableOrderTest::run()
 	{
-		ZNode* g1 = new ZNode();
-		ZNode* g2 = new ZNode();
+		ZNode* g1 = new ZNode( 33, 8, -1);
+		ZNode* g2 = new ZNode( 33, 8, -1);
 		g2->simulatePacketLoss(PackLoss);
 
 		g1->connect( "localhost", 27000 );
 		g2->listen( 27000 );
+	//	g1->listen( 0 );
 
 		int kTicks = 0;
 		while ( g1->getNumOpenConnections() == 0 )
@@ -336,7 +337,13 @@ namespace UnitTests
 				if ( sendSeq[channel] != kSends )
 				{
 					int seq = sendSeq[channel];
-					g1->sendReliableOrdered( (unsigned char)100, (const char*)&seq, sizeof(int), nullptr, false, channel );
+					int datSize = rand() % (1024*1024*10) + 10;
+					char* data = new char[datSize];
+					*(int*)data = seq;
+					*(int*)(data + 4)  = datSize;
+			//		*(int*)(data + 62) = datSize;
+					g1->sendReliableOrdered( (unsigned char)100, data, datSize, nullptr, false, channel, false );
+					delete [] data;
 					sendSeq[channel]++;
 				}
 				// see if all is transmitted
@@ -364,6 +371,9 @@ namespace UnitTests
 				case 100:
 				{
 					int seq = *(int*)data;
+					int datSize = *(int*)(data + 4);
+			//		int datSizeSplit = *(int*)(data + 62);
+					assert(len == datSize);// && datSizeSplit == len);
 			//		printf( "seq %d, channel %d \n", seq, channel );
 					if ( seq != expSeq[channel] )
 					{
@@ -395,6 +405,7 @@ namespace UnitTests
 		{
 			while ( !bDoneRecv )
 			{	
+		//		g1->update();
 				g2->update();
 				std::this_thread::sleep_for(5ms);
 			}
@@ -605,14 +616,14 @@ namespace UnitTests
 	{
 		for ( int i=0; i<nRpcs; ++i)
 		{
-			__high[i] = rand();
-			__fltMax[i] = rand()%3 == 0? FLT_MIN : rand()%2==0 ? FLT_MAX : 1e20f *(rand()%RAND_MAX);
-			__dblMax[i] = rand()%3 == 0? DBL_MIN : rand()%2==0 ? DBL_MAX : 1e20f *(rand()%RAND_MAX);
-			__llong[i] = rand();
-			__bb[i] = rand();
-			__dblMin[i] = rand()%3 == 0? DBL_MIN : rand()%2==0 ? DBL_MAX : 1e20f *(rand()%RAND_MAX);
-			__sk[i] = rand()%3;
-			__fltMin[i] = rand()%3 == 0? FLT_MIN : rand()%2==0 ? FLT_MAX : 1e20f *(rand()%RAND_MAX);
+			__high[i]   = rand();
+			__fltMax[i] = rand()%3 == 0? FLT_MIN : rand()%2==0 ? FLT_MAX : 1e20f * (rand()%RAND_MAX);
+			__dblMax[i] = rand()%3 == 0? DBL_MIN : rand()%2==0 ? DBL_MAX : 1e20f * (rand()%RAND_MAX);
+			__llong[i]  = rand();
+			__bb[i]		= rand();
+			__dblMin[i] = rand()%3 == 0? DBL_MIN : rand()%2==0 ? DBL_MAX : 1e20f * (rand()%RAND_MAX);
+			__sk[i]		= rand()%3;
+			__fltMin[i] = rand()%3 == 0? FLT_MIN : rand()%2==0 ? FLT_MAX : 1e20f * (rand()%RAND_MAX);
 		}
 
 		ZNode* g1 = new ZNode();
@@ -890,9 +901,7 @@ namespace UnitTests
 			std::this_thread::sleep_for(std::chrono::milliseconds(50));
 		}
 
-
 		create_myGroup2(clients[0], 'a', 22 );
-
 
 		Vec3 v;
 		v.x = 991.991f;
@@ -1092,11 +1101,11 @@ namespace UnitTests
 		std::vector<BaseTest*> tests;
 
 		// add tests
-		tests.emplace_back( new ConnectionLayerTest );
-		tests.emplace_back( new MassConnectTest );
+	//	tests.emplace_back( new ConnectionLayerTest );
+	//	tests.emplace_back( new MassConnectTest );
 		tests.emplace_back( new ReliableOrderTest );
-		tests.emplace_back( new RpcTest );
-		tests.emplace_back( new SyncGroupTest );
+	//	tests.emplace_back( new RpcTest );
+	//	tests.emplace_back( new SyncGroupTest );
 			
 		// run them
 		u32_t nSuccesful = 0;

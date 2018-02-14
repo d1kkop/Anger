@@ -102,6 +102,12 @@ namespace Zerodelay
 	}
 
 
+	i32_t Util::timeNow()
+	{
+		clock_t now = ::clock();
+		return now;
+	}
+
 	i32_t Util::getTimeSince(i32_t timestamp)
 	{
 		clock_t now = ::clock();

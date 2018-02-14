@@ -1,45 +1,8 @@
 --------- NEW SESSION ---------
 -------------------------------
-Mon Feb 12 21:41:00 2018		New LinkId 27419 generated.
-Mon Feb 12 21:41:00 2018		Link to 127.0.0.1:27000 (id 27419) added.
-Mon Feb 12 21:41:01 2018		Link to 127.0.0.1:60125 (id 27419) added.
-Mon Feb 12 21:41:01 2018		New incoming connection to 127.0.0.1:60125 (id 27419).
-Mon Feb 12 21:41:03 2018		Connection accepted to 127.0.0.1:27000 (id 27419).
-Mon Feb 12 21:41:03 2018		Sending IdPack request...
-Mon Feb 12 21:41:03 2018		Received 25 new Ids from 127.0.0.1:27000.
-Mon Feb 12 21:41:03 2018		Disconnect called, num connections 1.
-Mon Feb 12 21:41:03 2018		Link cleaned (nullptr now) on connection to 127.0.0.1:27000 (id 27419).
-Mon Feb 12 21:41:03 2018		Receiving data on 127.0.0.1:27000 (id 27419) 6ms after became pending delete. HdrId: 3 dataId: 1 payload: k.
-Mon Feb 12 21:41:04 2018		RecvNode reset called, num links 1.
-Mon Feb 12 21:41:04 2018		VariableGroupNode reset called, num local groups 0, num remote endpoints 0.
-Mon Feb 12 21:41:04 2018		Disconnect called, num connections 1.
-Mon Feb 12 21:41:04 2018		Link cleaned (nullptr now) on connection to 127.0.0.1:60125 (id 27419).
-Mon Feb 12 21:41:04 2018		RecvNode reset called, num links 1.
-Mon Feb 12 21:41:04 2018		VariableGroupNode reset called, num local groups 0, num remote endpoints 1.
-Mon Feb 12 21:41:04 2018		Disconnect called, num connections 0.
-Mon Feb 12 21:41:04 2018		VariableGroupNode reset called, num local groups 0, num remote endpoints 0.
-Mon Feb 12 21:41:04 2018		RecvNode reset called, num links 0.
-Mon Feb 12 21:41:04 2018		Disconnect called, num connections 0.
-Mon Feb 12 21:41:04 2018		VariableGroupNode reset called, num local groups 0, num remote endpoints 0.
-Mon Feb 12 21:41:04 2018		RecvNode reset called, num links 0.
-Mon Feb 12 21:41:04 2018		New LinkId 17306 generated.
-Mon Feb 12 21:41:04 2018		Link to 127.0.0.1:27000 (id 17306) added.
-Mon Feb 12 21:41:04 2018		Link to 127.0.0.1:60127 (id 17306) added.
-Mon Feb 12 21:41:04 2018		New incoming connection to 127.0.0.1:60127 (id 17306).
-Mon Feb 12 21:41:04 2018		Connection accepted to 127.0.0.1:27000 (id 17306).
-Mon Feb 12 21:41:04 2018		Sending IdPack request...
-Mon Feb 12 21:41:04 2018		Received 25 new Ids from 127.0.0.1:27000.
-Mon Feb 12 21:41:04 2018		Disconnect called, num connections 1.
-Mon Feb 12 21:41:04 2018		Link cleaned (nullptr now) on connection to 127.0.0.1:27000 (id 17306).
-Mon Feb 12 21:41:04 2018		Receiving data on 127.0.0.1:27000 (id 17306) 7ms after became pending delete. HdrId: 3 dataId: 1 payload: šC.
-Mon Feb 12 21:41:05 2018		RecvNode reset called, num links 1.
-Mon Feb 12 21:41:05 2018		VariableGroupNode reset called, num local groups 0, num remote endpoints 0.
-Mon Feb 12 21:41:05 2018		Disconnect received, removing connection 127.0.0.1:60127 (id 17306).
-Mon Feb 12 21:41:05 2018		Link cleaned (nullptr now) on connection to 127.0.0.1:60127 (id 17306).
-Mon Feb 12 21:41:05 2018		Deleted and removed connection to 127.0.0.1:60127. Num remaining connections before delete 1.
-Mon Feb 12 21:41:06 2018		Disconnect called, num connections 0.
-Mon Feb 12 21:41:06 2018		VariableGroupNode reset called, num local groups 0, num remote endpoints 1.
-Mon Feb 12 21:41:06 2018		RecvNode reset called, num links 1.
-Mon Feb 12 21:41:06 2018		Disconnect called, num connections 0.
-Mon Feb 12 21:41:06 2018		VariableGroupNode reset called, num local groups 0, num remote endpoints 0.
-Mon Feb 12 21:41:06 2018		RecvNode reset called, num links 0.
+Wed Feb 14 01:53:28 2018		New LinkId 31352 generated.
+Wed Feb 14 01:53:28 2018		Link to 127.0.0.1:27000 (id 31352) added.
+Wed Feb 14 01:53:28 2018		Link to 127.0.0.1:57588 (id 31352) added.
+Wed Feb 14 01:53:29 2018		New incoming connection to 127.0.0.1:57588 (id 31352).
+Wed Feb 14 01:53:29 2018		Connection accepted to 127.0.0.1:27000 (id 31352).
+Wed Feb 14 01:53:29 2018		Sending IdPack request...

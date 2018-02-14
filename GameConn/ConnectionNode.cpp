@@ -503,7 +503,7 @@ namespace Zerodelay
 			return;
 		}
 		// All fine..
-		Connection* g = new Connection( this, false, &link );
+		Connection* g = new Connection( this, false, &link, 8, m_KeepAliveIntervalSeconds );
 		g->sendConnectAccept();
 		m_Connections.insert( std::make_pair(link.getEndPoint(), g) );
 		doNewIncomingConnectionCallbacks(true, link.getEndPoint(), additionalData);

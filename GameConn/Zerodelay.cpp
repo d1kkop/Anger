@@ -298,6 +298,13 @@ namespace Zerodelay
 		else
 		{
 			ISocket* sock = C->rn()->getSocket();
+			if (!sock) // For connectionless setups, no listen call is required. Implictely open and bind to a socket.
+			{
+				if (C->rn()->openSocketOnPort( 0 ))
+				{
+					sock = C->rn()->getSocket(); // reacquire
+				}
+			}
 			if ( sock ) // send on recvNode does not check if the link is connected
 			{
 				sendResult = C->rn()->send( id, data, len, asEpt(specific), exclude, EHeaderPacketType::Reliable_Ordered, channel, relay, deliveryTraceOut );

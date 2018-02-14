@@ -495,6 +495,10 @@ namespace Zerodelay
 				Packet pack; // Offset off_Norm_Id is correct data packet type (EDataPacketType) (not EHeaderPacketType!) is included in the data
 				createNormalPacket( pack, buff + off_Norm_Id, rawSize-off_Norm_Id, linkId, channel, relay, EHeaderPacketType::Reliable_Ordered );
 				queue.insert( std::make_pair(seq, std::make_pair(pack, 1)) );
+				while ( queue.count( recvSeq ) != 0 )
+				{
+					recvSeq++;
+				}
 			}
 		}
 		else // fragmented
@@ -504,20 +508,23 @@ namespace Zerodelay
 			{
 				Packet pack; // Offset off_Norm_Id is correct data packet type (EDataPacketType) (not EHeaderPacketType!) is included in the data
 				createNormalPacket( pack, buff + off_Norm_Id, rawSize-off_Norm_Id, linkId, channel, relay, EHeaderPacketType::Reliable_Ordered );
-				fragments.insert( std::make_pair(seq, pack) );
 				if ( firstFragment ) pack.flags |= (FirstFragmentBit);
 				if ( lastFragment )  pack.flags |= (LastFragmentBit);
+				fragments.insert( std::make_pair(seq, pack) );
 			}
 
 			// while expected in order sequence is received as a fragment, try to defragment into a single packet
 			while ( fragments.count( recvSeq ) != 0 && (fragments[recvSeq].flags & FirstFragmentBit) != 0 )
 			{
+				bool unfragmentedPacket = false;
 				u32_t nxtFragSeq = recvSeq+1;
 				while ( fragments.count( nxtFragSeq ) != 0 )
 				{
 					if ( fragments[nxtFragSeq].flags & LastFragmentBit )
 					{
 						Packet finalPack;
+
+						// recvSeq contains next expected in order seq on return
 						unfragmentReliablePacket( finalPack, recvSeq, nxtFragSeq, fragments );
 
 						// insert defragmented packet into 'normal' queue
@@ -526,28 +533,15 @@ namespace Zerodelay
 							queue.insert( std::make_pair(recvSeq, std::make_pair(finalPack, 1+(nxtFragSeq-recvSeq))) );
 						}
 
-						// cleanup defragmented fragments
-						while (recvSeq != nxtFragSeq+1) // seq wraps!
-						{
-							auto fragIt = fragments.find(recvSeq);
-							delete [] fragIt->second.data;
-							fragments.erase(fragIt);
-							recvSeq++;
-						}
-
 						// break out to next possible range of fragments
+						unfragmentedPacket = true;
+						recvSeq = nxtFragSeq+1;
 						break;
 					}
 					nxtFragSeq++;
 				}
+				if (!unfragmentedPacket) break; // double break if nothing could be defragmented
 			}
-		}
-
-		// update recv seq to most recent possible (sliding window) to avoid processing redundent (already processed) packets
-		std::lock_guard<std::mutex> lock(m_RecvQueuesMutex);
-		while ( queue.count( recvSeq ) != 0 )
-		{
-			recvSeq++;
 		}
 	}
 
@@ -728,6 +722,7 @@ namespace Zerodelay
 	void RUDPLink::serializeNormalPacket(std::vector<Packet>& packs, u32_t linkId, EHeaderPacketType packetType, u8_t dataId, const i8_t* data, i32_t len, i32_t fragmentSize, i8_t channel, bool relay)
 	{
 		bool bStartFragment = true;
+		u32_t offset = 0;
 		while (len > 0 || bStartFragment) // allow zero length payload packets
 		{
 			Packet pack;
@@ -739,12 +734,13 @@ namespace Zerodelay
 			pack.data[off_Norm_ChanNFlags] |= ((i8_t)relay) << 3; // skip over the bits for channel, 0 to 7
 			pack.data[off_Norm_ChanNFlags] |= ((i8_t)bStartFragment) << 4; // first fragment bit
 			pack.data[off_Norm_Id] = dataId;
-			Platform::memCpy(pack.data + off_Norm_Data, len, data, len);
-			pack.len = len + off_Norm_Data;
+			Platform::memCpy(pack.data + off_Norm_Data, payloadLen, data + offset, payloadLen);
+			pack.len = payloadLen + off_Norm_Data;
 			packs.emplace_back(pack);
 			// prepare next fragment
 			bStartFragment = false;
 			len -= payloadLen;
+			offset += payloadLen;
 		}
 		// set last fragment bit in last packet
 		packs.back().data[off_Norm_ChanNFlags] |= ((i8_t)1) << 5; // last fragment bit
@@ -822,10 +818,12 @@ namespace Zerodelay
 		curSeq = beginSeq;
 		while (curSeq != lastSeq+1) // take into account that seq wraps
 		{
-			const Packet& frag = fragments[curSeq];
+			auto fragIt = fragments.find(curSeq);
+			const Packet& frag = fragIt->second;
 			u32_t copySize = frag.len-1; // subtract data id (-1)
-			Platform::memCpy(pack.data + curLen, (len+1-curLen), frag.data, copySize);
+			Platform::memCpy(pack.data + curLen, (len+1-curLen), frag.data+1, copySize);
 			delete [] frag.data;
+			fragments.erase(fragIt);
 			curLen += copySize;
 			curSeq++;
 		}

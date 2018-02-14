@@ -137,7 +137,7 @@ namespace Zerodelay
 		static bool deserializeNormalHdr(const i8_t* buff, i32_t rawSize, i8_t& channOut, bool& relayOut, u32_t& seqOut, bool& firstFragment, bool& lastFragment );
 		static void createNormalPacket(Packet& pack, const i8_t* buff, i32_t dataSize, u32_t linkId, i8_t channel, bool relay, EHeaderPacketType type);
 		static void unfragmentUnreliablePacket(Packet& pack, const std::vector<std::pair<Packet, u32_t>>& fragments);
-		static void unfragmentReliablePacket(Packet& pack, u32_t beginSeq, u32_t lastSeq, std::map<u32_t, Packet>& fragments);
+		static void unfragmentReliablePacket(Packet& pack, u32_t beginSeq, u32_t lastSeq, std::map<u32_t, Packet>& fragments); 
 
 		// sequence newer support
 		static bool isSequenceNewer( u32_t incoming, u32_t having );
