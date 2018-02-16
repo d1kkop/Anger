@@ -46,7 +46,7 @@ namespace UnitTests
 	{
 		int NumSends;
 		int PackLoss; // %
-		ReliableOrderTest() : NumSends(55), PackLoss(55) { }
+		ReliableOrderTest() : NumSends(55555), PackLoss(25) { }
 
 		virtual void initialize() override;
 		virtual void run() override;

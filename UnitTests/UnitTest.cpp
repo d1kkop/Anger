@@ -349,7 +349,7 @@ namespace UnitTests
 				if ( sendSeq[channel] != kSends )
 				{
 					int seq = sendSeq[channel];
-					int datSize = rand() %64 + 8;
+					int datSize = rand() % 19000 + 8;
 					char* data = new char[datSize];
 					*(int*)data = seq;
 					*(int*)(data + 4)  = datSize;

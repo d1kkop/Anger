@@ -258,7 +258,8 @@ namespace Zerodelay
 		bool isConnectionKnown( const ZEndpoint& ztp ) const;
 
 
-		/*	Returns true if there is at least one connection that has pending data to be processed. */
+		/*	Returns true if there is at least one connection that has pending data to be processed.
+			Both send and recv queues are considered. */
 		bool hasPendingData() const;
 
 

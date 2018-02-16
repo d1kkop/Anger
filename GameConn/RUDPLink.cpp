@@ -486,6 +486,8 @@ namespace Zerodelay
 			return;
 
 		auto& queue = m_RecvQueue_reliable_order[channel];
+		auto& fragments = m_Reliable_fragments[channel];
+
 		if ( firstFragment && lastFragment ) // not fragmented
 		{
 			// packet may arrive multiple time (if is not next expected sequence)
@@ -495,15 +497,11 @@ namespace Zerodelay
 				Packet pack; // Offset off_Norm_Id is correct data packet type (EDataPacketType) (not EHeaderPacketType!) is included in the data
 				createNormalPacket( pack, buff + off_Norm_Id, rawSize-off_Norm_Id, linkId, channel, relay, EHeaderPacketType::Reliable_Ordered );
 				queue.insert( std::make_pair(seq, std::make_pair(pack, 1)) );
-				while ( queue.count( recvSeq ) != 0 )
-				{
-					recvSeq++;
-				}
+				while ( queue.count( recvSeq ) != 0 ) recvSeq++;
 			}
 		}
 		else // fragmented
 		{
-			auto& fragments = m_Reliable_fragments[channel];
 			if ( fragments.count( seq ) == 0 )
 			{
 				Packet pack; // Offset off_Norm_Id is correct data packet type (EDataPacketType) (not EHeaderPacketType!) is included in the data
@@ -512,36 +510,39 @@ namespace Zerodelay
 				if ( lastFragment )  pack.flags |= (LastFragmentBit);
 				fragments.insert( std::make_pair(seq, pack) );
 			}
+		}
 
-			// while expected in order sequence is received as a fragment, try to defragment into a single packet
-			while ( fragments.count( recvSeq ) != 0 && (fragments[recvSeq].flags & FirstFragmentBit) != 0 )
+		// while expected in order sequence is received as a fragment, try to defragment into a single packet
+		while ( fragments.count( recvSeq ) != 0 && (fragments[recvSeq].flags & FirstFragmentBit) != 0 )
+		{
+			bool unfragmentedPacket = false;
+			u32_t nxtFragSeq = recvSeq+1;
+			while ( fragments.count( nxtFragSeq ) != 0 )
 			{
-				bool unfragmentedPacket = false;
-				u32_t nxtFragSeq = recvSeq+1;
-				while ( fragments.count( nxtFragSeq ) != 0 )
+				assert((fragments[nxtFragSeq].flags & LastFragmentBit) || ((fragments[nxtFragSeq].flags & (LastFragmentBit|FirstFragmentBit)) == 0));
+				if ( fragments[nxtFragSeq].flags & LastFragmentBit )
 				{
-					if ( fragments[nxtFragSeq].flags & LastFragmentBit )
+					Packet finalPack;
+
+					// recvSeq contains next expected in order seq on return
+					unfragmentReliablePacket( finalPack, recvSeq, nxtFragSeq, fragments );
+
+					// insert defragmented packet into 'normal' queue
 					{
-						Packet finalPack;
-
-						// recvSeq contains next expected in order seq on return
-						unfragmentReliablePacket( finalPack, recvSeq, nxtFragSeq, fragments );
-
-						// insert defragmented packet into 'normal' queue
-						{
-							std::lock_guard<std::mutex> lock(m_RecvQueuesMutex);
-							queue.insert( std::make_pair(recvSeq, std::make_pair(finalPack, 1+(nxtFragSeq-recvSeq))) );
-						}
-
-						// break out to next possible range of fragments
-						unfragmentedPacket = true;
-						recvSeq = nxtFragSeq+1;
-						break;
+						u32_t deltaSeq = 1+(nxtFragSeq-recvSeq);
+						std::lock_guard<std::mutex> lock(m_RecvQueuesMutex);
+						queue.insert( std::make_pair(recvSeq, std::make_pair(finalPack, deltaSeq)) );
+						recvSeq += deltaSeq;
+						while ( queue.count( recvSeq ) != 0 ) recvSeq++;
 					}
-					nxtFragSeq++;
+
+					// break out to next possible range of fragments
+					unfragmentedPacket = true;
+					break;
 				}
-				if (!unfragmentedPacket) break; // double break if nothing could be defragmented
+				nxtFragSeq++;
 			}
+			if (!unfragmentedPacket) break; // double break if nothing could be defragmented
 		}
 	}
 

@@ -1,22 +1,22 @@
 --------- NEW SESSION ---------
 -------------------------------
-Fri Feb 16 02:01:12 2018		New LinkId 7335 generated.
-Fri Feb 16 02:01:12 2018		Link to 127.0.0.1:27000 (id 7335) added.
-Fri Feb 16 02:01:12 2018		Link to 127.0.0.1:57835 (id 7335) added.
-Fri Feb 16 02:01:12 2018		New incoming connection to 127.0.0.1:57835 (id 7335).
-Fri Feb 16 02:01:12 2018		Connection accepted to 127.0.0.1:27000 (id 7335).
-Fri Feb 16 02:01:12 2018		Disconnect called, num connections 1.
-Fri Feb 16 02:01:12 2018		Link cleaned (nullptr now) on connection to 127.0.0.1:27000 (id 7335).
-Fri Feb 16 02:01:12 2018		Receiving data on 127.0.0.1:27000 (id 7335) 2ms after became pending delete. HdrId: 3 dataId: 56 payload: §.
-Fri Feb 16 02:01:12 2018		RecvNode reset called, num links 1.
-Fri Feb 16 02:01:12 2018		VariableGroupNode reset called, num local groups 0, num remote endpoints 0.
-Fri Feb 16 02:01:12 2018		Disconnect called, num connections 1.
-Fri Feb 16 02:01:12 2018		Link cleaned (nullptr now) on connection to 127.0.0.1:57835 (id 7335).
-Fri Feb 16 02:01:12 2018		RecvNode reset called, num links 1.
-Fri Feb 16 02:01:12 2018		VariableGroupNode reset called, num local groups 0, num remote endpoints 1.
-Fri Feb 16 02:01:13 2018		Disconnect called, num connections 0.
-Fri Feb 16 02:01:13 2018		VariableGroupNode reset called, num local groups 0, num remote endpoints 0.
-Fri Feb 16 02:01:13 2018		RecvNode reset called, num links 0.
-Fri Feb 16 02:01:13 2018		Disconnect called, num connections 0.
-Fri Feb 16 02:01:13 2018		VariableGroupNode reset called, num local groups 0, num remote endpoints 0.
-Fri Feb 16 02:01:13 2018		RecvNode reset called, num links 0.
+Fri Feb 16 19:19:51 2018		New LinkId 14235 generated.
+Fri Feb 16 19:19:51 2018		Link to 127.0.0.1:27000 (id 14235) added.
+Fri Feb 16 19:19:51 2018		Link to 127.0.0.1:60872 (id 14235) added.
+Fri Feb 16 19:19:51 2018		New incoming connection to 127.0.0.1:60872 (id 14235).
+Fri Feb 16 19:19:51 2018		Connection accepted to 127.0.0.1:27000 (id 14235).
+Fri Feb 16 19:20:00 2018		Disconnect called, num connections 1.
+Fri Feb 16 19:20:00 2018		Link cleaned (nullptr now) on connection to 127.0.0.1:27000 (id 14235).
+Fri Feb 16 19:20:00 2018		Receiving data on 127.0.0.1:27000 (id 14235) 7ms after became pending delete. HdrId: 3 dataId: 58 payload: ›7.
+Fri Feb 16 19:20:01 2018		RecvNode reset called, num links 1.
+Fri Feb 16 19:20:01 2018		VariableGroupNode reset called, num local groups 0, num remote endpoints 0.
+Fri Feb 16 19:20:01 2018		Disconnect called, num connections 1.
+Fri Feb 16 19:20:01 2018		Link cleaned (nullptr now) on connection to 127.0.0.1:60872 (id 14235).
+Fri Feb 16 19:20:01 2018		RecvNode reset called, num links 1.
+Fri Feb 16 19:20:01 2018		VariableGroupNode reset called, num local groups 0, num remote endpoints 1.
+Fri Feb 16 19:20:02 2018		Disconnect called, num connections 0.
+Fri Feb 16 19:20:02 2018		VariableGroupNode reset called, num local groups 0, num remote endpoints 0.
+Fri Feb 16 19:20:02 2018		RecvNode reset called, num links 0.
+Fri Feb 16 19:20:02 2018		Disconnect called, num connections 0.
+Fri Feb 16 19:20:02 2018		VariableGroupNode reset called, num local groups 0, num remote endpoints 0.
+Fri Feb 16 19:20:02 2018		RecvNode reset called, num links 0.
