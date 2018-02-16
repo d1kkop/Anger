@@ -81,6 +81,7 @@ namespace Zerodelay
 	{
 		Succes,
 		AlreadyStartedServer,
+		PortAlreadyInUse,
 		SocketError
 	};
 
@@ -168,8 +169,9 @@ namespace Zerodelay
 		i32_t getLastError() const;
 
 
-		/* Returns true if instantiated but not yet resolved to any endpoint. */
-		bool isZero() const;
+		/* Returns true if at least once resolved to an endpoint succesfully. */
+		bool isValid() const;
+
 
 	private:
 		i8_t d[32];
@@ -281,6 +283,11 @@ namespace Zerodelay
 
 		/*	Returns true if is client in client-server architecture. In p2p this never returns true. */
 		bool isClient() const;
+
+
+		/*	Returns first connected entpoint. Useful as a shortcut in case of a pure client
+			in a client-server architecture. */
+		ZEndpoint getFirstEndpoint() const;
 
 
 		/*	Simulate packet loss to test Quality of Service in game. 

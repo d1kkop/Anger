@@ -6,6 +6,7 @@
 #include "RecvNode.h"
 #include "RUDPLink.h"
 #include "Util.h"
+#include "Socket.h"
 
 
 namespace Zerodelay
@@ -107,6 +108,11 @@ namespace Zerodelay
 	{
 		if ( !m_DispatchNode->openSocketOnPort(port) )
 		{
+			if ( m_DispatchNode->getSocket() && 
+				 m_DispatchNode->getSocket()->getUnderlayingSocketError() == (i32_t)SocketError::PortAlreadyInUse)
+			{
+				return EListenCallResult::PortAlreadyInUse;
+			}
 			return EListenCallResult::SocketError;
 		}
 		m_DispatchNode->startThreads(); // start after socket is opened
@@ -152,12 +158,25 @@ namespace Zerodelay
 		return m_Connections.count(etp) != 0;
 	}
 
-	Zerodelay::Connection* ConnectionNode::getConnection(const ZEndpoint& ztp) const
+	Connection* ConnectionNode::getConnection(const ZEndpoint& ztp) const
 	{
 		EndPoint etp = Util::toEtp(ztp);
 		auto it = m_Connections.find(etp);
 		if (it != m_Connections.end()) return it->second;
 		return nullptr;
+	}
+
+	ZEndpoint ConnectionNode::getFirstEndpoint() const
+	{
+		for ( auto& kvp : m_Connections )
+		{
+			Connection* c = kvp.second;
+			if ( c->isConnected() )
+			{
+				return Util::toZpt( c->getEndPoint() );
+			}
+		}
+		return ZEndpoint();
 	}
 
 	void ConnectionNode::update()

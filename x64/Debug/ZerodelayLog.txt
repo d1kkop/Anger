@@ -1,8 +1,22 @@
 --------- NEW SESSION ---------
 -------------------------------
-Wed Feb 14 01:53:28 2018		New LinkId 31352 generated.
-Wed Feb 14 01:53:28 2018		Link to 127.0.0.1:27000 (id 31352) added.
-Wed Feb 14 01:53:28 2018		Link to 127.0.0.1:57588 (id 31352) added.
-Wed Feb 14 01:53:29 2018		New incoming connection to 127.0.0.1:57588 (id 31352).
-Wed Feb 14 01:53:29 2018		Connection accepted to 127.0.0.1:27000 (id 31352).
-Wed Feb 14 01:53:29 2018		Sending IdPack request...
+Fri Feb 16 02:01:12 2018		New LinkId 7335 generated.
+Fri Feb 16 02:01:12 2018		Link to 127.0.0.1:27000 (id 7335) added.
+Fri Feb 16 02:01:12 2018		Link to 127.0.0.1:57835 (id 7335) added.
+Fri Feb 16 02:01:12 2018		New incoming connection to 127.0.0.1:57835 (id 7335).
+Fri Feb 16 02:01:12 2018		Connection accepted to 127.0.0.1:27000 (id 7335).
+Fri Feb 16 02:01:12 2018		Disconnect called, num connections 1.
+Fri Feb 16 02:01:12 2018		Link cleaned (nullptr now) on connection to 127.0.0.1:27000 (id 7335).
+Fri Feb 16 02:01:12 2018		Receiving data on 127.0.0.1:27000 (id 7335) 2ms after became pending delete. HdrId: 3 dataId: 56 payload: §.
+Fri Feb 16 02:01:12 2018		RecvNode reset called, num links 1.
+Fri Feb 16 02:01:12 2018		VariableGroupNode reset called, num local groups 0, num remote endpoints 0.
+Fri Feb 16 02:01:12 2018		Disconnect called, num connections 1.
+Fri Feb 16 02:01:12 2018		Link cleaned (nullptr now) on connection to 127.0.0.1:57835 (id 7335).
+Fri Feb 16 02:01:12 2018		RecvNode reset called, num links 1.
+Fri Feb 16 02:01:12 2018		VariableGroupNode reset called, num local groups 0, num remote endpoints 1.
+Fri Feb 16 02:01:13 2018		Disconnect called, num connections 0.
+Fri Feb 16 02:01:13 2018		VariableGroupNode reset called, num local groups 0, num remote endpoints 0.
+Fri Feb 16 02:01:13 2018		RecvNode reset called, num links 0.
+Fri Feb 16 02:01:13 2018		Disconnect called, num connections 0.
+Fri Feb 16 02:01:13 2018		VariableGroupNode reset called, num local groups 0, num remote endpoints 0.
+Fri Feb 16 02:01:13 2018		RecvNode reset called, num links 0.

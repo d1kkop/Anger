@@ -10,6 +10,22 @@
 
 namespace Zerodelay
 {
+	enum SocketError
+	{
+		Succes = 0,
+		NotOpened,
+		NotBound,
+		CannotCreate,
+		CannotOpen,
+		CannotCreateSet,
+		CannotAddToSet,
+		CannotBind,
+		PortAlreadyInUse,
+		SendFailure,
+		RecvFailure,
+		CannotResolveLocalAddress
+	};
+
 	enum class IPProto
 	{
 		Ipv4,
@@ -53,14 +69,14 @@ namespace Zerodelay
 		bool isBound() const { return m_Bound; }
 		bool isBlocking() const { return m_Blocking; }
 		IPProto getIpProtocol() const { return m_IpProto; }
-		i32_t getUnderlayingSocketError() const { return m_LastError; }
+		i32_t getUnderlayingSocketError() const { return (i32_t) m_LastError; }
 
 	protected:
 		bool m_Open;
 		bool m_Bound;
 		bool m_Blocking;
 		IPProto m_IpProto;
-		i32_t m_LastError;
+		SocketError m_LastError;
 	};
 
 #if ZERODELAY_FAKESOCKET

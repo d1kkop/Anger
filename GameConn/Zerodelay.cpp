@@ -90,7 +90,7 @@ namespace Zerodelay
 		return asEpt(this)->getLastError();
 	}
 
-	bool ZEndpoint::isZero() const
+	bool ZEndpoint::isValid() const
 	{
 		i8_t* c = (i8_t*)this;
 		for ( auto i=0; i<sizeof(ZEndpoint); ++i ) if (c[i] != 0) return false;
@@ -256,6 +256,11 @@ namespace Zerodelay
 	bool ZNode::isClient() const
 	{
 		return !(C->isP2P() || C->isListening());
+	}
+
+	ZEndpoint ZNode::getFirstEndpoint() const
+	{
+		return C->cn()->getFirstEndpoint();
 	}
 
 	void ZNode::simulatePacketLoss(u32_t percentage)

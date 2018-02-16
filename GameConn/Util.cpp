@@ -92,7 +92,7 @@ namespace Zerodelay
 	#endif
 	}
 
-	u16_t Util::hton(u16_t val)
+	u16_t Util::htons(u16_t val)
 	{
 	#if ZERODELAY_LIL_ENDIAN
 		return ((val & 255)<<8) | (val>>8);
@@ -100,7 +100,6 @@ namespace Zerodelay
 		return val;
 	#endif
 	}
-
 
 	i32_t Util::timeNow()
 	{

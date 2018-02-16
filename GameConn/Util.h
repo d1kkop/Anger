@@ -28,7 +28,9 @@ namespace Zerodelay
 
 		static bool  readFixed( i8_t* dst, i32_t dstSize, const i8_t* buffIn, i32_t buffInSize );
 		static u32_t hton( u32_t val );
-		static u16_t hton( u16_t val );
+		static u16_t htons( u16_t val );
+		static u32_t ntoh( u32_t val ) { return hton(val); }
+		static u16_t ntohs( u16_t val ) { return htons(val); }
 		static i32_t timeNow();
 		static i32_t getTimeSince(i32_t timestamp);  // in milliseconds
 

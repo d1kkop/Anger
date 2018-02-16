@@ -37,6 +37,7 @@ namespace Zerodelay
 		i32_t getNumOpenConnections() const;
 		bool isInConnectionList(const ZEndpoint& ztp) const;
 		Connection* getConnection(const ZEndpoint& ztp) const;
+		ZEndpoint getFirstEndpoint() const;
 		// flow
 		void update();
 		void beginProcessPacketsFor(const EndPoint& endPoint);					// returns true if is known connection

@@ -10,7 +10,7 @@ namespace Zerodelay
 		m_Open(false),
 		m_Bound(false),
 		m_IpProto(IPProto::Ipv4),
-		m_LastError(0)
+		m_LastError(SocketError::Succes)
 	{
 	}
 
@@ -256,6 +256,10 @@ namespace Zerodelay
 	{
 		m_Blocking = true;
 		m_SocketSet = SDLNet_AllocSocketSet(1);
+		if (!m_SocketSet)
+		{
+			m_LastError = SocketError::CannotCreateSet;
+		}
 	}
 
 	SDLSocket::~SDLSocket()
@@ -267,39 +271,66 @@ namespace Zerodelay
 
 	bool SDLSocket::open(IPProto ipProto, bool reuseAddr)
 	{
+		if (m_LastError!=SocketError::Succes) return false;
 		m_Open = true;
-		return true;
+		return m_Open;
 	}
 
 	bool SDLSocket::bind(u16_t port)
 	{
-		if (!m_Open)
-			return false;
-		if (m_Bound)
-			return true;
-		assert(m_SocketSet);
-		m_Socket = SDLNet_UDP_Open(port);
-		m_Bound  = m_Socket != nullptr;
-		if (m_Bound)
+		if (m_LastError!=SocketError::Succes) return false;
+		if (!m_Open) 
 		{
-			SDLNet_UDP_AddSocket(m_SocketSet, m_Socket);
+			m_LastError = SocketError::NotOpened;
+			return false;
 		}
+		if (m_Bound) return true;
+		assert(m_SocketSet && !m_Socket);
+		m_Socket = SDLNet_UDP_Open(port);
+		if (!m_Socket) 
+		{
+			// binding multiple times on same port already returns -1 (as it turns out)
+			m_LastError = SocketError::PortAlreadyInUse;
+			//m_LastError = SocketError::CannotOpen;
+			return false;
+		}
+		IPaddress* ip =  SDLNet_UDP_GetPeerAddress(m_Socket, -1);
+		if (!ip)
+		{
+			m_LastError = SocketError::CannotResolveLocalAddress;
+			return false;
+		}
+		int channel = SDLNet_UDP_Bind(m_Socket, 0, ip);
+		if (channel != 0)
+		{
+			m_LastError = SocketError::PortAlreadyInUse;
+			return false;
+		}
+		if (-1 == SDLNet_UDP_AddSocket(m_SocketSet, m_Socket))
+		{
+			m_LastError = SocketError::CannotAddToSet;
+			return false;
+		}
+		m_Bound = true;
 		return m_Bound;
 	}
 
 	bool SDLSocket::close()
 	{
-		m_Open   = false;		
+		m_Open = false;
 		if (m_Socket != nullptr)
 		{
 			if (m_Bound)
 			{
-				SDLNet_UDP_DelSocket(m_SocketSet, m_Socket);
+				SDLNet_UDP_Unbind(m_Socket, 0);
+				SDLNet_UDP_DelSocket(m_SocketSet, m_Socket); // ignore errors here as is closing routine
 			}
-			m_Bound  = false;
+			m_Bound = false;
 			SDLNet_UDP_Close(m_Socket);
 			m_Socket = nullptr;
 		}
+		// clean it all
+		m_LastError = SocketError::Succes;
 		return true;
 	}
 
@@ -321,7 +352,7 @@ namespace Zerodelay
 
 		if ( 1 != SDLNet_UDP_Send( m_Socket, -1, &pack ) )
 		{
-			m_LastError = pack.status;
+			m_LastError = SocketError::SendFailure;
 			Platform::log("SDL send udp packet error %s", SDLNet_GetError());
 			return ESendResult::Error;
 		}
@@ -362,6 +393,7 @@ namespace Zerodelay
 		if ( -1 == numPackets )
 		{
 			Platform::log("SDL recv error %s.:", SDLNet_GetError());
+			m_LastError = SocketError::RecvFailure;
 			return ERecvResult::Error;
 		}
 

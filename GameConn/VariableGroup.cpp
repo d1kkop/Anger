@@ -67,7 +67,7 @@ namespace Zerodelay
 
 	const ZEndpoint* VariableGroup::getOwner() const
 	{
-		if (m_Owner.isZero()) return nullptr;
+		if (m_Owner.isValid()) return nullptr;
 		return &m_Owner;
 	}
 

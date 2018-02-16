@@ -28,13 +28,16 @@ namespace Zerodelay
 
 	#if ZERODELAY_SDLSOCKET
 		IPaddress iph;
-		iph.host = Util::hton(m_IpAddress.host);
-		iph.port = Util::hton(m_IpAddress.port);
+		iph.host = Util::ntoh(m_IpAddress.host);
+		iph.port = Util::ntohs(m_IpAddress.port);
 		u8_t* ip = (u8_t*)&iph.host;
 		//std::string ip = SDLNet_ResolveIP(&iph); // expects in host form <-- is superrrr slow function
 		char buff[1024];
-		// todo big endian order on big endian machine
-		Platform::formatPrint(buff, 1024, "%d.%d.%d.%d:%d", ip[3], ip[2], ip[1], ip[0], iph.port);
+		#if ZERODELAY_LIL_ENDIAN
+			Platform::formatPrint(buff, 1024, "%d.%d.%d.%d:%d", ip[3], ip[2], ip[1], ip[0], iph.port);
+		#elif ZERODELAY_BIG_ENDIAN
+			Platform::formatPrint(buff, 1024, "%d.%d.%d.%d:%d", ip[0], ip[1], ip[2], ip[3], iph.port);
+		#endif
 		return std::string(buff);
 	#endif
 
@@ -85,7 +88,7 @@ namespace Zerodelay
 	#endif
 
 	#if ZERODELAY_SDLSOCKET
-		// put port in network order
+		// transforms port into network order
 		if ( 0 == SDLNet_ResolveHost( &m_IpAddress, name.c_str(), port ) )
 		{
 			return true;

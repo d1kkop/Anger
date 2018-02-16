@@ -57,7 +57,7 @@ namespace Zerodelay
 			return;
 		m_DisconnectCalled = true;
 		m_DisconnectTS = ::clock();
-		if ( m_State == EConnectionState::Connected ) 
+		if ( m_State == EConnectionState::Connected )
 		{
 			if (sendMsg) sendSystemMessage( EDataPacketType::Disconnect );
 			m_ConnectionNode->doDisconnectCallbacks( isDirectLink, directOrRemoteEndpoint, reason );

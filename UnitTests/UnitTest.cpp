@@ -304,7 +304,19 @@ namespace UnitTests
 		g2->simulatePacketLoss(PackLoss);
 
 		g1->connect( "localhost", 27000 );
-		g2->listen( 27000 );
+		EListenCallResult listenResult = g2->listen( 27000 );
+		switch ( listenResult)
+		{
+		case EListenCallResult::AlreadyStartedServer:
+				printf("Alreayd started serv\n");
+				break;
+		case EListenCallResult:: PortAlreadyInUse:
+			printf("port already in use\n");
+			break;
+		case EListenCallResult::SocketError:
+			printf("sock error\n");
+			break;
+		}
 	//	g1->listen( 0 );
 
 		int kTicks = 0;
@@ -337,7 +349,7 @@ namespace UnitTests
 				if ( sendSeq[channel] != kSends )
 				{
 					int seq = sendSeq[channel];
-					int datSize = rand() % (1024*1024*10) + 10;
+					int datSize = rand() %64 + 8;
 					char* data = new char[datSize];
 					*(int*)data = seq;
 					*(int*)(data + 4)  = datSize;
@@ -366,6 +378,15 @@ namespace UnitTests
 
 		g2->bindOnCustomData( [&] (auto& etp, auto id, auto* data, int len, unsigned char channel)
 		{
+			auto etp2 = g2->getFirstEndpoint() ;
+			if ( etp != etp2 )
+			{
+				std::string s1 = etp.toIpAndPort();
+				std::string s2 = etp2.toIpAndPort();
+				printf("etp1 %s etp2 %s\n", s1.c_str(), s2.c_str() );
+				return;
+			}
+
 			switch ( id )
 			{
 				case 100:
@@ -377,7 +398,7 @@ namespace UnitTests
 			//		printf( "seq %d, channel %d \n", seq, channel );
 					if ( seq != expSeq[channel] )
 					{
-						printf( "%s invalid seq found\n", Name.c_str() );
+						printf( "%s invalid seq found %d, expected: %d\n", Name.c_str(), seq, expSeq[channel] );
 						Result = false;
 						bDoneRecv = true;
 					}
@@ -466,7 +487,7 @@ namespace UnitTests
 	{
 //		printf(" unitRpcTest1 %d \n", a );
 		RpcTest* rt = (RpcTest*)userData;
-		if ( rt->_zrecv.isZero() )
+		if ( rt->_zrecv.isValid() )
 			rt->_zrecv = *etp;
 		if ( rt->_zrecv == *etp )
 		{
@@ -481,7 +502,7 @@ namespace UnitTests
 	{
 //		printf(" unitRpcTest1 %d %.3f \n", a, b );
 		RpcTest* rt = (RpcTest*)userData;
-		if ( rt->_zrecv.isZero() )
+		if ( rt->_zrecv.isValid() )
 			rt->_zrecv = *etp;
 		if ( rt->_zrecv == *etp )
 		{
@@ -497,7 +518,7 @@ namespace UnitTests
 	{
 //		printf(" unitRpcTest %d %.3f %.f \n", a, b, c );
 		RpcTest* rt = (RpcTest*)userData;
-		if ( rt->_zrecv.isZero() )
+		if ( rt->_zrecv.isValid() )
 			rt->_zrecv = *etp;
 		if ( rt->_zrecv == *etp )
 		{
@@ -513,7 +534,7 @@ namespace UnitTests
 	{
 //		printf(" unitRpcTest %d %.3f %.f %d \n", a, b, c, k );
 		RpcTest* rt = (RpcTest*)userData;
-		if ( rt->_zrecv.isZero() )
+		if ( rt->_zrecv.isValid() )
 			rt->_zrecv = *etp;
 		if ( rt->_zrecv == *etp )
 		{
@@ -529,7 +550,7 @@ namespace UnitTests
 	{
 //		printf(" unitRpcTest %d %.3f %.f %d %d\n", a, b, c, k, bb );
 		RpcTest* rt = (RpcTest*)userData;
-		if ( rt->_zrecv.isZero() )
+		if ( rt->_zrecv.isValid() )
 			rt->_zrecv = *etp;
 		if ( rt->_zrecv == *etp )
 		{
@@ -545,7 +566,7 @@ namespace UnitTests
 	{
 //		printf(" unitRpcTest %d %.3f %.f %d %d %f\n", a, b, c, k, bb, fj );
 		RpcTest* rt = (RpcTest*)userData;
-		if ( rt->_zrecv.isZero() )
+		if ( rt->_zrecv.isValid() )
 			rt->_zrecv = *etp;
 		if ( rt->_zrecv == *etp )
 		{
@@ -561,7 +582,7 @@ namespace UnitTests
 	{
 //		printf(" unitRpcTest %d %.3f %.f %d %d %f, %d\n", a, b, c, k, bb, fj, s );
 		RpcTest* rt = (RpcTest*)userData;
-		if ( rt->_zrecv.isZero() )
+		if ( rt->_zrecv.isValid() )
 			rt->_zrecv = *etp;
 		if ( rt->_zrecv == *etp )
 		{
@@ -577,7 +598,7 @@ namespace UnitTests
 	{
 //		printf(" unitRpcTest %d %.3f %.f %d %d %f, %d %.5f\n", a, b, c, k, bb, fj, s, kt );
 		RpcTest* rt = (RpcTest*)userData;
-		if ( rt->_zrecv.isZero() )
+		if ( rt->_zrecv.isValid() )
 			rt->_zrecv = *etp;
 		if ( rt->_zrecv == *etp )
 		{
@@ -593,7 +614,7 @@ namespace UnitTests
 	{
 //		printf(" unitRpcTest %d %.3f %.f %d %d %f, %d %.5f %f\n", a, b, c, k, bb, fj, s, kt, dt );
 		RpcTest* rt = (RpcTest*)userData;
-		if ( rt->_zrecv.isZero() )
+		if ( rt->_zrecv.isValid() )
 			rt->_zrecv = *etp;
 		if ( rt->_zrecv == *etp )
 		{
