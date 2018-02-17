@@ -83,7 +83,7 @@ namespace Zerodelay
 		return true;
 	}	
 
-	u32_t Util::hton(u32_t val)
+	u32_t Util::htonl(u32_t val)
 	{
 	#if ZERODELAY_LIL_ENDIAN
 		return ((val & 255)<<24) | (val>>24) | ((val & 0xFF0000)>>8) | ((val & 0xFF00)<<8);

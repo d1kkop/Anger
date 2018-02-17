@@ -115,6 +115,7 @@ namespace Zerodelay
 	{
 		assert( m_State == EConnectionState::Idle ); // just called after creation
 		m_State = EConnectionState::Connected;
+		m_Link->setConnected(true);
 		sendSystemMessage( EDataPacketType::ConnectAccept);
 	}
 

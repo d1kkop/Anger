@@ -71,7 +71,8 @@ namespace Zerodelay
 		
 		// Ack reliable newest overhead
 		static const i32_t off_Ack_RelNew_Seq  = 5;			// Ack_ReliableNew_Seq numb
-		static const i32_t hdr_Ack_RelNew_Size = 4;			// Size of single sequence numb
+		static const i32_t off_Ack_RelNew_Payload = 9;		// If there would be payload, this is the offset
+		static const i32_t hdr_Ack_RelNew_Size = (off_Ack_Payload - off_Ack_RelNew_Seq);
 
 
 		// Maximum channels in case of normal packet types
@@ -93,8 +94,11 @@ namespace Zerodelay
 		bool poll(Packet& pack);
 		void endPoll();
 
+		// States usually set from upper laying connection
 		void markPendingDelete();
 		bool isPendingDelete() const { return m_IsPendingDelete; }
+		void setConnected(bool connected) { m_Connected = connected; }
+		bool isConnected() const { return m_Connected; }
 
 		// If pinned, link will not be deleted from memory
 		// Should only be called when having OpenListMutex lock
@@ -136,16 +140,17 @@ namespace Zerodelay
 		static bool deserializeGenericHdr(const i8_t* buff, i32_t rawSize, u32_t& linkIdOut, EHeaderPacketType& packetType);
 		static bool deserializeNormalHdr(const i8_t* buff, i32_t rawSize, i8_t& channOut, bool& relayOut, u32_t& seqOut, bool& firstFragment, bool& lastFragment );
 		static void createNormalPacket(Packet& pack, const i8_t* buff, i32_t dataSize, u32_t linkId, i8_t channel, bool relay, EHeaderPacketType type);
-		static void unfragmentUnreliablePacket(Packet& pack, const std::vector<std::pair<Packet, u32_t>>& fragments);
-		static void unfragmentReliablePacket(Packet& pack, u32_t beginSeq, u32_t lastSeq, std::map<u32_t, Packet>& fragments); 
+		static void defragmentPacket(Packet& pack, u32_t beginSeq, u32_t lastSeq, std::map<u32_t, Packet>& fragments); 
+		static bool tryReassembleBigPacket(Packet& finalPack, std::map<u32_t, Packet>& fragments, u32_t seq, u32_t& beginSeq, u32_t& lastSeq);
 
 		// sequence newer support
 		static bool isSequenceNewer( u32_t incoming, u32_t having );
-		static bool isSequenceNewerGroupItem( u32_t incoming, u32_t having ); // This one is newer only when having is incoming-UINT_MAX/2
+
 
 		// manager ptrs
 		RecvNode* m_RecvNode;
 		// state
+		volatile bool m_Connected; // if upper laying connection is healty connection, this is set. If no longer healthy, it becomes a pending delete link.
 		u32_t m_LinkId;
 		EndPoint m_EndPoint;
 		std::atomic_bool m_BlockNewSends;
@@ -153,23 +158,21 @@ namespace Zerodelay
 		std::deque<Packet>  m_RetransmitQueue_reliable[sm_NumChannels];
 		std::map<u32_t, reliableNewestDataGroup> m_SendQueue_reliable_newest;
 		// recv queues
-		std::deque<Packet>		m_RecvQueue_unreliable_sequenced[sm_NumChannels];
+		std::deque<Packet>	m_RecvQueue_unreliable_sequenced[sm_NumChannels];
+		std::deque<Packet>	m_RecvQueue_reliable_newest;
 		std::map<u32_t, std::pair<Packet, u32_t>> m_RecvQueue_reliable_order[sm_NumChannels]; // packet/num fragments
-		std::deque<Packet>		m_RecvQueue_reliable_newest;
 		// fragment buffers
-		std::vector<std::pair<Packet, u32_t>>		m_Ureliable_fragments[sm_NumChannels];
-		std::map<u32_t, Packet>						m_Reliable_fragments[sm_NumChannels];
+		std::map<u32_t, Packet>		m_Ureliable_fragments[sm_NumChannels];
+		std::map<u32_t, Packet>		m_Reliable_fragments[sm_NumChannels];
 		// ack queue
 		std::deque<u32_t> m_AckQueue[sm_NumChannels];
 		// sequencers
 		u32_t m_SendSeq_reliable[sm_NumChannels];
 		u32_t m_SendSeq_unreliable[sm_NumChannels];
 		u32_t m_RecvSeq_unreliable[sm_NumChannels];
-		u32_t m_RecvSeq_reliable_recvThread[sm_NumChannels];		// keeps track of which packets have arrived but possibly not yet processed on game thread
-		u32_t m_RecvSeq_reliable_gameThread[sm_NumChannels];		// keep track of which packets have been processed on game thread
+		volatile u32_t m_RecvSeq_reliable[sm_NumChannels];			// game thread increments this value while recv thread checks this value for incoming packets to block discard older packets early on
+		volatile u32_t m_RecvSeq_reliable_newest;					// volatile, because updated in recv thread, but used for sending ack sequence in send thread
 		u32_t m_SendSeq_reliable_newest;
-		std::atomic<u32_t> m_RecvSeq_reliable_newest_recvThread;				// atomic, because updated in recv thread, but used for sending ack sequence in send thread
-		u32_t m_RecvSeq_reliable_newest_sendThread;								// checked against the 'm_RecvSeq_reliable_newest_sendThread' and will dispatch if necessary
 		u32_t m_RecvSeq_reliable_newest_ack;
 		// threading
 		mutable std::mutex m_ReliableOrderedQueueMutex;

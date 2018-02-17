@@ -294,14 +294,19 @@ namespace UnitTests
 
 	void ReliableOrderTest::initialize()
 	{
-		Name = "ReliableOrderTest";
+		if (!Unreliable)
+			Name = "ReliableOrderTest";
+		else
+			Name = "UnreliableTest";
 	}
 
 	void ReliableOrderTest::run()
 	{
 		ZNode* g1 = new ZNode( 33, 8, -1);
 		ZNode* g2 = new ZNode( 33, 8, -1);
-		g2->simulatePacketLoss(PackLoss);
+
+		if (Unreliable) g2->simulatePacketLoss(0);
+		else g2->simulatePacketLoss(PackLoss);
 
 		g1->connect( "localhost", 27000 );
 		EListenCallResult listenResult = g2->listen( 27000 );
@@ -349,12 +354,13 @@ namespace UnitTests
 				if ( sendSeq[channel] != kSends )
 				{
 					int seq = sendSeq[channel];
-					int datSize = rand() % 19000 + 8;
+					int datSize = 19000;// rand() % 19000 + 8;
 					char* data = new char[datSize];
 					*(int*)data = seq;
 					*(int*)(data + 4)  = datSize;
 			//		*(int*)(data + 62) = datSize;
-					g1->sendReliableOrdered( (unsigned char)100, data, datSize, nullptr, false, channel, false );
+					if (!Unreliable) g1->sendReliableOrdered( (unsigned char)100, data, datSize, nullptr, false, channel, false );
+					else g1->sendUnreliableSequenced( (unsigned char)100, data, datSize, nullptr, false, channel, false );
 					delete [] data;
 					sendSeq[channel]++;
 				}
@@ -398,24 +404,27 @@ namespace UnitTests
 			//		printf( "seq %d, channel %d \n", seq, channel );
 					if ( seq != expSeq[channel] )
 					{
-						printf( "%s invalid seq found %d, expected: %d\n", Name.c_str(), seq, expSeq[channel] );
-						Result = false;
-						bDoneRecv = true;
+						printf( "%s unsequenced -> expected %d, found %d, channel %d\n", Name.c_str(), expSeq[channel], seq, channel );
+						if (!Unreliable)
+						{
+							Result = false;
+							bDoneRecv = true;
+						} 
+						else
+						{
+							printf("%s skipped %d sequences\n", Name.c_str(), seq - expSeq[channel]);
+							expSeq[channel] = seq;
+						}
 					}
-					else
+					
+					expSeq[channel]++;
+					int i;
+					for (i=0; i<nch; i++)
 					{
-						expSeq[channel]++;
-						int i;
-						for (i=0; i<nch; i++)
-						{
-							if ( expSeq[i] != kSends ) 
-								break;
-						}
-						if ( i == nch )
-						{
-							bDoneRecv = (i == nch);
-						}
+						if ( expSeq[i] != kSends ) 
+							break;
 					}
+					bDoneRecv = ( i == nch );
 				}
 				break;
 			}
@@ -459,6 +468,7 @@ namespace UnitTests
 		delete g1;
 		delete g2;
 	}
+
 
 	//////////////////////////////////////////////////////////////////////////
 	/// RPC
@@ -1124,7 +1134,8 @@ namespace UnitTests
 		// add tests
 	//	tests.emplace_back( new ConnectionLayerTest );
 	//	tests.emplace_back( new MassConnectTest );
-		tests.emplace_back( new ReliableOrderTest );
+	//	tests.emplace_back( new ReliableOrderTest(false) );
+		tests.emplace_back( new ReliableOrderTest(true) );
 	//	tests.emplace_back( new RpcTest );
 	//	tests.emplace_back( new SyncGroupTest );
 			

@@ -7,6 +7,7 @@
 
 
 #define __CHECKED( expr ) if (!(expr)) { m_CoreNode->setCriticalError(ECriticalError::SerializationError, ZERODELAY_FUNCTION_LINE); return; }
+#define __CHECKEDR( expr ) if (!(expr)) { m_RecvNode->getCoreNode()->setCriticalError(ECriticalError::SerializationError, ZERODELAY_FUNCTION_LINE); return; }
 
 
 namespace Zerodelay
@@ -15,11 +16,11 @@ namespace Zerodelay
 	{
 	public:
 		BinSerializer();
-		BinSerializer(i8_t* streamIn, i32_t buffSize, i32_t writePos);
+		BinSerializer(const i8_t* streamIn, i32_t buffSize, i32_t writePos);
 		~BinSerializer() = default;
 
 		void zeroReadWrite();
-		void resetTo(i8_t* streamIn, i32_t buffSize, i32_t writePos);
+		void resetTo(const i8_t* streamIn, i32_t buffSize, i32_t writePos);
 
 		bool setRead(i32_t r);
 		bool setWrite(i32_t w);

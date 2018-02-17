@@ -13,7 +13,7 @@ namespace Zerodelay
 	{
 	}
 
-	BinSerializer::BinSerializer(i8_t* streamIn, i32_t buffSize, i32_t writePos)
+	BinSerializer::BinSerializer(const i8_t* streamIn, i32_t buffSize, i32_t writePos)
 	{
 		resetTo(streamIn, buffSize, writePos);
 	}
@@ -24,9 +24,9 @@ namespace Zerodelay
 		m_ReadPos = 0;
 	}
 
-	void BinSerializer::resetTo(i8_t* streamIn, i32_t buffSize, i32_t writePos)
+	void BinSerializer::resetTo(const i8_t* streamIn, i32_t buffSize, i32_t writePos)
 	{
-		m_DataPtr  = streamIn;
+		m_DataPtr  = (i8_t*) streamIn;
 		m_WritePos = writePos;
 		m_MaxSize = buffSize;
 		m_ReadPos = 0;
@@ -67,7 +67,7 @@ namespace Zerodelay
 	bool BinSerializer::write16(i16_t b)
 	{
 		if ( m_WritePos + 2 > m_MaxSize ) return false;
-		*(u16_t*)(pr_data() + m_WritePos) = Util::hton((u16_t)b);
+		*(u16_t*)(pr_data() + m_WritePos) = Util::htons(b);
 		m_WritePos += 2;
 		return true;
 	}
@@ -75,7 +75,7 @@ namespace Zerodelay
 	bool BinSerializer::write32(i32_t b)
 	{
 		if ( m_WritePos + 4 > m_MaxSize ) return false;
-		*(u32_t*)(pr_data() + m_WritePos) = Util::hton((u32_t)b);
+		*(u32_t*)(pr_data() + m_WritePos) = Util::htonl(b);
 		m_WritePos += 4;
 		return true;
 	}
@@ -90,7 +90,7 @@ namespace Zerodelay
 	bool BinSerializer::read16(i16_t& b)
 	{
 		if ( m_ReadPos + 2 > m_WritePos ) return false;
-		b = Util::hton(*(u16_t*)(pr_data() + m_ReadPos));
+		b = Util::ntohs(*(u16_t*)(pr_data() + m_ReadPos));
 		m_ReadPos += 2;
 		return true;
 	}
@@ -98,7 +98,7 @@ namespace Zerodelay
 	bool BinSerializer::read32(i32_t& b)
 	{
 		if ( m_ReadPos + 4 > m_WritePos ) return false;
-		b = Util::hton(*(u32_t*)(pr_data() + m_ReadPos));
+		b = Util::ntohl(*(u32_t*)(pr_data() + m_ReadPos));
 		m_ReadPos += 4;
 		return true;
 	}
