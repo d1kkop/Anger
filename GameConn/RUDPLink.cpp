@@ -464,6 +464,7 @@ namespace Zerodelay
 		auto it = std::find( m_AckQueue[channel].begin(), m_AckQueue[channel].end(), seq );
 		if ( it == m_AckQueue[channel].end() )
 		{
+			Platform::log("Acked seq %d", seq);
 			m_AckQueue[channel].emplace_back( seq );
 		}
 	}
@@ -485,11 +486,15 @@ namespace Zerodelay
 		if ( !isSequenceNewer(seq, recvSeq) )
 			return;
 
+		Platform::log("Rcvd seq %d", seq);
+		std::lock_guard<std::mutex> lock(m_RecvQueuesMutex);
+
 		auto& queue = m_RecvQueue_reliable_order[channel];
 		if ( firstFragment && lastFragment ) // not fragmented
 		{
+			Platform::log("Rcvd seq %d is NOT fragmented", seq);
 			// packet may arrive multiple time (if is not next expected sequence)
-			std::lock_guard<std::mutex> lock(m_RecvQueuesMutex);
+		//	std::lock_guard<std::mutex> lock(m_RecvQueuesMutex);
 			if ( queue.count( seq ) == 0 )
 			{
 				Packet pack; // Offset off_Norm_Id is correct data packet type (EDataPacketType) (not EHeaderPacketType!) is included in the data
@@ -503,6 +508,7 @@ namespace Zerodelay
 		}
 		else // fragmented
 		{
+			Platform::log("Rcvd seq %d IS fragmented", seq);
 			auto& fragments = m_Reliable_fragments[channel];
 			if ( fragments.count( seq ) == 0 )
 			{
@@ -511,6 +517,7 @@ namespace Zerodelay
 				if ( firstFragment ) pack.flags |= (FirstFragmentBit);
 				if ( lastFragment )  pack.flags |= (LastFragmentBit);
 				fragments.insert( std::make_pair(seq, pack) );
+				Platform::log("Rcvd seq %d was inserted", seq);
 			}
 
 			// while expected in order sequence is received as a fragment, try to defragment into a single packet
@@ -523,19 +530,22 @@ namespace Zerodelay
 					if ( fragments[nxtFragSeq].flags & LastFragmentBit )
 					{
 						Packet finalPack;
-
-						// recvSeq contains next expected in order seq on return
 						unfragmentReliablePacket( finalPack, recvSeq, nxtFragSeq, fragments );
+
+						for ( auto i = recvSeq; i != nxtFragSeq+1; i++ )
+						{
+							Platform::log("Seq %d was handled", i);
+						}
 
 						// insert defragmented packet into 'normal' queue
 						{
-							std::lock_guard<std::mutex> lock(m_RecvQueuesMutex);
+				//			std::lock_guard<std::mutex> lock(m_RecvQueuesMutex);
 							queue.insert( std::make_pair(recvSeq, std::make_pair(finalPack, 1+(nxtFragSeq-recvSeq))) );
+							recvSeq = nxtFragSeq+1;
 						}
 
 						// break out to next possible range of fragments
 						unfragmentedPacket = true;
-						recvSeq = nxtFragSeq+1;
 						break;
 					}
 					nxtFragSeq++;

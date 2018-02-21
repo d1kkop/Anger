@@ -358,7 +358,7 @@ namespace Zerodelay
 		/*	----- Variable Group Callbacks ----------------------------------------------------------------------------------------------- */
 
 			/*	If at least a single variable inside the group is updated, this callback is invoked.
-				Note that varialbes can also have custom callbacks that are called per variable. 
+				Note that variables can also have custom callbacks that are called per variable. 
 				If called locally, ZEndpoint is a nullptr. */
 			void bindOnGroupUpdated( const std::function<void (const ZEndpoint*, u8_t id)>& cb );
 
