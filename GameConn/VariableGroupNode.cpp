@@ -77,7 +77,7 @@ namespace Zerodelay
 	void VariableGroupNode::setupConnectionCallbacks()
 	{
 		// on new connect, put variable group map (with empty set of groups) in list so that we know the set of known EndPoints
-		m_ZNode->bindOnNewConnection( [this] (bool directLink, auto& ztp, auto& additionalData)
+		m_ZNode->bindOnNewConnection( [this] (bool directLink, auto& ztp, auto& metaData)
 		{
 			EndPoint etp = Util::toEtp( ztp );
 			if ( m_RemoteVariableGroups.count(etp) != 1 )
@@ -240,7 +240,7 @@ namespace Zerodelay
 
 	void VariableGroupNode::recvVariableGroupCreate(const Packet& pack, const EndPoint& etp)
 	{
-		BinSerializer bs(pack.data, pack.len, pack.len); 
+		bs.resetTo(pack.data, pack.len, pack.len); 
 		__CHECKED( bs.moveRead(1) ); // first byte is data hdr type
 
 		// [functionName][paramData][netId][remote]<endpoint>
@@ -286,7 +286,7 @@ namespace Zerodelay
 
 	void VariableGroupNode::recvVariableGroupDestroy(const Packet& pack, const EndPoint& etp)
 	{
-		BinSerializer bs(pack.data, pack.len, pack.len);
+		bs.resetTo(pack.data, pack.len, pack.len);
 		__CHECKED( bs.moveRead(1) ); // skip data hdr type
 
 		// only network id attached
@@ -580,7 +580,7 @@ namespace Zerodelay
 		{
 			GroupCreateData gcd;
 			gcd.netId = netId;
-			bs.toRaw(gcd.Data, gcd.Len);
+			bs.copyAsRaw(gcd.Data, gcd.Len);
 			m_BufferedGroups.emplace_back(gcd);
 		}
 	}

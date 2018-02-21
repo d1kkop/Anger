@@ -29,14 +29,15 @@ namespace Zerodelay
 
 		// state
 		EConnectCallResult connect( const EndPoint& endPoint, const std::string& pw="", i32_t timeoutSeconds=8, bool sendRequest=true,
-								   const std::map<std::string, std::string>& additionalData = std::map<std::string, std::string>() );
+								   const std::map<std::string, std::string>& metaData = std::map<std::string, std::string>() );
 		EConnectCallResult connect( const std::string& name, i32_t port, const std::string& pw="", i32_t timeoutSeconds=8, bool sendRequest=true, 
-								   const std::map<std::string, std::string>& additionalData = std::map<std::string, std::string>() );
+								   const std::map<std::string, std::string>& metaData = std::map<std::string, std::string>() );
 		EListenCallResult listenOn( i32_t port );
 		EDisconnectCallResult disconnect(const EndPoint& endPoint, EDisconnectReason reason, EConnectionState newState, bool sendMsg, bool deleteAndRemove);
 		i32_t getNumOpenConnections() const;
 		bool isInConnectionList(const ZEndpoint& ztp) const;
 		Connection* getConnection(const ZEndpoint& ztp) const;
+		ZEndpoint getFirstEndpoint() const;
 		// flow
 		void update();
 		void beginProcessPacketsFor(const EndPoint& endPoint);					// returns true if is known connection
@@ -59,11 +60,11 @@ namespace Zerodelay
 		// call callbacks
 		void doConnectResultCallbacks(const EndPoint& remote, EConnectResult result);
 		void doDisconnectCallbacks(bool directLink, const EndPoint& remote, EDisconnectReason reason);
-		void doNewIncomingConnectionCallbacks(bool directLink, const EndPoint& remote, const std::map<std::string, std::string>& additionalData);
+		void doNewIncomingConnectionCallbacks(bool directLink, const EndPoint& remote, const std::map<std::string, std::string>& metaData);
 
 	private:
 		// sends (relay)
-		void sendRemoteConnected( const class Connection* g, const std::map<std::string, std::string>& additionalData );
+		void sendRemoteConnected( const class Connection* g, const std::map<std::string, std::string>& metaData );
 		void sendRemoteDisconnected( const class Connection* g, EDisconnectReason reason );
 		void sendSystemMessage( class RUDPLink& link, EDataPacketType state, const i8_t* payLoad=nullptr, i32_t len=0 );
 		// recvs (Game thread)

@@ -36,7 +36,7 @@ namespace Zerodelay
 		void setMaxConnectionsReached();
 		void setInvalidConnectPacket();
 		// -- sends
-		bool sendConnectRequest(const std::string& pw, const std::map<std::string, std::string>& additionalData);
+		bool sendConnectRequest(const std::string& pw, const std::map<std::string, std::string>& metaData);
 		void sendConnectAccept();
 		void sendKeepAliveRequest();
 		void sendKeepAliveAnswer();

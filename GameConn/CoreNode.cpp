@@ -77,7 +77,7 @@ namespace Zerodelay
 	{
 		if ( (pack.flags & RelayBit) && isListening() && !isP2P() ) // send through to others
 		{
-			// except self
+			// except self (TODO move this to reception thread for immediate relay)
 			m_RecvNode->send( pack.data[0], pack.data+1, pack.len-1, &etp, true, pack.type, pack.channel, false /* relay only once */ );
 		}
 		ZEndpoint ztp = Util::toZpt(etp);

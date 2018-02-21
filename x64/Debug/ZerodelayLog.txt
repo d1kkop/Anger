@@ -1,8 +1,7 @@
 --------- NEW SESSION ---------
 -------------------------------
-Wed Feb 14 01:53:28 2018		New LinkId 31352 generated.
-Wed Feb 14 01:53:28 2018		Link to 127.0.0.1:27000 (id 31352) added.
-Wed Feb 14 01:53:28 2018		Link to 127.0.0.1:57588 (id 31352) added.
-Wed Feb 14 01:53:29 2018		New incoming connection to 127.0.0.1:57588 (id 31352).
-Wed Feb 14 01:53:29 2018		Connection accepted to 127.0.0.1:27000 (id 31352).
-Wed Feb 14 01:53:29 2018		Sending IdPack request...
+Sat Feb 17 01:39:53 2018		New LinkId 23160 generated.
+Sat Feb 17 01:39:53 2018		Link to 127.0.0.1:27000 (id 23160) added.
+Sat Feb 17 01:39:53 2018		Link to 127.0.0.1:54282 (id 23160) added.
+Sat Feb 17 01:39:53 2018		New incoming connection to 127.0.0.1:54282 (id 23160).
+Sat Feb 17 01:39:53 2018		Connection accepted to 127.0.0.1:27000 (id 23160).
