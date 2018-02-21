@@ -97,6 +97,31 @@ namespace Zerodelay
 		return true;
 	}
 
+	ZEndpoint ZEndpoint::fromString(const std::string& ipAndPort)
+	{
+	#if !ZERODELAY_SECURECRT
+		auto ip = strtok((i8_t*)ipAndPort.c_str(), ":");
+	#else
+		i8_t* nextToken;
+		auto ip = strtok_s((i8_t*)ipAndPort.c_str(), ":", &nextToken);
+	#endif
+		if (ip)
+		{
+		#if !ZERODELAY_SECURECRT
+			auto port = strtok(nullptr, ":");
+		#else
+			auto port = strtok_s(nullptr, ":", &nextToken);
+		#endif
+			if ( port )
+			{
+				ZEndpoint ztp;
+				if (ztp.resolve(ip, atoi(port))) 
+					return ztp;
+			}
+		}
+		return ZEndpoint();
+	}
+
 	// -------- ZNode ----------------------------------------------------------------------------------------------
 
 
@@ -118,14 +143,29 @@ namespace Zerodelay
 		delete C;
 	}
 
-	EConnectCallResult ZNode::connect(const ZEndpoint& endPoint, const std::string& pw, u32_t timeoutSeconds, const std::map<std::string, std::string>& additionalData, bool sendRequest)
+	ESendCallResult ZNode::registerNewServer(const ZEndpoint& masterServerIp, const std::string& name, const std::string& pw, bool isP2p, const std::map<std::string, std::string>& metaData)
 	{
-		return C->cn()->connect( Util::toEtp(endPoint), pw, timeoutSeconds, sendRequest, additionalData );
+		return C->ms()->registerAsServer(masterServerIp, name, pw, isP2p, metaData);
 	}
 
-	EConnectCallResult ZNode::connect(const std::string& name, u16_t port, const std::string& pw, u32_t timeoutSeconds, const std::map<std::string, std::string>& additionalData, bool sendRequest)
+	ESendCallResult ZNode::connectToServer(const ZEndpoint& masterServerIp, const std::string& name, const std::string& pw, const std::map<std::string, std::string>& metaData)
 	{
-		return C->cn()->connect( name, port, pw, timeoutSeconds, sendRequest, additionalData );
+		return C->ms()->connectToServer(masterServerIp, name, pw, metaData);
+	}
+
+	ESendCallResult ZNode::connectToServer(const ZEndpoint& masterServerIp, const ZEndpoint& serverIp, const std::string& pw, const std::map<std::string, std::string>& metaData)
+	{
+		return C->ms()->connectToServer(masterServerIp, serverIp, pw, metaData);
+	}
+
+	EConnectCallResult ZNode::connect(const ZEndpoint& endPoint, const std::string& pw, u32_t timeoutSeconds, const std::map<std::string, std::string>& metaData, bool sendRequest)
+	{
+		return C->cn()->connect( Util::toEtp(endPoint), pw, timeoutSeconds, sendRequest, metaData );
+	}
+
+	EConnectCallResult ZNode::connect(const std::string& name, u16_t port, const std::string& pw, u32_t timeoutSeconds, const std::map<std::string, std::string>& metaData, bool sendRequest)
+	{
+		return C->cn()->connect( name, port, pw, timeoutSeconds, sendRequest, metaData );
 	}
 
 	void ZNode::disconnect(u32_t lingerTimeMs)
@@ -422,6 +462,16 @@ namespace Zerodelay
 			}
 			cb( zeptr, id );
 		});
+	}
+
+	void ZNode::addMasterServerListener(IMasterServerListener* listener)
+	{
+		C->ms()->addListener(listener);
+	}
+
+	void ZNode::removeMasterServerListener(const IMasterServerListener* listener)
+	{
+		C->ms()->removeListener(listener);
 	}
 
 	void ZNode::setUserDataPtr(void* ptr)

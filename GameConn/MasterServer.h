@@ -1,14 +1,22 @@
 #pragma once
 
 #include "Zerodelay.h"
+#include "BinSerializer.h"
+#include <algorithm>
+
 
 namespace Zerodelay
 {
 	constexpr i8_t MSChannel = 6;
 
-	struct ServerPlayer
+	struct LocalServer
 	{
+		std::string pw;
 		ZEndpoint endpoint;
+		u32_t activePlayers;
+		std::map<std::string, std::string> metaData;
+
+		LocalServer() : activePlayers(0) { }
 	};
 
 	enum MasterServerReceiveState
@@ -30,28 +38,41 @@ namespace Zerodelay
 		void disconnect();
 		void update();
 
-		// Connection layer events
-		void onNewConnection(bool directLink, const ZEndpoint& etp, const std::map<std::string, std::string>& additionalData);
-		void onDisconnect(bool directLink, const ZEndpoint&, EDisconnectReason reason);
+		// Sends to master serv (from user)
+		ESendCallResult registerAsServer( const ZEndpoint& masterEtp, const std::string& name, const std::string& pw, bool isP2p, const std::map<std::string, std::string>& metaData );
+		ESendCallResult connectToServer( const ZEndpoint& masterEtp, const std::string& name, const std::string& pw, const std::map<std::string, std::string>& metaData );
+		ESendCallResult connectToServer( const ZEndpoint& masterEtp, const ZEndpoint& servIp, const std::string& pw, const std::map<std::string, std::string>& metaData );
 
-		// Sends
-		void sendServerListTo(const ZEndpoint& etp);
-		void sendServerlistRequest(const ZEndpoint& etp);
+		// Sends internal
+		void sendServerRegisterResult( const ZEndpoint& recipient, EServerRegisterResult result );
+		void sendForwardConnect( const ZEndpoint& sourceIp, const ZEndpoint& destinationIp, const std::string& pw );
+		void sendServerConnectResult( const ZEndpoint& recipient, const ZEndpoint& serverEtp, EServerConnectResult serverConnRes );
+		void sendServerListRequest( const ZEndpoint& masterEtp, const std::string& name );
 
 		// Recvs
 		bool processPacket(const struct Packet& pack, const struct EndPoint& etp);
-		void recvServerListBegin(const struct Packet& pack, const struct EndPoint& etp);
-		void recvServerList(const struct Packet& pack, const struct EndPoint& etp);
-		void recvServerListEnd(const struct Packet& pack, const struct EndPoint& etp);
-					   
+		void recvRegisterServer(const struct Packet& pack, const struct ZEndpoint& etp);
+		void recvRegisterServerResult(const struct Packet& pack, const struct ZEndpoint& etp);
+		void recvConnectToServer(const struct Packet& pack, const struct ZEndpoint& etp);
+		void recvForwardConnect(const struct Packet& pack, const struct ZEndpoint& etp);
+		void recvServerConnectResult(const struct Packet& pack, const struct ZEndpoint& etp);
+		void recvServerServerListRequest(const struct Packet& pack, const struct ZEndpoint& etp);
+		void recvServerServerList(const struct Packet& pack, const struct ZEndpoint& etp);
+
+		// Events
+		void addListener(IMasterServerListener* listener)				{ m_Listeners.emplace_back(listener); }
+		void removeListener(const IMasterServerListener* listener)		{ std::remove(m_Listeners.begin(), m_Listeners.end(), listener); }
+
+
 	private:
 		ZNode* m_Z;
 		CoreNode* m_CoreNode;
 		bool m_Initialized;
+		BinSerializer bs;
 		MasterServerReceiveState m_MasterReceiveState;
-		std::map<ZEndpoint, ServerPlayer, ZEndpoint> m_ServerPlayers;
-		std::map<ZEndpoint, ServerPlayer, ZEndpoint> m_ServerPlayersClient;
-		std::map<ZEndpoint, ServerPlayer, ZEndpoint> m_ServerPlayersClientTemp;
+		std::vector<IMasterServerListener*> m_Listeners;
+		std::map<ZEndpoint, LocalServer, ZEndpoint> m_ServerPlayers;
+		std::map<std::string, std::vector<LocalServer*>> m_ServerPlayersByName;
 	};
 
 }

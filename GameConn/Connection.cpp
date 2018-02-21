@@ -90,7 +90,7 @@ namespace Zerodelay
 		Platform::log("Received invalid connect packet for connection %s (id %d).", getEndPoint().toIpAndPort().c_str(), m_Link->id());
 	}
 
-	bool Connection::sendConnectRequest(const std::string& pw, const std::map<std::string, std::string>& additionalData)
+	bool Connection::sendConnectRequest(const std::string& pw, const std::map<std::string, std::string>& metaData)
 	{
 		assert( m_State == EConnectionState::Idle ); // just called after creation
 		m_State = EConnectionState::Connecting;
@@ -100,7 +100,7 @@ namespace Zerodelay
 		bool bSucces = false;
 		i8_t* ptr = Util::appendString2( dataBuffer, dstSize, pw.c_str(), bSucces );
 		if (!bSucces) return false;
-		for (auto& kvp : additionalData)
+		for (auto& kvp : metaData)
 		{
 			ptr = Util::appendString2( ptr, dstSize, kvp.first.c_str(), bSucces );
 			if (!bSucces) return false;

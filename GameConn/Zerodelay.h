@@ -40,6 +40,7 @@ namespace Zerodelay
 
 	enum class EDataPacketType: u8_t
 	{
+		// --- Connection layer ---
 		ConnectRequest,
 		ConnectAccept,
 		Disconnect,
@@ -51,22 +52,43 @@ namespace Zerodelay
 		MaxConnectionsReached,
 		AlreadyConnected,
 		InvalidConnectPacket,
+		// --- Rpc ---
 		Rpc,
+		// --- Variable groups ---
 		IdPackRequest,
 		IdPackProvide,
 		VariableGroupCreate,
 		VariableGroupCreateList,
 		VariableGroupDestroy,
 		VariableGroupUpdate,
+		// --- Master Server ---
+		MSRegisterServer,
+		MSRegisterServerResult,
+		MSConnectToServer,
 		MSServerListRequest,
-		MSServerListBegin,
 		MSServerList,
-		MSServerListEnd,
+		MSForwardConnect,
+		MSServerConnectResult,
+		// -- Start of user specific packet id's ---
 		UserOffset
 	};
 
 	#define  USER_ID_OFFSET (u8_t)(EDataPacketType::UserOffset)
 
+
+	enum class EServerRegisterResult: u8_t
+	{
+		Succes,
+		AlreadyRegistered,
+		NameTooShort
+	};
+
+	enum class EServerConnectResult : u8_t
+	{
+		Succes,
+		CannotFind,
+		PasswordMismatch
+	};
 
 	enum class EConnectCallResult
 	{
@@ -115,7 +137,8 @@ namespace Zerodelay
 		/*	Reasons for not sent are:
 				1. Not connected (yet) while the function call was made with a 'connection established' condition.
 				2. The destination count is 1 and is the same endpoint as the one to exclude from the list. 
-				3. The destination was a closed connection and therefore the send was blocked. */
+				3. The destination was a closed connection and therefore the send was blocked. 
+				4. Paramater data was inappropriate for the function question. Eg: calling a function with a nullptr where this is not allowed. */
 		NotSent,
 		/*	See log for more info. */
 		InternalError
@@ -138,10 +161,19 @@ namespace Zerodelay
 	};
 
 
+	class IMasterServerListener
+	{
+	public:
+		virtual void onServerRegisterResult(const struct ZEndpoint& masterEtp, EServerRegisterResult serverRegResult) = 0;
+		virtual void onServerConnectResult(const struct ZEndpoint& masterEtp, const struct ZEndpoint& serverEtp, EServerConnectResult serverConnResult) = 0;
+		virtual void onForwardConnectFail(const struct ZEndpoint& masterEtp, const struct ZEndpoint& connectEtp, EConnectCallResult callResult) = 0;
+	};
+
+
 	/** ---------------------------------------------------------------------------------------------------------------------------------
 		ZEndpoint is analogical to an address. It is either an Ipv4 or Ipv6 address.
-		Do not keep a pointer to the endpoint but copy the structure instead.
-		It works out of the box with std::map. */
+		It is encouraged to copy the structs instead of keeping ptrs.
+		To use as key in map: map<ZEndpoint, your_value, ZEndPoint> my_map. */
 	struct ZDLL_DECLSPEC ZEndpoint
 	{
 		ZEndpoint();
@@ -171,6 +203,11 @@ namespace Zerodelay
 
 		/* Returns true if at least once resolved to an endpoint succesfully. */
 		bool isValid() const;
+
+
+		/*	In the format: 'IP:Port'. Eg: 123.123.123.123:12203 or example.com:12203.
+			On return, check ZEndpoint.isValid() to see if it actually resolved succesfully. */
+		static ZEndpoint fromString(const std::string& ipAndPort);
 
 
 	private:
@@ -204,11 +241,16 @@ namespace Zerodelay
 		virtual ~ZNode();
 
 
+		ESendCallResult registerNewServer( const ZEndpoint& masterServerIp, const std::string& name, const std::string& pw="", bool isP2p=false, const std::map<std::string, std::string>& metaData=std::map<std::string, std::string>() );
+		ESendCallResult connectToServer( const ZEndpoint& masterServerIp, const std::string& name, const std::string& pw="", const std::map<std::string, std::string>& metaData=std::map<std::string, std::string>() );
+		ESendCallResult connectToServer( const ZEndpoint& masterServerIp, const ZEndpoint& serverIp, const std::string& pw="", const std::map<std::string, std::string>& metaData=std::map<std::string, std::string>() );
+
+
 		/*	Connect  to specific endpoint. 
 			A succesful call does not mean a connection is established.
 			To know if a connection is established, bindOnConnectResult. */
-		EConnectCallResult connect( const ZEndpoint& endPoint, const std::string& pw="", u32_t timeoutSeconds=8, const std::map<std::string, std::string>& additionalData=std::map<std::string, std::string>(), bool sendConnectRequest=true );
-		EConnectCallResult connect( const std::string& name, u16_t port, const std::string& pw="", u32_t timeoutSeconds=8, const std::map<std::string, std::string>& additionalData=std::map<std::string, std::string>(), bool sendConnectRequest=true );
+		EConnectCallResult connect( const ZEndpoint& endPoint, const std::string& pw="", u32_t timeoutSeconds=8, const std::map<std::string, std::string>& metaData=std::map<std::string, std::string>(), bool sendConnectRequest=true );
+		EConnectCallResult connect( const std::string& name, u16_t port, const std::string& pw="", u32_t timeoutSeconds=8, const std::map<std::string, std::string>& metaData=std::map<std::string, std::string>(), bool sendConnectRequest=true );
 
 
 		/*	Calls disconnect on each connection in the node and stops listening for incoming connections. 
@@ -373,6 +415,15 @@ namespace Zerodelay
 
 			/*	Called when group gets destroyed. If called locally, ZEndpoint is a nullptr. */
 			void bindOnGroupDestroyed( const std::function<void (const ZEndpoint*, u8_t id)>& cb );
+
+		/*	----- END ----------------------------------------------------------------------------------------------- */
+
+
+		/*	----- Master Server Events ----------------------------------------------------------------------------------------------- */
+
+		void addMasterServerListener( IMasterServerListener* listener );
+		void removeMasterServerListener( const IMasterServerListener* listener );
+
 
 		/*	----- END ----------------------------------------------------------------------------------------------- */
 

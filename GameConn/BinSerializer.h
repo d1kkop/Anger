@@ -8,6 +8,7 @@
 
 #define __CHECKED( expr ) if (!(expr)) { m_CoreNode->setCriticalError(ECriticalError::SerializationError, ZERODELAY_FUNCTION_LINE); return; }
 #define __CHECKEDR( expr ) if (!(expr)) { m_RecvNode->getCoreNode()->setCriticalError(ECriticalError::SerializationError, ZERODELAY_FUNCTION_LINE); return; }
+#define __CHECKEDNS( expr ) if (!(expr)) { m_CoreNode->setCriticalError(ECriticalError::SerializationError, ZERODELAY_FUNCTION_LINE); return ESendCallResult::NotSent; }
 
 
 namespace Zerodelay
@@ -16,10 +17,9 @@ namespace Zerodelay
 	{
 	public:
 		BinSerializer();
-		BinSerializer(const i8_t* streamIn, i32_t buffSize, i32_t writePos);
-		~BinSerializer() = default;
+		~BinSerializer();
 
-		void zeroReadWrite();
+		void reset();
 		void resetTo(const i8_t* streamIn, i32_t buffSize, i32_t writePos);
 
 		bool setRead(i32_t r);
@@ -52,7 +52,7 @@ namespace Zerodelay
 		template <> bool write(const u16_t& b) { return write16((const i16_t&)b); }
 		template <> bool write(const u32_t& b) { return write32((const i32_t&)b); }
 		template <> bool write(const EndPoint& b) 
-		{  
+		{
 			i32_t kWrite = b.write(pr_data()+m_WritePos, m_MaxSize-m_WritePos);
 			if (kWrite < 0) return false;
 			return moveWrite(kWrite);
@@ -61,6 +61,23 @@ namespace Zerodelay
 		{
 			EndPoint etp = Util::toEtp(b);
 			return write(etp);
+		}
+		template <> bool write(const std::string& b)
+		{
+			if ( b.length() > UINT16_MAX ) return false;
+			if ( !write<u16_t>((u16_t)b.size()) ) return false;
+			return write(b.c_str(), (i32_t)b.length());
+		}
+		template <> bool write(const std::map<std::string, std::string>& b)
+		{
+			if ( b.size() > UINT16_MAX ) return false;
+			if ( !write<u16_t>((u16_t)b.size()) ) return false;
+			for ( auto& kvp : b ) 
+			{
+				if ( !write(kvp.first) ) return false;
+				if ( !write(kvp.second) ) return false;
+			}
+			return true;
 		}
 
 		template <> bool read(bool& b)  { return read8((i8_t&)b); }
@@ -85,6 +102,26 @@ namespace Zerodelay
 				return true;
 			}
 			return false;
+		}
+		template <> bool read(std::string& b) 
+		{
+			u16_t slen;
+			if (!read<u16_t>(slen)) return false;
+			b.resize(slen);
+			return read((i8_t*)b.data(), (i32_t)b.size());
+		}
+		template <> bool read(std::map<std::string, std::string>& b) 
+		{
+			u16_t mlen;
+			if (!read<u16_t>(mlen)) return false;
+			std::string key, value;
+			for (u16_t i=0; i<mlen; i++)
+			{
+				if ( !read(key) ) return false;
+				if ( !read(value) ) return false;
+				b.insert(std::make_pair(key, value));
+			}
+			return true;
 		}
 
 		bool writeStr(const i8_t* b)
@@ -115,24 +152,26 @@ namespace Zerodelay
 
 		bool write(const i8_t* b, i32_t length)
 		{
+			growTo(m_WritePos + length);
 			if ( m_WritePos + length > m_MaxSize ) return false;
-			bool bRes = Platform::memCpy((void*)(data()+m_WritePos), length, b, length);
+			bool bRes = Platform::memCpy((void*)(data()+m_WritePos), m_MaxSize-length, b, length);
 			return bRes && moveWrite(length);
 		}
 
-		void toRaw(i8_t*& ptr, i32_t& len);
+		void copyAsRaw(i8_t*& ptr, i32_t& len);
 
 		i32_t getMaxSize() const;
 		const i8_t* data() const { return (pr_data()); }
 
 	private:
 		i8_t* pr_data() const;
+		void growTo(i32_t maxSize);
 
-		i8_t m_Data[ZERODELAY_BUFF_SIZE];
-		i8_t* m_DataPtr;
+		i8_t* m_DataPtr, * m_OrigPtr;
 		i32_t m_WritePos;
 		i32_t m_ReadPos;
-		i32_t m_MaxSize;
+		i32_t m_MaxSize, m_OrigSize;
+		bool  m_Owns;
 	};
 
 

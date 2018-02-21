@@ -49,13 +49,13 @@ namespace UnitTests
 			printf("disconnected: %s, reason: %d\n", etp.toIpAndPort().c_str(), (int)eReason);
 			numDisconnected++;
 		};
-		auto newConnLamda = [&] (bool directLink, auto& etp, auto& additionalData)
+		auto newConnLamda = [&] (bool directLink, auto& etp, auto& metaData)
 		{ 
 			printf("new connection: %s\n", etp.toIpAndPort().c_str());
-			if ( additionalData.size() )
+			if ( metaData.size() )
 			{
 				printf("additional data:\n");
-				for (auto& kvp : additionalData)
+				for (auto& kvp : metaData)
 				{
 					printf("Key: %s value: %s\n", kvp.first.c_str(), kvp.second.c_str());
 				}
@@ -209,7 +209,7 @@ namespace UnitTests
 			}
 		};
 
-		auto onNewConnLamda = [&] (bool directLink, auto etp, auto& additionalData)
+		auto onNewConnLamda = [&] (bool directLink, auto etp, auto& metaData)
 		{
 			connNewIncomingConns++;
 		};

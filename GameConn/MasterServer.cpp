@@ -1,13 +1,16 @@
 #include "MasterServer.h"
 #include "Platform.h"
 #include "RpcMacros.h"
-#include "BinSerializer.h"
 #include "CoreNode.h"
 #include "RecvNode.h"
 
 
 namespace Zerodelay
 {
+	constexpr u32_t ms_MinNameLength  = 3;
+	constexpr u32_t ms_ConnectTimeout = 8;
+
+
 	MasterServer::MasterServer():
 		m_Z(nullptr),
 		m_CoreNode(nullptr),
@@ -33,8 +36,6 @@ namespace Zerodelay
 		assert(m_CoreNode && m_Z && !m_Initialized);
 		m_Z->listen(port, "", maxServers);
 		m_Z->setUserDataPtr(this);
-		m_Z->bindOnNewConnection( [&](auto b, auto e, auto a) { onNewConnection(b, e, a); } );
-		m_Z->bindOnDisconnect( [&](auto b, auto e, auto a) { onDisconnect(b, e, a); } );
 		m_Initialized = true;
 	}
 
@@ -44,6 +45,7 @@ namespace Zerodelay
 		{
 			m_Z->disconnect(1000);
 		}
+		m_Initialized = false;
 	}
 
 	void MasterServer::update()
@@ -51,83 +53,103 @@ namespace Zerodelay
 		m_Z->update();
 	}
 
-	void MasterServer::onNewConnection(bool directLink, const ZEndpoint& etp, const std::map<std::string, std::string>& additionalData)
+	ESendCallResult MasterServer::registerAsServer(const ZEndpoint& masterEtp, const std::string& name, const std::string& pw, bool isP2p, const std::map<std::string, std::string>& metaData)
 	{
-		ServerPlayer sp;
-		sp.endpoint = etp;
-		if ( m_ServerPlayers.count( etp) == 0 )
-		{
-			m_ServerPlayers[etp] = sp;
-		}
-		else
-		{
-			Platform::log("WARNING: Detected that server %s was already registered at master server.", etp.toIpAndPort().c_str());
-		}
+		if ( name.length() < ms_MinNameLength )  return ESendCallResult::NotSent;
+
+		bs.reset();
+		__CHECKEDNS( bs.write(isP2p) );
+		__CHECKEDNS( bs.write(name) );
+		__CHECKEDNS( bs.write(pw) );
+		__CHECKEDNS( bs.write(metaData) );
+
+		return m_Z->sendReliableOrdered( (i8_t)EDataPacketType::MSRegisterServer, bs.data(), bs.length(), &masterEtp, false, MSChannel, false, false, nullptr );
 	}
 
-	void MasterServer::onDisconnect(bool directLink, const ZEndpoint& etp, EDisconnectReason reason)
+	ESendCallResult MasterServer::connectToServer(const ZEndpoint& masterServerIp, const std::string& name, const std::string& pw, const std::map<std::string, std::string>& metaData)
 	{
-		if ( m_ServerPlayers.count( etp) == 1 )
-		{
-			m_ServerPlayers.erase(etp);
-		}
-		else
-		{
-			Platform::log("WARNING: Received disconnect from %s while this server was not known to the master server.", etp.toIpAndPort().c_str());
-		}
+		if ( name.length() < ms_MinNameLength )  return ESendCallResult::NotSent;
+
+		bs.reset();
+		__CHECKEDNS( bs.write(false) ); // has no IP but name attached
+		__CHECKEDNS( bs.write(name) );
+		__CHECKEDNS( bs.write(pw) );
+		__CHECKEDNS( bs.write(metaData) );
+
+		return m_Z->sendReliableOrdered( (i8_t)EDataPacketType::MSConnectToServer, bs.data(), bs.length(), &masterServerIp, false, MSChannel, false, false, nullptr );
 	}
 
-	void MasterServer::sendServerListTo(const ZEndpoint& etp)
+	ESendCallResult MasterServer::connectToServer(const ZEndpoint& masterServerIp, const ZEndpoint& serverIp, const std::string& pw, const std::map<std::string, std::string>& metaData)
 	{
-		m_Z->sendReliableOrdered((i8_t) EDataPacketType::MSServerListBegin, nullptr, 0, &etp, false, MSChannel, false);
+		if ( !serverIp.isValid() ) return ESendCallResult::NotSent;
 
-		BinSerializer stream;
-		__CHECKED( stream.moveWrite(2) ); // reserver space for count
-		u16_t numServers=0;
-		for ( auto& kvp : m_ServerPlayers )
-		{
-			ServerPlayer& sp = kvp.second;
-			__CHECKED( stream.write(sp.endpoint) );
-			numServers++;
-			if ( stream.length() >= RPC_DATA_MAX )
-			{
-				u32_t oldWrite = stream.getWrite();
-				__CHECKED( stream.setWrite(0) );
-				__CHECKED( stream.write(numServers) ); // count
-				__CHECKED( stream.setWrite(oldWrite) ); // store write position
-				m_Z->sendReliableOrdered((i8_t)EDataPacketType::MSServerList, stream.data(), stream.length(), &etp, false, MSChannel, false);
+		bs.reset();
+		__CHECKEDNS( bs.write(true) ); // has IP attached (no name)
+		__CHECKEDNS( bs.write(serverIp) );
+		__CHECKEDNS( bs.write(pw) );
+		__CHECKEDNS( bs.write(metaData) );
 
-				// reset for next
-				numServers = 0;
-				__CHECKED( stream.setWrite(2) );
-			}
-		}
-		if (numServers > 0)
-		{
-			u32_t oldWrite = stream.getWrite();
-			__CHECKED( stream.setWrite(0) );
-			__CHECKED( stream.write(numServers) ); // count
-			__CHECKED( stream.setWrite(oldWrite) ); // store write position
-			m_Z->sendReliableOrdered((i8_t)EDataPacketType::MSServerList, stream.data(), stream.length(), &etp, false, MSChannel, false);
-		}
-
-		m_Z->sendReliableOrdered((i8_t)EDataPacketType::MSServerListEnd, nullptr, 0, &etp, false, MSChannel, false);
+		return m_Z->sendReliableOrdered( (i8_t)EDataPacketType::MSConnectToServer, bs.data(), bs.length(), &masterServerIp, false, MSChannel, false, false, nullptr );
 	}
 
-	void MasterServer::sendServerlistRequest(const ZEndpoint& etp)
+	void MasterServer::sendServerRegisterResult(const ZEndpoint& recipient, EServerRegisterResult result)
 	{
-		m_Z->sendReliableOrdered( (i8_t)EDataPacketType::MSServerListRequest, nullptr, 0, &etp, false, MSChannel, false);
+		bs.reset();
+		__CHECKED( bs.write((u8_t)result) );
+		m_Z->sendReliableOrdered((i8_t) EDataPacketType::MSRegisterServerResult, bs.data(), bs.length(), &recipient, false, MSChannel, false, false, nullptr );
+	}
+
+	void MasterServer::sendForwardConnect(const ZEndpoint& sourceIp, const ZEndpoint& destinationIp, const std::string& pw)
+	{
+		bs.reset();
+		__CHECKED( bs.write(destinationIp) );
+		__CHECKED( bs.write(pw) );
+		m_Z->sendReliableOrdered((i8_t) EDataPacketType::MSForwardConnect, bs.data(), bs.length(), &sourceIp, false, MSChannel, false);
+	}
+
+	void MasterServer::sendServerConnectResult(const ZEndpoint& recipient, const ZEndpoint& serverEtp, EServerConnectResult serverConnRes)
+	{
+		bs.reset();
+		__CHECKED( bs.write(serverEtp) );
+		__CHECKED( bs.write((i8_t)serverConnRes) );
+		m_Z->sendReliableOrdered((i8_t) EDataPacketType::MSServerConnectResult, bs.data(), bs.length(), &recipient, false, MSChannel, false);
+	}
+
+	void MasterServer::sendServerListRequest(const ZEndpoint& masterEtp, const std::string& name)
+	{
+		bs.reset();
+		__CHECKED( bs.write(name) );
+		m_Z->sendReliableOrdered((i8_t) EDataPacketType::MSServerListRequest, bs.data(), bs.length(), &masterEtp, false, MSChannel, false);
 	}
 
 	bool MasterServer::processPacket(const struct Packet& pack, const EndPoint& etp)
 	{
 		if ( pack.type == EHeaderPacketType::Reliable_Ordered )
 		{
+			auto ztp = Util::toZpt(etp);
 			EDataPacketType packType = (EDataPacketType)pack.data[0];
 			switch ( packType )
 			{
+			case EDataPacketType::MSRegisterServer:
+				recvRegisterServer(pack, ztp);
+				break;
+			case EDataPacketType::MSRegisterServerResult:
+				recvRegisterServerResult(pack, ztp);
+				break;
+			case EDataPacketType::MSConnectToServer:
+				recvConnectToServer(pack, ztp);
+				break;
+			case EDataPacketType::MSForwardConnect:
+				recvForwardConnect(pack, ztp);
+				break;
+			case EDataPacketType::MSServerConnectResult:
+				recvServerConnectResult(pack, ztp);
+				break;
+			case EDataPacketType::MSServerListRequest:
+				recvServerServerListRequest(pack, ztp);
+				break;
 			case EDataPacketType::MSServerList:
-				recvServerList( pack, etp );	
+				recvServerServerList(pack, ztp);
 				break;
 			default:
 				// unhandled packet
@@ -139,55 +161,117 @@ namespace Zerodelay
 		return false; // unhandled packet
 	}
 
-	void MasterServer::recvServerListBegin(const struct Packet& pack, const EndPoint& etp)
+	void MasterServer::recvRegisterServer(const struct Packet& pack, const struct ZEndpoint& etp)
 	{
-		if ( m_MasterReceiveState != Begin )
-		{
-			Platform::log("WARNING: Received server list begin from master server while state was not 'Begin'.");
-		}
-		m_MasterReceiveState = List;
-		m_ServerPlayersClientTemp.clear();
-	}
+		bs.resetTo (pack.data, pack.len, pack.len);
+		std::string name, pw;
+		std::map<std::string, std::string> metaData;
+		ZEndpoint servIp;
+		bool isP2p;
+		__CHECKED(bs.moveRead(1)); // skip dataid
+		__CHECKED(bs.read(isP2p));
+		__CHECKED(bs.read(name));
+		__CHECKED(bs.read(pw));
+		__CHECKED(bs.read(metaData));
 
-	void MasterServer::recvServerList(const struct Packet& pack, const EndPoint& etp)
-	{
-		if ( m_MasterReceiveState != List )
+		if ( name.length() < ms_MinNameLength ) 
 		{
-			Platform::log("WARNING: Received server list from master server while state was not 'List'. Ignoring data.");
+			sendServerRegisterResult( etp, EServerRegisterResult::NameTooShort );
 			return;
 		}
 
-		BinSerializer stream(pack.data, pack.len, pack.len);
-		__CHECKED( stream.moveWrite(1) ); // skip id
-
-		i16_t numServers;
-		__CHECKED( stream.read(numServers) );
-		while (numServers-- != 0)
+		if ( m_ServerPlayers.count( etp ) != 0 )
 		{
-			ZEndpoint endpoint;
-			__CHECKED( stream.read(endpoint) );
-			ServerPlayer sp;
-			if (0 == m_ServerPlayersClientTemp.count(endpoint))
-			{
-				m_ServerPlayersClientTemp[endpoint] = sp;
-			}
-			else
-			{
-				Platform::log("WARNING: Received endpoint %s in master server list which is already known.", endpoint.toIpAndPort().c_str());
-			}
+			sendServerRegisterResult( etp, EServerRegisterResult::AlreadyRegistered );
+			return;
 		}
+
+		LocalServer sp;
+		sp.pw = pw;
+		sp.endpoint = etp;
+		sp.metaData = metaData;
+		m_ServerPlayers[etp] = sp;
+		
+		sendServerRegisterResult( etp, EServerRegisterResult::Succes );
 	}
 
-	void MasterServer::recvServerListEnd(const struct Packet& pack, const EndPoint& etp)
+	void MasterServer::recvRegisterServerResult(const struct Packet& pack, const struct ZEndpoint& etp)
 	{
-		if ( m_MasterReceiveState != List )
-		{
-			Platform::log("WARNING: Received server list end from master server while state was not 'List'.");
-		}
-		m_MasterReceiveState = Begin;
-		// now patch the entire list
-		m_ServerPlayersClient = m_ServerPlayersClientTemp;
-		m_ServerPlayersClientTemp.clear();
+		bs.resetTo (pack.data, pack.len, pack.len);
+		EServerRegisterResult res;
+		__CHECKED(bs.moveRead(1)); // skip dataid
+		__CHECKED(bs.read((u8_t&)(res)));
+		for ( auto l : m_Listeners ) l->onServerRegisterResult(etp, res);
 	}
 
+	void MasterServer::recvConnectToServer(const struct Packet& pack, const struct ZEndpoint& etp)
+	{
+		bs.resetTo (pack.data, pack.len, pack.len);
+		ZEndpoint serverEtp;
+		std::string name;
+		i8_t serverConnRes;
+		bool hasIp;
+		__CHECKED( bs.moveRead(1) );
+		__CHECKED( bs.read(hasIp) );
+		if ( hasIp )
+		{
+			__CHECKED( bs.read(serverEtp) );
+		}
+		else
+		{
+			__CHECKED( bs.read(name) );
+		}
+		__CHECKED( bs.read(serverConnRes) );
+
+		if ( !hasIp )
+		{
+			auto serversIt  = m_ServerPlayersByName.find(name);
+			if ( serversIt != m_ServerPlayersByName.end() )
+			{
+				
+			}
+		}
+
+//		for ( auto l : m_Listeners ) l->onServerRegisterResult(etp, serverEtp, res);
+	}
+
+	void MasterServer::recvForwardConnect(const struct Packet& pack, const struct ZEndpoint& etp)
+	{
+		bs.resetTo(pack.data, pack.len, pack.len);
+		ZEndpoint destinationIp;
+		std::string pw;
+		__CHECKED(bs.moveRead(1)); // skip dataid
+		__CHECKED(bs.read(destinationIp));
+		__CHECKED(bs.read(pw));
+		EConnectCallResult callRes = m_Z->connect(destinationIp, pw, 15);
+		if ( callRes != EConnectCallResult::Succes )
+		{
+			for (auto l : m_Listeners) l->onForwardConnectFail(etp, destinationIp, callRes);
+		}
+	}
+
+	void MasterServer::recvServerConnectResult(const struct Packet& pack, const struct ZEndpoint& etp)
+	{
+		bs.resetTo(pack.data, pack.len, pack.len);
+		ZEndpoint serverIp;
+		EServerConnectResult serverConnRes;
+		__CHECKED(bs.moveRead(1));
+		__CHECKED(bs.read(serverIp));
+		__CHECKED(bs.read((i8_t&)serverConnRes));
+		for (auto l : m_Listeners) l->onServerConnectResult(etp, serverIp, serverConnRes);
+	}
+
+	void MasterServer::recvServerServerListRequest(const struct Packet& pack, const struct ZEndpoint& etp)
+	{
+		bs.resetTo(pack.data, pack.len, pack.len);
+		std::string name;
+		__CHECKED(bs.moveRead(1));
+		__CHECKED(bs.read(name));
+
+	}
+
+	void MasterServer::recvServerServerList(const struct Packet& pack, const struct ZEndpoint& etp)
+	{
+
+	}
 }

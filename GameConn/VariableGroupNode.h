@@ -112,6 +112,7 @@ namespace Zerodelay
 		u32_t   m_UniqueIdCounter;
 		std::vector<GroupCallback> m_GroupUpdateCallbacks;
 		std::vector<GroupCallback> m_GroupDestroyCallbacks;
+		BinSerializer bs;
 		// --- ptrs to other managers
 		class CoreNode* m_CoreNode;
 		class ZNode* m_ZNode;

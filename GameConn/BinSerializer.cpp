@@ -6,36 +6,49 @@
 namespace Zerodelay
 {
 	BinSerializer::BinSerializer():
-		m_DataPtr(nullptr),
-		m_WritePos(0),
-		m_ReadPos(0),
-		m_MaxSize(ZERODELAY_BUFF_SIZE)
+		m_Owns(false),
+		m_OrigPtr(nullptr),
+		m_OrigSize(0)
 	{
+		reset();
 	}
 
-	BinSerializer::BinSerializer(const i8_t* streamIn, i32_t buffSize, i32_t writePos)
+	BinSerializer::~BinSerializer()
 	{
-		resetTo(streamIn, buffSize, writePos);
+		reset();
+		free(m_DataPtr);
 	}
 
-	void BinSerializer::zeroReadWrite()
+	void BinSerializer::reset()
 	{
+		if (!m_Owns) 
+		{
+			m_MaxSize = m_OrigSize;
+			m_DataPtr = m_OrigPtr;
+		}
 		m_WritePos = 0;
-		m_ReadPos = 0;
+		m_ReadPos  = 0;
+		m_Owns = true;
 	}
 
 	void BinSerializer::resetTo(const i8_t* streamIn, i32_t buffSize, i32_t writePos)
 	{
+		if ( m_Owns )
+		{
+			m_OrigPtr  = m_DataPtr;
+			m_OrigSize = m_MaxSize;
+		}
 		m_DataPtr  = (i8_t*) streamIn;
 		m_WritePos = writePos;
 		m_MaxSize = buffSize;
 		m_ReadPos = 0;
+		m_Owns = false;
 		assert(m_WritePos>=0 && m_WritePos<=m_MaxSize && m_DataPtr!=nullptr);
 	}
 
 	bool BinSerializer::setRead(i32_t r)
 	{
-		if ( r < 0 || r > m_MaxSize ) return false;
+		if ( r < 0 || r > m_WritePos ) return false;
 		m_ReadPos = r;
 		return true;
 	}
@@ -59,6 +72,7 @@ namespace Zerodelay
 
 	bool BinSerializer::write8(i8_t b)
 	{
+		growTo(m_WritePos + 1);
 		if ( m_WritePos + 1 > m_MaxSize ) return false;
 		pr_data()[m_WritePos++] = b;
 		return true;
@@ -66,6 +80,7 @@ namespace Zerodelay
 
 	bool BinSerializer::write16(i16_t b)
 	{
+		growTo(m_WritePos + 2);
 		if ( m_WritePos + 2 > m_MaxSize ) return false;
 		*(u16_t*)(pr_data() + m_WritePos) = Util::htons(b);
 		m_WritePos += 2;
@@ -74,6 +89,7 @@ namespace Zerodelay
 
 	bool BinSerializer::write32(i32_t b)
 	{
+		growTo(m_WritePos + 4);
 		if ( m_WritePos + 4 > m_MaxSize ) return false;
 		*(u32_t*)(pr_data() + m_WritePos) = Util::htonl(b);
 		m_WritePos += 4;
@@ -103,11 +119,11 @@ namespace Zerodelay
 		return true;
 	}
 
-	void BinSerializer::toRaw(i8_t*& ptr, i32_t& len)
+	void BinSerializer::copyAsRaw(i8_t*& ptr, i32_t& len)
 	{
 		len = m_WritePos;
 		ptr = new i8_t[len];
-		Platform::memCpy(ptr, len, m_Data, len);
+		Platform::memCpy(ptr, len, m_DataPtr, len);
 	}
 
 	i32_t BinSerializer::getMaxSize() const
@@ -117,8 +133,19 @@ namespace Zerodelay
 
 	i8_t* BinSerializer::pr_data() const
 	{
-		if (!m_DataPtr) return (i8_t*) m_Data;
 		return m_DataPtr;
+	}
+
+	void BinSerializer::growTo(i32_t maxSize)
+	{
+		if (!m_Owns) return;
+		assert(maxSize > m_MaxSize && maxSize > 0);
+		m_MaxSize = i32_t(maxSize * 1.2f);
+		assert(m_MaxSize > maxSize);
+		i8_t* pNew = (i8_t*)malloc(m_MaxSize);
+		Platform::memCpy(pNew, m_MaxSize, m_DataPtr, maxSize);
+		free(m_DataPtr);
+		m_DataPtr = pNew;		
 	}
 
 }

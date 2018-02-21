@@ -62,19 +62,19 @@ namespace Zerodelay
 
 	EConnectCallResult ConnectionNode::connect(const std::string& name, i32_t port, const std::string& pw, 
 											   i32_t timeoutSeconds, bool sendRequest,
-											   const std::map<std::string, std::string>& additionalData)
+											   const std::map<std::string, std::string>& metaData)
 	{
 		EndPoint endPoint;
 		if ( !endPoint.resolve( name, port ) )
 		{
 			return EConnectCallResult::CannotResolveHost;
 		}
-		return connect( endPoint, pw, timeoutSeconds, sendRequest, additionalData );
+		return connect( endPoint, pw, timeoutSeconds, sendRequest, metaData );
 	}
 
 	EConnectCallResult ConnectionNode::connect(const EndPoint& endPoint, const std::string& pw, 
 											   i32_t timeoutSeconds, bool sendRequest,
-											   const std::map<std::string, std::string>& additionalData)
+											   const std::map<std::string, std::string>& metaData)
 	{
 		// For p2p, the socket is already listening on a specific port, the function will return true
 		if ( !m_DispatchNode->openSocketOnPort(0) )
@@ -96,7 +96,7 @@ namespace Zerodelay
 		m_DispatchNode->startThreads(); // start after socket is opened
 		if ( sendRequest )
 		{
-			if (!g->sendConnectRequest( pw, additionalData ))
+			if (!g->sendConnectRequest( pw, metaData ))
 			{
 				return EConnectCallResult::TooMuchAdditionalData;
 			}
@@ -318,16 +318,16 @@ namespace Zerodelay
 		});
 	}
 
-	void ConnectionNode::doNewIncomingConnectionCallbacks(bool directLink, const EndPoint& remote, const std::map<std::string, std::string>& additionalData)
+	void ConnectionNode::doNewIncomingConnectionCallbacks(bool directLink, const EndPoint& remote, const std::map<std::string, std::string>& metaData)
 	{
 		ZEndpoint ztp = Util::toZpt(remote);
 		Util::forEachCallback(m_NewConnectionCallbacks,[&](const NewConnectionCallback& ncb)
 		{
-			(ncb)(directLink, ztp, additionalData);
+			(ncb)(directLink, ztp, metaData);
 		});
 	}
 
-	void ConnectionNode::sendRemoteConnected(const Connection* g, const std::map<std::string, std::string>& additionalData)
+	void ConnectionNode::sendRemoteConnected(const Connection* g, const std::map<std::string, std::string>& metaData)
 	{
 		if ( !shouldRelayConnectAndDisconnect() ) 
 		{
@@ -345,7 +345,7 @@ namespace Zerodelay
 		}
 		dstSize -= offs;
 		i8_t* ptr = buff + offs;
-		for (auto& kvp : additionalData)
+		for (auto& kvp : metaData)
 		{
 			bool bSucces;
 			// key
@@ -514,8 +514,8 @@ namespace Zerodelay
 			return;
 		}
 		// read additional data
-		std::map<std::string, std::string> additionalData;
-		bool succes = Util::deserializeMap(additionalData, payload + readBytes, payloadLen - readBytes);
+		std::map<std::string, std::string> metaData;
+		bool succes = Util::deserializeMap(metaData, payload + readBytes, payloadLen - readBytes);
 		if (!succes)
 		{
 			m_CoreNode->setCriticalError( ECriticalError::SerializationError, ZERODELAY_FUNCTION_LINE );
@@ -525,8 +525,8 @@ namespace Zerodelay
 		Connection* g = new Connection( this, false, &link, 8, m_KeepAliveIntervalSeconds );
 		g->sendConnectAccept();
 		m_Connections.insert( std::make_pair(link.getEndPoint(), g) );
-		doNewIncomingConnectionCallbacks(true, link.getEndPoint(), additionalData);
-		if (m_RelayConnectAndDisconnect) sendRemoteConnected( g, additionalData );
+		doNewIncomingConnectionCallbacks(true, link.getEndPoint(), metaData);
+		if (m_RelayConnectAndDisconnect) sendRemoteConnected( g, metaData );
 		Platform::log( "New incoming connection to %s (id %d).", g->getEndPoint().toIpAndPort().c_str(), link.id() );
 	}
 
@@ -555,14 +555,14 @@ namespace Zerodelay
 			m_CoreNode->setCriticalError(ECriticalError::SerializationError, ZERODELAY_FUNCTION_LINE);
 			return;
 		}
-		std::map<std::string, std::string> additionalData;
-		bool succes = Util::deserializeMap(additionalData, data+offs, len-offs);
+		std::map<std::string, std::string> metaData;
+		bool succes = Util::deserializeMap(metaData, data+offs, len-offs);
 		if (!succes)
 		{
 			m_CoreNode->setCriticalError(ECriticalError::SerializationError, ZERODELAY_FUNCTION_LINE);
 			return;
 		}
-		doNewIncomingConnectionCallbacks(false, etp, additionalData);
+		doNewIncomingConnectionCallbacks(false, etp, metaData);
 		Platform::log( "Remote %s connected.", etp.toIpAndPort().c_str() );
 	}
 
