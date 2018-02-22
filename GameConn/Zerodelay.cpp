@@ -135,7 +135,6 @@ namespace Zerodelay
 			(new MasterServer())
 		))
 	{
-		C->vgn()->setupConnectionCallbacks();
 	}
 
 	ZNode::~ZNode()

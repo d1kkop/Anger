@@ -17,11 +17,10 @@
 
 using namespace Zerodelay;
 
+void				RefreshTextField();
+
 ZNode* g_Node;
-
-void SendFinal( const char* txt, int len );
-
-
+std::vector<std::string> g_lines;
 int g_NumClients =0;
 const int g_MaxNames = 10;
 struct ChatLobby
@@ -33,6 +32,8 @@ struct ChatLobby
 	}
 };
 
+
+
 int g_MsgId = 100;
 int g_LobbyId  = 101;
 int g_MaxLines = 20;
@@ -40,7 +41,77 @@ bool g_Done = false;
 bool g_AutoChat = false;
 
 ChatLobby g_lobby;
-std::vector<std::string> g_lines;
+
+class ConnectionListener : public IConnectionListener
+{
+	/*	This event occurs when as a result of calling: 'connect', or 'connectToServer'. */
+	void onConnectResult( const struct ZEndpoint& etp, EConnectResult res ) override 
+	{
+		switch ( res )
+		{
+		case EConnectResult::Succes:
+			g_lines.emplace_back( "connection: " + etp.toIpAndPort() + " connected succesful" );
+			break;
+		case EConnectResult::Timedout:
+			g_lines.emplace_back( "connection: " + etp.toIpAndPort() + " connecting timed out" );
+			break;
+		case EConnectResult::InvalidPassword:
+			g_lines.emplace_back( "connection: " + etp.toIpAndPort() + " connecting invalid pw" );
+			break;
+		case EConnectResult::MaxConnectionsReached:
+			g_lines.emplace_back( "connection: " + etp.toIpAndPort() + " connecting max conns reached" );
+			break;
+		}
+		RefreshTextField();
+	}
+	void onNewConnection( bool directLink, const struct ZEndpoint& etp,  const std::map<std::string, std::string>& metaData ) override 
+	{
+		if ( g_Node->isAuthorative() )
+		{
+			g_NumClients++;
+			for (int i = 0; i < g_MaxNames; i++)
+			{
+				if ( g_lobby.name[i][0] == '\0' )
+				{
+					strcpy_s( g_lobby.name[i], 64, etp.toIpAndPort().c_str());
+					break;
+				}
+			}
+		}
+		g_lines.emplace_back(" new connection: " + etp.toIpAndPort() );
+		RefreshTextField();
+	}
+	void onDisconnect( bool directLink, const struct ZEndpoint& etp, EDisconnectReason reason ) override 
+	{
+		if ( reason == EDisconnectReason::Lost )
+		{
+			g_lines.emplace_back( "connection " + etp.toIpAndPort() + " lost connection" );
+		}
+		else
+		{
+			g_lines.emplace_back( "connection " + etp.toIpAndPort() + " closed connection" );
+		}
+		if ( g_Node->isAuthorative() )
+		{
+			g_NumClients--;
+			for (int i = 0; i < g_MaxNames; i++)
+			{
+				if ( strcmp( g_lobby.name[i], etp.toIpAndPort().c_str() ) == 0)
+				{
+					g_lobby.name[i][0] = '\0';
+					break;
+				}
+			}
+		}
+		RefreshTextField();
+	}
+};
+
+ConnectionListener* g_ConListener;
+
+
+void SendFinal( const char* txt, int len );
+
 
 HWND TextField;
 HWND SendButton;
@@ -135,26 +206,10 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 
 void InitNetwork(bool isServ)
 {
+	g_ConListener = new ConnectionListener;
 	g_Node = new ZNode( 300, -1 );
-	g_Node->bindOnConnectResult([] (auto etp, EConnectResult res)
-	{
-		switch ( res )
-		{
-		case EConnectResult::Succes:
-			g_lines.emplace_back( "connection: " + etp.toIpAndPort() + " connected succesful" );
-			break;
-		case EConnectResult::Timedout:
-			g_lines.emplace_back( "connection: " + etp.toIpAndPort() + " connecting timed out" );
-			break;
-		case EConnectResult::InvalidPassword:
-			g_lines.emplace_back( "connection: " + etp.toIpAndPort() + " connecting invalid pw" );
-			break;
-		case EConnectResult::MaxConnectionsReached:
-			g_lines.emplace_back( "connection: " + etp.toIpAndPort() + " connecting max conns reached" );
-			break;
-		}
-		RefreshTextField();
-	});
+	g_Node->addConnectionListener(g_ConListener);
+
 	g_Node->bindOnCustomData( [] (auto etp, auto id, auto data, auto len, auto channel) 
 	{
 		// textfield update
@@ -177,47 +232,6 @@ void InitNetwork(bool isServ)
 			}
 			RefreshLobby();
 		}
-	});
-	g_Node->bindOnDisconnect( [=] (bool thisConn, auto etp, EDisconnectReason reason)
-	{
-		if ( reason == EDisconnectReason::Lost )
-		{
-			g_lines.emplace_back( "connection " + etp.toIpAndPort() + " lost connection" );
-		}
-		else
-		{
-			g_lines.emplace_back( "connection " + etp.toIpAndPort() + " closed connection" );
-		}
-		if ( isServ )
-		{
-			g_NumClients--;
-			for (int i = 0; i < g_MaxNames; i++)
-			{
-				if ( strcmp( g_lobby.name[i], etp.toIpAndPort().c_str() ) == 0)
-				{
-					g_lobby.name[i][0] = '\0';
-					break;
-				}
-			}
-		}
-		RefreshTextField();
-	});
-	g_Node->bindOnNewConnection( [=] (bool directLink, auto etp, auto& metaData) 
-	{
-		if ( isServ )
-		{
-			g_NumClients++;
-			for (int i = 0; i < g_MaxNames; i++)
-			{
-				if ( g_lobby.name[i][0] == '\0' )
-				{
-					strcpy_s( g_lobby.name[i], 64, etp.toIpAndPort().c_str());
-					break;
-				}
-			}
-		}
-		g_lines.emplace_back(" new connection: " + etp.toIpAndPort() );
-		RefreshTextField();
 	});
 
 	if ( isServ )

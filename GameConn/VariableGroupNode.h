@@ -52,7 +52,7 @@ namespace Zerodelay
 		does not know who the provider is, the message is just sent to all connections every so often
 		until it gets a reply with a list of free available networkID's. Before it runs out of ID's, it will
 		restart sending network ID requests to everyone. */
-	class VariableGroupNode, public IConnectionListener
+	class VariableGroupNode : public IConnectionListener
 	{
 		friend class ZNode;
 
