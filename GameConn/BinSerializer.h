@@ -9,6 +9,7 @@
 #define __CHECKED( expr ) if (!(expr)) { m_CoreNode->setCriticalError(ECriticalError::SerializationError, ZERODELAY_FUNCTION_LINE); return; }
 #define __CHECKEDR( expr ) if (!(expr)) { m_RecvNode->getCoreNode()->setCriticalError(ECriticalError::SerializationError, ZERODELAY_FUNCTION_LINE); return; }
 #define __CHECKEDNS( expr ) if (!(expr)) { m_CoreNode->setCriticalError(ECriticalError::SerializationError, ZERODELAY_FUNCTION_LINE); return ESendCallResult::NotSent; }
+#define __CHECKEDMSE( expr ) if (!(expr)) { m_CoreNode->setCriticalError(ECriticalError::SerializationError, ZERODELAY_FUNCTION_LINE); return ERegisterServerCallResult::SerializationError; }
 
 
 namespace Zerodelay
@@ -107,8 +108,10 @@ namespace Zerodelay
 		{
 			u16_t slen;
 			if (!read<u16_t>(slen)) return false;
+			if ( slen + m_ReadPos > m_WritePos ) return false;
 			b.resize(slen);
-			return read((i8_t*)b.data(), (i32_t)b.size());
+			bool bRes = Platform::memCpy((void*)b.data(), slen, data()+m_ReadPos, slen);
+			return bRes && moveRead(slen);
 		}
 		template <> bool read(std::map<std::string, std::string>& b) 
 		{
@@ -124,38 +127,23 @@ namespace Zerodelay
 			return true;
 		}
 
-		bool writeStr(const i8_t* b)
+		bool read(i8_t* b, u16_t buffSize, u16_t& len)
 		{
-			i32_t k=0;
-			while (*b != '\0') if (!write(*b++)) return false;
-			return write('\0');
+			if ( m_ReadPos + buffSize > m_MaxSize ) return false;
+			if ( !read(len) ) return false;
+			if ( len > buffSize ) return false;
+			if ( !Platform::memCpy(b, buffSize, data()+m_ReadPos, len) ) return false;
+			return moveRead(len);
 		}
 
-		bool readStr(i8_t* b, i32_t buffSize)
+		bool write(const i8_t* b, u16_t buffSize)
 		{
-			i32_t k=0;
-			while (k++ < buffSize && read(*b))
-			{
-				if (*b == '\0') 
-					return true;
-				b++;
-			}
-			return false;
-		}
-
-		bool read(i8_t* b, i32_t length)
-		{
-			if ( m_ReadPos + length > m_MaxSize ) return false;
-			bool bRes = Platform::memCpy(b, length, data()+m_ReadPos, length);
-			return bRes && moveRead(length);
-		}
-
-		bool write(const i8_t* b, i32_t length)
-		{
-			growTo(m_WritePos + length);
-			if ( m_WritePos + length > m_MaxSize ) return false;
-			bool bRes = Platform::memCpy((void*)(data()+m_WritePos), m_MaxSize-length, b, length);
-			return bRes && moveWrite(length);
+			growTo(m_WritePos + buffSize);
+			if ( m_WritePos + buffSize > m_MaxSize ) return false;
+			if ( buffSize > UINT16_MAX ) return false;
+			if ( !write(buffSize) ) return false;
+			bool bRes = Platform::memCpy((void*)(data()+m_WritePos), m_MaxSize-buffSize, b, buffSize);
+			return bRes && moveWrite(buffSize);
 		}
 
 		void copyAsRaw(i8_t*& ptr, i32_t& len);

@@ -258,6 +258,16 @@ namespace Zerodelay
 		}
 	}
 
+	void ConnectionNode::addListener(IConnectionListener* listener)
+	{
+		m_Listeners.emplace_back(listener);
+	}
+
+	void ConnectionNode::removeListener(const IConnectionListener* listener)
+	{
+		std::remove(m_Listeners.begin(), m_Listeners.end(), listener);
+	}
+
 	void ConnectionNode::forConnections(const EndPoint* specific, bool exclude, const std::function<void(Connection&)>& cb)
 	{
 		assert(cb);
@@ -303,28 +313,19 @@ namespace Zerodelay
 	void ConnectionNode::doConnectResultCallbacks(const EndPoint& remote, EConnectResult result)
 	{
 		ZEndpoint ztp = Util::toZpt(remote);
-		Util::forEachCallback(m_ConnectResultCallbacks,[&](const ConnectResultCallback& crb)
-		{
-			(crb)(ztp, result);
-		});
+		for ( auto l : m_Listeners ) l->onConnectResult(ztp, result);
 	}
 
 	void ConnectionNode::doDisconnectCallbacks(bool directLink, const EndPoint& remote,EDisconnectReason reason)
 	{
 		ZEndpoint ztp = Util::toZpt(remote);
-		Util::forEachCallback(m_DisconnectCallbacks,[&](const DisconnectCallback& dcb)
-		{
-			(dcb)(directLink, ztp, reason);
-		});
+		for ( auto l : m_Listeners ) l->onDisconnect(directLink, ztp, reason);
 	}
 
 	void ConnectionNode::doNewIncomingConnectionCallbacks(bool directLink, const EndPoint& remote, const std::map<std::string, std::string>& metaData)
 	{
 		ZEndpoint ztp = Util::toZpt(remote);
-		Util::forEachCallback(m_NewConnectionCallbacks,[&](const NewConnectionCallback& ncb)
-		{
-			(ncb)(directLink, ztp, metaData);
-		});
+		for ( auto l : m_Listeners ) l->onNewConnection(directLink, ztp, metaData);
 	}
 
 	void ConnectionNode::sendRemoteConnected(const Connection* g, const std::map<std::string, std::string>& metaData)
@@ -591,10 +592,7 @@ namespace Zerodelay
 	{
 		// No state change on the connection in this case, could already be successfully connected before.
 		ZEndpoint ztp = Util::toZpt(g->getEndPoint());
-		Util::forEachCallback(m_ConnectResultCallbacks, [&](const ConnectResultCallback& crc)
-		{
-			(crc)(ztp, EConnectResult::AlreadyConnected);
-		});
+		for ( auto l : m_Listeners ) l->onConnectResult( ztp, EConnectResult::AlreadyConnected );
 	}
 
 	void ConnectionNode::updateConnecting(class Connection* g)

@@ -90,6 +90,14 @@ namespace Zerodelay
 		PasswordMismatch
 	};
 
+	enum class ERegisterServerCallResult
+	{
+		Succes,
+		NameTooShort,
+		AlreadyConnected,
+		SerializationError
+	};
+
 	enum class EConnectCallResult
 	{
 		Succes,
@@ -161,12 +169,33 @@ namespace Zerodelay
 	};
 
 
+	class IConnectionListener
+	{
+	public:
+		/*	This event occurs when as a result of calling: 'connect', or 'connectToServer'. */
+		virtual void onConnectResult( const struct ZEndpoint& remoteEtp, EConnectResult result ) { };
+
+		/*	This event occurs when some node connected directly or indirectly.
+			[directLink]	If true, a direct connection was incoming. Eg: a client to a server.
+							If false, the message is relayed by an authorative node such as the server.
+							Eg: Client2 connects to server and server sends message to client1.
+			[Zendpoint]		The endpoint, either of our direct link or relayed by eg. the server. */
+		virtual void onNewConnection( bool directLink, const struct ZEndpoint& remoteEtp,  const std::map<std::string, std::string>& metaData ) { };
+
+		/*	This event occurs when we or a remote endpoint called 'disconnect'.
+			[directLink]	If true, one of the endpoints that this Znode connected to disconnected to us our we disconnected to them.
+							If false, the message is relayed by an authorative node such as the server.
+			[Zendpoint]		The endpoint, either of our direct link or relayed by eg. the server. */
+		virtual void onDisconnect( bool directLink, const struct ZEndpoint& remoteEtp, EDisconnectReason reason ) { };
+	};
+
+
 	class IMasterServerListener
 	{
 	public:
-		virtual void onServerRegisterResult(const struct ZEndpoint& masterEtp, EServerRegisterResult serverRegResult) = 0;
-		virtual void onServerConnectResult(const struct ZEndpoint& masterEtp, const struct ZEndpoint& serverEtp, EServerConnectResult serverConnResult) = 0;
-		virtual void onForwardConnectFail(const struct ZEndpoint& masterEtp, const struct ZEndpoint& connectEtp, EConnectCallResult callResult) = 0;
+		virtual void onServerRegisterResult(const struct ZEndpoint& masterEtp, EServerRegisterResult serverRegResult) { };
+		virtual void onServerConnectResult(const struct ZEndpoint& masterEtp, const struct ZEndpoint& serverEtp, EServerConnectResult serverConnResult) { };
+		virtual void onForwardConnectFail(const struct ZEndpoint& masterEtp, const struct ZEndpoint& connectEtp, EConnectCallResult callResult) { };
 	};
 
 
@@ -241,7 +270,7 @@ namespace Zerodelay
 		virtual ~ZNode();
 
 
-		ESendCallResult registerNewServer( const ZEndpoint& masterServerIp, const std::string& name, const std::string& pw="", bool isP2p=false, const std::map<std::string, std::string>& metaData=std::map<std::string, std::string>() );
+		ERegisterServerCallResult registerNewServer( const ZEndpoint& masterServerIp, const std::string& name, const std::string& pw="", bool isP2p=false, const std::map<std::string, std::string>& metaData=std::map<std::string, std::string>() );
 		ESendCallResult connectToServer( const ZEndpoint& masterServerIp, const std::string& name, const std::string& pw="", const std::map<std::string, std::string>& metaData=std::map<std::string, std::string>() );
 		ESendCallResult connectToServer( const ZEndpoint& masterServerIp, const ZEndpoint& serverIp, const std::string& pw="", const std::map<std::string, std::string>& metaData=std::map<std::string, std::string>() );
 
@@ -380,31 +409,6 @@ namespace Zerodelay
 		ESendCallResult sendUnreliableSequenced( u8_t packId, const i8_t* data, i32_t len, const ZEndpoint* specific=nullptr, bool exclude=false, u8_t channel=0, bool relay=true, bool requiresConnection=true );
 
 
-		/*	----- Connection Layer Callbacks ----------------------------------------------------------------------------------------------- */
-
-			/*	For handling connect request results. This callback is invoked as a result of calling 'connect'. */
-			void bindOnConnectResult( const std::function<void (const ZEndpoint&, EConnectResult)>& cb );
-
-
-			/*	This event occurs when a remote endpoint called 'connect'.
-				[directLink]	If true, a connection attempt was made to this Znode. 
-								If false, a non directive link such as a remote connection connected to the server and
-								the endpoint will not be found when obtaining a list of open connections through getNumOpenConnections(). 
-				[Zendpoint]		The endpoint, either of our direct link or relayed by eg. a server. */
-			void bindOnNewConnection( const std::function<void (bool directLink, const ZEndpoint&, const std::map<std::string, std::string>&)>& cb );
-
-
-			/*	This event occurs when we or a remote endpoint called 'disconnect'.
-				[directLink]	If true, one of the endpoints that this Znode connected to disconnected to us our we disconnected to them.
-								If false, the message is relayed by an authorative node such as the server and
-								the endpoint will not be found when obtaining a list of open connections through getNumOpenConnections(). 
-				[Zendpoint]		The endpoint, either of our direct link or relayed by eg. the server. */
-			void bindOnDisconnect( const std::function<void (bool directLink, const ZEndpoint&, EDisconnectReason)>& cb );
-
-		/*	----- END -------------------------------------------------------------------------------------------------------------------- */
-
-
-
 		/*	----- Variable Group Callbacks ----------------------------------------------------------------------------------------------- */
 
 			/*	If at least a single variable inside the group is updated, this callback is invoked.
@@ -419,7 +423,10 @@ namespace Zerodelay
 		/*	----- END ----------------------------------------------------------------------------------------------- */
 
 
-		/*	----- Master Server Events ----------------------------------------------------------------------------------------------- */
+		/*	----- Add/Remove listeners ----------------------------------------------------------------------------------------------- */
+
+		void addConnectionListener( IConnectionListener* listener );
+		void removeConnectionListener( const IConnectionListener* listener );
 
 		void addMasterServerListener( IMasterServerListener* listener );
 		void removeMasterServerListener( const IMasterServerListener* listener );

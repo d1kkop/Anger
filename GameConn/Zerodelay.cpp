@@ -143,7 +143,7 @@ namespace Zerodelay
 		delete C;
 	}
 
-	ESendCallResult ZNode::registerNewServer(const ZEndpoint& masterServerIp, const std::string& name, const std::string& pw, bool isP2p, const std::map<std::string, std::string>& metaData)
+	ERegisterServerCallResult ZNode::registerNewServer(const ZEndpoint& masterServerIp, const std::string& name, const std::string& pw, bool isP2p, const std::map<std::string, std::string>& metaData)
 	{
 		return C->ms()->registerAsServer(masterServerIp, name, pw, isP2p, metaData);
 	}
@@ -414,21 +414,6 @@ namespace Zerodelay
 		return sendResult;
 	}
 
-	void ZNode::bindOnConnectResult(const std::function<void(const ZEndpoint&, EConnectResult)>& cb)
-	{
-		C->cn()->bindOnConnectResult( cb);
-	}
-
-	void ZNode::bindOnNewConnection(const std::function<void (bool directLink, const ZEndpoint&, const std::map<std::string, std::string>&)>& cb)
-	{
-		C->cn()->bindOnNewConnection( cb );
-	}
-
-	void ZNode::bindOnDisconnect(const std::function<void (bool isThisConnection, const ZEndpoint&, EDisconnectReason)>& cb)
-	{
-		C->cn()->bindOnDisconnect( cb );
-	}
-
 	void ZNode::bindOnCustomData(const std::function<void (const ZEndpoint&, u8_t id, const i8_t* data, i32_t length, u8_t channel)>& cb)
 	{
 		C->bindOnCustomData( cb );
@@ -462,6 +447,16 @@ namespace Zerodelay
 			}
 			cb( zeptr, id );
 		});
+	}
+
+	void ZNode::addConnectionListener(IConnectionListener* listener)
+	{
+		C->cn()->addListener(listener);
+	}
+
+	void ZNode::removeConnectionListener(const IConnectionListener* listener)
+	{
+		C->cn()->removeListener(listener);
 	}
 
 	void ZNode::addMasterServerListener(IMasterServerListener* listener)

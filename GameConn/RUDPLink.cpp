@@ -277,6 +277,11 @@ namespace Zerodelay
 		m_PinnedCount--;
 	}
 
+	void RUDPLink::unpinWithLock()
+	{
+		m_RecvNode->unpinLink(this);
+	}
+
 	// ----------------- Called from send thread -----------------------------------------------
 
 	void RUDPLink::dispatchRelOrderedQueueIfLatencyTimePassed(u32_t deltaTime, ISocket* socket)

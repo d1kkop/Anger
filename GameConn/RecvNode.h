@@ -38,7 +38,6 @@ namespace Zerodelay
 		void postInitialize(class CoreNode* coreNode);
 		bool openSocketOnPort(u16_t port);
 
-	public:
 		ESendCallResult send( u8_t id, const i8_t* data, i32_t len, const EndPoint* specific=nullptr, bool exclude=false, 
 							  EHeaderPacketType type=EHeaderPacketType::Reliable_Ordered, u8_t channel=0, bool relay=true, 
 							  std::vector<ZAckTicket>* deliveryTraceOut=nullptr );

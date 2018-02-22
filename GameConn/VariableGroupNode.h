@@ -4,6 +4,7 @@
 #include "EndPoint.h"
 #include "RpcMacros.h"
 #include "Util.h"
+#include "BinSerializer.h"
 
 #include <deque>
 #include <map>
@@ -51,7 +52,7 @@ namespace Zerodelay
 		does not know who the provider is, the message is just sent to all connections every so often
 		until it gets a reply with a list of free available networkID's. Before it runs out of ID's, it will
 		restart sending network ID requests to everyone. */
-	class VariableGroupNode
+	class VariableGroupNode, public IConnectionListener
 	{
 		friend class ZNode;
 
@@ -61,9 +62,7 @@ namespace Zerodelay
 		VariableGroupNode();
 		~VariableGroupNode();
 		void reset(bool isConstructorCall);
-
 		void postInitialize(class CoreNode* coreNode);
-		void setupConnectionCallbacks();
 
 		void update();
 		bool processPacket(const struct Packet& pack, const EndPoint& etp);
@@ -100,6 +99,9 @@ namespace Zerodelay
 		// group callbacks
 		void bindOnGroupUpdated(const GroupCallback& cb)				{ Util::bindCallback(m_GroupUpdateCallbacks, cb); }
 		void bindOnGroupDestroyed(const GroupCallback& cb)				{ Util::bindCallback(m_GroupDestroyCallbacks, cb); }
+		// connection callbacks
+		void onNewConnection( bool directLink, const struct ZEndpoint& remoteEtp,  const std::map<std::string, std::string>& metaData ) override;
+		void onDisconnect( bool directLink, const struct ZEndpoint& remoteEtp, EDisconnectReason reason ) override;
 
 
 		bool m_IsNetworkIdProvider; // Only 1 node is the owner of all id's, it provides id's on request.

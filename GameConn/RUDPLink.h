@@ -105,6 +105,7 @@ namespace Zerodelay
 		void pin();
 		bool isPinned() const;
 		void unpin();
+		void unpinWithLock();
 
 		u32_t id() const { return m_LinkId; }
 		bool areAllQueuesEmpty() const;

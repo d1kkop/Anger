@@ -52,9 +52,8 @@ namespace Zerodelay
 		bool shouldRelayConnectAndDisconnect() const { return m_RelayConnectAndDisconnect; }
 		void getConnectionListCopy(std::vector<ZEndpoint>& endpoints); // only puts connected connections in list
 		// callbacks
-		void bindOnConnectResult(const ConnectResultCallback& cb)		{ Util::bindCallback(m_ConnectResultCallbacks, cb); }
-		void bindOnNewConnection(const NewConnectionCallback& cb)		{ Util::bindCallback(m_NewConnectionCallbacks, cb); }
-		void bindOnDisconnect(const DisconnectCallback& cb)				{ Util::bindCallback(m_DisconnectCallbacks, cb); }
+		void addListener(IConnectionListener* listener);
+		void removeListener(const IConnectionListener* listener);
 		// iterating
 		void forConnections(const EndPoint* specific, bool exclude, const std::function<void (Connection&)>& cb);
 		// call callbacks
@@ -86,9 +85,7 @@ namespace Zerodelay
 		std::string m_Password;
 		class Connection* m_ProcessingConnection;
 		std::map<EndPoint, class Connection*, EndPoint::STLCompare> m_Connections;
-		std::vector<ConnectResultCallback>	m_ConnectResultCallbacks;
-		std::vector<DisconnectCallback>		m_DisconnectCallbacks;
-		std::vector<NewConnectionCallback>	m_NewConnectionCallbacks;
+		std::vector<IConnectionListener*> m_Listeners;
 		// --- ptrs to other managers
 		class CoreNode* m_CoreNode;
 		class RecvNode* m_DispatchNode;

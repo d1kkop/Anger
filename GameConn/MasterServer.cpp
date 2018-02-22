@@ -3,6 +3,7 @@
 #include "RpcMacros.h"
 #include "CoreNode.h"
 #include "RecvNode.h"
+#include "RUDPLink.h"
 
 
 namespace Zerodelay
@@ -53,17 +54,26 @@ namespace Zerodelay
 		m_Z->update();
 	}
 
-	ESendCallResult MasterServer::registerAsServer(const ZEndpoint& masterEtp, const std::string& name, const std::string& pw, bool isP2p, const std::map<std::string, std::string>& metaData)
+	ERegisterServerCallResult MasterServer::registerAsServer(const ZEndpoint& masterEtp, const std::string& name, const std::string& pw, bool isP2p, const std::map<std::string, std::string>& metaData)
 	{
-		if ( name.length() < ms_MinNameLength )  return ESendCallResult::NotSent;
+		if ( name.length() < ms_MinNameLength ) return ERegisterServerCallResult::NameTooShort;
+
+		RUDPLink* link = m_CoreNode->rn()->getLinkAndPinIt(Util::toEtp(masterEtp));
+		if ( link && link->isPendingDelete() )
+		{
+			link->unpinWithLock();
+			return ERegisterServerCallResult::AlreadyConnected;
+		}
 
 		bs.reset();
-		__CHECKEDNS( bs.write(isP2p) );
-		__CHECKEDNS( bs.write(name) );
-		__CHECKEDNS( bs.write(pw) );
-		__CHECKEDNS( bs.write(metaData) );
+		__CHECKEDMSE( bs.write(isP2p) )
+		__CHECKEDMSE( bs.write(name) );
+		__CHECKEDMSE( bs.write(metaData) );
 
-		return m_Z->sendReliableOrdered( (i8_t)EDataPacketType::MSRegisterServer, bs.data(), bs.length(), &masterEtp, false, MSChannel, false, false, nullptr );
+		link->addToSendQueue( (i8_t)EDataPacketType::MSRegisterServer, bs.data(), bs.length(), EHeaderPacketType::Reliable_Ordered, MSChannel );
+		link->unpinWithLock();
+
+		return ERegisterServerCallResult::Succes;
 	}
 
 	ESendCallResult MasterServer::connectToServer(const ZEndpoint& masterServerIp, const std::string& name, const std::string& pw, const std::map<std::string, std::string>& metaData)
@@ -164,14 +174,13 @@ namespace Zerodelay
 	void MasterServer::recvRegisterServer(const struct Packet& pack, const struct ZEndpoint& etp)
 	{
 		bs.resetTo (pack.data, pack.len, pack.len);
-		std::string name, pw;
+		std::string name;
 		std::map<std::string, std::string> metaData;
 		ZEndpoint servIp;
 		bool isP2p;
 		__CHECKED(bs.moveRead(1)); // skip dataid
 		__CHECKED(bs.read(isP2p));
 		__CHECKED(bs.read(name));
-		__CHECKED(bs.read(pw));
 		__CHECKED(bs.read(metaData));
 
 		if ( name.length() < ms_MinNameLength ) 
@@ -187,7 +196,6 @@ namespace Zerodelay
 		}
 
 		LocalServer sp;
-		sp.pw = pw;
 		sp.endpoint = etp;
 		sp.metaData = metaData;
 		m_ServerPlayers[etp] = sp;
@@ -199,7 +207,7 @@ namespace Zerodelay
 	{
 		bs.resetTo (pack.data, pack.len, pack.len);
 		EServerRegisterResult res;
-		__CHECKED(bs.moveRead(1)); // skip dataid
+		__CHECKED(bs.moveRead(1)); // skip data-id
 		__CHECKED(bs.read((u8_t&)(res)));
 		for ( auto l : m_Listeners ) l->onServerRegisterResult(etp, res);
 	}
@@ -209,7 +217,6 @@ namespace Zerodelay
 		bs.resetTo (pack.data, pack.len, pack.len);
 		ZEndpoint serverEtp;
 		std::string name;
-		i8_t serverConnRes;
 		bool hasIp;
 		__CHECKED( bs.moveRead(1) );
 		__CHECKED( bs.read(hasIp) );
@@ -221,18 +228,43 @@ namespace Zerodelay
 		{
 			__CHECKED( bs.read(name) );
 		}
-		__CHECKED( bs.read(serverConnRes) );
 
+		LocalServer* chosenServer = nullptr;
 		if ( !hasIp )
 		{
 			auto serversIt  = m_ServerPlayersByName.find(name);
 			if ( serversIt != m_ServerPlayersByName.end() )
 			{
-				
+				std::vector<LocalServer*>& servers = serversIt->second;
+				u32_t playerCnt = UINT_MAX;
+				for ( auto s : servers )
+				{
+					if ( s->activePlayers < playerCnt )
+					{
+						playerCnt = s->activePlayers;
+						chosenServer = s;
+					}
+				}
+			}
+		}
+		else
+		{
+			auto serverIpIt = m_ServerPlayers.find(serverEtp);
+			if ( serverIpIt != m_ServerPlayers.end() )
+			{
+				chosenServer = &serverIpIt->second;
 			}
 		}
 
-//		for ( auto l : m_Listeners ) l->onServerRegisterResult(etp, serverEtp, res);
+		if ( chosenServer )
+		{
+			sendServerConnectResult(etp, chosenServer->endpoint, EServerConnectResult::Succes );
+		}
+		else
+		{
+			ZEndpoint empty;
+			sendServerConnectResult(etp, empty, EServerConnectResult::CannotFind );
+		}
 	}
 
 	void MasterServer::recvForwardConnect(const struct Packet& pack, const struct ZEndpoint& etp)
@@ -259,6 +291,10 @@ namespace Zerodelay
 		__CHECKED(bs.read(serverIp));
 		__CHECKED(bs.read((i8_t&)serverConnRes));
 		for (auto l : m_Listeners) l->onServerConnectResult(etp, serverIp, serverConnRes);
+		if ( serverConnRes == EServerConnectResult::Succes )
+		{
+			
+		}
 	}
 
 	void MasterServer::recvServerServerListRequest(const struct Packet& pack, const struct ZEndpoint& etp)

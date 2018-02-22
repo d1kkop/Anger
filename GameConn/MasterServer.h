@@ -11,7 +11,6 @@ namespace Zerodelay
 
 	struct LocalServer
 	{
-		std::string pw;
 		ZEndpoint endpoint;
 		u32_t activePlayers;
 		std::map<std::string, std::string> metaData;
@@ -39,7 +38,7 @@ namespace Zerodelay
 		void update();
 
 		// Sends to master serv (from user)
-		ESendCallResult registerAsServer( const ZEndpoint& masterEtp, const std::string& name, const std::string& pw, bool isP2p, const std::map<std::string, std::string>& metaData );
+		ERegisterServerCallResult registerAsServer( const ZEndpoint& masterEtp, const std::string& name, const std::string& pw, bool isP2p, const std::map<std::string, std::string>& metaData );
 		ESendCallResult connectToServer( const ZEndpoint& masterEtp, const std::string& name, const std::string& pw, const std::map<std::string, std::string>& metaData );
 		ESendCallResult connectToServer( const ZEndpoint& masterEtp, const ZEndpoint& servIp, const std::string& pw, const std::map<std::string, std::string>& metaData );
 

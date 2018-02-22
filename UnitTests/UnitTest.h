@@ -22,13 +22,24 @@ namespace UnitTests
 		bool Result;
 	};
 
-	struct ConnectionLayerTest: public BaseTest
+	struct ConnectionLayerTest: public BaseTest, IConnectionListener
 	{
 		virtual void initialize() override;
 		virtual void run() override;
+
+		void onConnectResult( const struct ZEndpoint& remoteEtp, EConnectResult result ) override;
+		void onNewConnection( bool directLink, const struct ZEndpoint& remoteEtp,  const std::map<std::string, std::string>& metaData ) override;
+		void onDisconnect( bool directLink, const struct ZEndpoint& remoteEtp, EDisconnectReason reason ) override;
+
+		int numTimedout;
+		int numConnected;
+		int numInvalidPw;
+		int numMaxConnsReached;
+		int numDisconnected;
+		int numNewConnections;
 	};
 
-	struct MassConnectTest: public BaseTest
+	struct MassConnectTest: public BaseTest, IConnectionListener
 	{
 		int NumConns;
 		int NumNodes;
@@ -36,7 +47,20 @@ namespace UnitTests
 		int PackLossRecv; // %
 		int SendThreadWaitMs;
 		int KeepAliveSeconds;
+
+		int connSucc;
+		int connTimeout;
+		int connInvalidPw;
+		int connMaxConnReached;
+		int connNewIncomingConns;
+		int numDisconnects;
+		int numLost ;
+
 		MassConnectTest() : NumConns(10), NumNodes(10), PackLossSender(25), PackLossRecv(25), SendThreadWaitMs(200), KeepAliveSeconds(8) { }
+
+		void onConnectResult( const struct ZEndpoint& remoteEtp, EConnectResult result ) override;
+		void onNewConnection( bool directLink, const struct ZEndpoint& remoteEtp,  const std::map<std::string, std::string>& metaData ) override;
+		void onDisconnect( bool directLink, const struct ZEndpoint& remoteEtp, EDisconnectReason reason ) override;
 
 		virtual void initialize() override;
 		virtual void run() override;

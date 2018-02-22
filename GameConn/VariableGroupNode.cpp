@@ -74,52 +74,6 @@ namespace Zerodelay
 		m_ConnectionNode = coreNode->cn();
 	}
 
-	void VariableGroupNode::setupConnectionCallbacks()
-	{
-		// on new connect, put variable group map (with empty set of groups) in list so that we know the set of known EndPoints
-		m_ZNode->bindOnNewConnection( [this] (bool directLink, auto& ztp, auto& metaData)
-		{
-			EndPoint etp = Util::toEtp( ztp );
-			if ( m_RemoteVariableGroups.count(etp) != 1 )
-			{
-				std::map<u32_t, VariableGroup*> newMap;
-				m_RemoteVariableGroups.insert( std::make_pair( etp, newMap ) );
-				if ( directLink ) // for p2p and client-server this should be correct
-				{
-					sendAllVariableCreateEventsTo( ztp );
-				}
-			}
-			else
-			{
-				assert(false);
-				Platform::log("WARNING: Received on new connection multiple times from %s.", etp.toIpAndPort().c_str());
-			}
-		});
-
-		// on disconnect, remove set of variable groups and do not allow new ones to be created if no longer in set of endpoints
-		m_ZNode->bindOnDisconnect( [this] (auto thisConnection, auto& ztp, auto reason)
-		{
-			if ( thisConnection )
-				return;
-			EndPoint etp = Util::toEtp( ztp );
-			auto it = m_RemoteVariableGroups.find( etp );
-			if ( it != m_RemoteVariableGroups.end() )
-			{
-				for ( auto& kvp : it->second )
-				{
-					auto* vg = kvp.second;
-					unBufferGroup( vg->getNetworkId() );
-					delete vg;
-				}
-				m_RemoteVariableGroups.erase( it );
-			}
-			else
-			{
-				Platform::log("WARNING: Received disconnect multiple times from: %s.", etp.toIpAndPort().c_str());
-			}
-		});
-	}
-
 	void VariableGroupNode::update()
 	{
 		if (m_CoreNode->hasCriticalErrors()) return;
@@ -243,45 +197,39 @@ namespace Zerodelay
 		bs.resetTo(pack.data, pack.len, pack.len); 
 		__CHECKED( bs.moveRead(1) ); // first byte is data hdr type
 
-		// [functionName][paramData][netId][remote]<endpoint>
-		i8_t name[RPC_NAME_MAX_LENGTH];
+		// [functionName][paramData][netId][owner]<endpoint>
+		std::string name;
 		i8_t paramData[RPC_DATA_MAX];
-		i16_t paramDataLen;
 		i32_t netId;
-		bool remote;
-		ZEndpoint ztp;
-		__CHECKED( bs.readStr(name, RPC_NAME_MAX_LENGTH) );
-		__CHECKED( bs.read16(paramDataLen) );
-		__CHECKED( paramDataLen <= RPC_DATA_MAX );
-		__CHECKED( bs.read(paramData, paramDataLen) );
+		bool owner;
+		u16_t paramDataLen;
+		ZEndpoint ownerZtp;
+		__CHECKED( bs.read(name) );
+		__CHECKED( bs.read(paramData, RPC_DATA_MAX, paramDataLen) );
 		__CHECKED( bs.read(netId) );
-		__CHECKED( bs.read(remote) );
-		if ( remote )
+		__CHECKED( bs.read(owner) );
+		if ( owner )
 		{
-			__CHECKED( bs.read(ztp) );
+			__CHECKED( bs.read(ownerZtp) );
 		}
-		else ztp = Util::toZpt(etp);
+		else ownerZtp = Util::toZpt(etp);
 
 		// if 'true' server in client-server arch, dispatch to all
 		if ( m_ZNode->isAuthorative() && !m_CoreNode->isP2P() )
 		{
 			// Copy binstream as we may need append data while the pack.len buffer may not be big enough
-			BinSerializer bs2;
-			__CHECKED( bs.getWrite() <= bs.getMaxSize() );
-			__CHECKED( bs2.write(bs.data()+1, bs.length()-1) );
-			if (!remote) // write remote etp
-			{
-				__CHECKED( bs2.write(etp) );
-			}
-			// Confusing, but take first byte of first stream (data packet hdr) and take payload stream2
-			m_ZNode->sendReliableOrdered( bs.data()[0], bs2.data(), bs2.length(), &ztp, true, VGChannel, false );
+			BinSerializer bsCpy;
+			__CHECKED( bsCpy.write(bs.data()+1, bs.length()-1) ); // skip data id in bs
+			__CHECKED( bsCpy.write(ownerZtp) );
+
+			m_ZNode->sendReliableOrdered( bs.data()[0], bsCpy.data(), bsCpy.length(), &ownerZtp, true, VGChannel, false, true, nullptr );
 
 			// Buffer the creation
-			bufferGroup( netId, bs2 );
+			bufferGroup( netId, bsCpy );
 		}
 
 		// as this is the receive func for creating a var group, it has always a remote endpoint owner
-		callCreateVariableGroup(name, netId, paramData, paramDataLen, &ztp);
+		callCreateVariableGroup(name.c_str(), netId, paramData, paramDataLen, &ownerZtp);
 	}
 
 	void VariableGroupNode::recvVariableGroupDestroy(const Packet& pack, const EndPoint& etp)
@@ -294,10 +242,10 @@ namespace Zerodelay
 		__CHECKED( bs.read(netId) );
 
 		// if 'true' server in client-server arch, dispatch to all
-		if ( m_ZNode->isAuthorative() || m_CoreNode->isP2P() )
+		if ( m_ZNode->isAuthorative() || !m_CoreNode->isP2P() )
 		{
 			ZEndpoint ztp = Util::toZpt( etp );
-			m_ZNode->sendReliableOrdered( (u8_t)pack.data[0], pack.data+1, pack.len-1, &ztp, true, pack.channel, false );
+			m_ZNode->sendReliableOrdered( (u8_t)pack.data[0], pack.data+1, pack.len-1, &ztp, true, pack.channel, false, true, nullptr );
 			unBufferGroup( netId );
 		}
 
@@ -372,9 +320,8 @@ namespace Zerodelay
 													std::vector<ZAckTicket>* traceTickets)
 	{
 		// [funcName][paramData][netId][remote]<endpoint>
-		BinSerializer bs;
-		__CHECKED( bs.writeStr(funcName) );
-		__CHECKED( bs.write16((i16_t)paramDataLen) );
+		bs.reset();
+		__CHECKED( bs.write(std::string(funcName)) );
 		__CHECKED( bs.write(paramData, paramDataLen) );
 		__CHECKED( bs.write(netId) );
 		__CHECKED( bs.write(owner!=nullptr) );
@@ -391,7 +338,7 @@ namespace Zerodelay
 
 	void VariableGroupNode::sendDestroyVariableGroup(u32_t netId)
 	{
-		BinSerializer bs;
+		bs.reset();
 		bs.write(netId);
 		m_ZNode->sendReliableOrdered( (u8_t)EDataPacketType::VariableGroupDestroy, bs.data(), bs.length(), nullptr, false, VGChannel, true, true );
 		return;
@@ -646,6 +593,47 @@ namespace Zerodelay
 
 		Platform::log("WARNING: Did not remove a group with id %d while this was expected.", networkId);
 		return false;
+	}
+
+	void VariableGroupNode::onNewConnection(bool directLink, const struct ZEndpoint& remoteEtp, const std::map<std::string, std::string>& metaData)
+	{
+		EndPoint etp = Util::toEtp( remoteEtp );
+		if ( m_RemoteVariableGroups.count(etp) != 1 )
+		{
+			std::map<u32_t, VariableGroup*> newMap;
+			m_RemoteVariableGroups.insert( std::make_pair( etp, newMap ) );
+			if ( directLink ) // for p2p and client-server this should be correct
+			{
+				sendAllVariableCreateEventsTo( remoteEtp );
+			}
+		}
+		else
+		{
+			assert(false);
+			Platform::log("WARNING: Received on new connection multiple times from %s.", remoteEtp.toIpAndPort().c_str());
+		}
+	}
+
+	void VariableGroupNode::onDisconnect(bool directLink, const struct ZEndpoint& remoteEtp, EDisconnectReason reason)
+	{
+		if ( directLink )
+			return;
+		EndPoint etp = Util::toEtp( remoteEtp );
+		auto it = m_RemoteVariableGroups.find( etp );
+		if ( it != m_RemoteVariableGroups.end() )
+		{
+			for ( auto& kvp : it->second )
+			{
+				auto* vg = kvp.second;
+				unBufferGroup( vg->getNetworkId() );
+				delete vg;
+			}
+			m_RemoteVariableGroups.erase( it );
+		}
+		else
+		{
+			Platform::log("WARNING: Received disconnect multiple times from: %s.", etp.toIpAndPort().c_str());
+		}
 	}
 
 }

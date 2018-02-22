@@ -31,12 +31,12 @@ namespace UnitTests
 
 	void ConnectionLayerTest::run()
 	{
-		int numTimedout  = 0;
-		int numConnected = 0;
-		int numInvalidPw = 0;
-		int numMaxConnsReached = 0;
-		int numDisconnected = 0;
-		int numNewConnections = 0;
+		numTimedout  = 0;
+		numConnected = 0;
+		numInvalidPw = 0;
+		numMaxConnsReached = 0;
+		numDisconnected = 0;
+		numNewConnections = 0;
 		ZNode* g1 = new ZNode();
 		const u32_t kConnections = 256;
 		ZNode* gs[kConnections];
@@ -44,58 +44,11 @@ namespace UnitTests
 		{
 			g = new ZNode();
 		}
-		auto discLamda = [&] (bool isThisConnection, auto& etp, auto eReason)
-		{
-			printf("disconnected: %s, reason: %d\n", etp.toIpAndPort().c_str(), (int)eReason);
-			numDisconnected++;
-		};
-		auto newConnLamda = [&] (bool directLink, auto& etp, auto& metaData)
-		{ 
-			printf("new connection: %s\n", etp.toIpAndPort().c_str());
-			if ( metaData.size() )
-			{
-				printf("additional data:\n");
-				for (auto& kvp : metaData)
-				{
-					printf("Key: %s value: %s\n", kvp.first.c_str(), kvp.second.c_str());
-				}
-			}
-			numNewConnections++;
-		};
 		for (auto g : gs)
 		{
-			g->bindOnConnectResult( [&] (auto etp, auto res) 
-			{
-				std::string resStr;
-				switch ( res )
-				{
-				case EConnectResult::Succes:
-					resStr = "succes";
-					numConnected++;
-					//	std::this_thread::sleep_for(1000ms);
-					//	g1->disconnectAll();
-					break;
-
-				case EConnectResult::Timedout:
-					resStr = "timed out";
-					numTimedout++;
-					break;
-				case EConnectResult::InvalidPassword:
-					resStr = "invalid password";
-					numInvalidPw++;
-					break;
-				case EConnectResult::MaxConnectionsReached:
-					resStr = "max connections reached";
-					numMaxConnsReached++;
-					break;
-				}
-				printf( "connect result: %s %s\n", etp.toIpAndPort().c_str(), resStr.c_str() );
-			});
-			g->bindOnNewConnection( newConnLamda );
-			g->bindOnDisconnect( discLamda );
+			g->addConnectionListener(this);
 		}
-		g1->bindOnNewConnection( newConnLamda );
-		g1->bindOnDisconnect( discLamda );
+		g1->addConnectionListener(this);
 		ZEndpoint ztp;
 		std::map<std::string, std::string> values;
 		values["value1"]  = "hello world";
@@ -160,8 +113,13 @@ namespace UnitTests
 			for (auto g : gs) g->update();
 		}
 
+		g1->removeConnectionListener(this);
 		delete g1;
-		for (auto g : gs) delete g;
+		for (auto g : gs) 
+		{
+			g->removeConnectionListener(this);
+			delete g;
+		}
 
 		int kTargetNumConns = (int) roundf(float(kConnections+1)*((float)kConnections/2));
 		Result = ( numConnected == kConnections ) && ( kTargetNumConns  == numNewConnections ); // numInvalidPw == 1 && numTimedout == 0 );
@@ -170,9 +128,91 @@ namespace UnitTests
 			   numConnected, numNewConnections, numTimedout, numInvalidPw, numMaxConnsReached, numDisconnected);
 	}
 
+	void ConnectionLayerTest::onConnectResult(const struct ZEndpoint& etp, EConnectResult res)
+	{
+		std::string resStr;
+		switch ( res )
+		{
+		case EConnectResult::Succes:
+			resStr = "succes";
+			numConnected++;
+			//	std::this_thread::sleep_for(1000ms);
+			//	g1->disconnectAll();
+			break;
+
+		case EConnectResult::Timedout:
+			resStr = "timed out";
+			numTimedout++;
+			break;
+		case EConnectResult::InvalidPassword:
+			resStr = "invalid password";
+			numInvalidPw++;
+			break;
+		case EConnectResult::MaxConnectionsReached:
+			resStr = "max connections reached";
+			numMaxConnsReached++;
+			break;
+		}
+		printf( "connect result: %s %s\n", etp.toIpAndPort().c_str(), resStr.c_str() );
+	}
+
+	void ConnectionLayerTest::onNewConnection(bool directLink, const struct ZEndpoint& etp, const std::map<std::string, std::string>& metaData)
+	{
+		printf("new connection: %s\n", etp.toIpAndPort().c_str());
+		if ( !metaData.empty() )
+		{
+			printf("additional data:\n");
+			for (auto& kvp : metaData)
+			{
+				printf("Key: %s value: %s\n", kvp.first.c_str(), kvp.second.c_str());
+			}
+		}
+		numNewConnections++;
+	}
+
+	void ConnectionLayerTest::onDisconnect(bool directLink, const struct ZEndpoint& etp, EDisconnectReason reason)
+	{
+		printf("disconnected: %s, reason: %d\n", etp.toIpAndPort().c_str(), (int)reason);
+		numDisconnected++;
+	}
+
 	//////////////////////////////////////////////////////////////////////////
 	// Mass Connect test
 	//////////////////////////////////////////////////////////////////////////
+
+	/*	This event occurs when as a result of calling: 'connect', or 'connectToServer'. */
+	void MassConnectTest::onConnectResult( const struct ZEndpoint& remoteEtp, EConnectResult result ) 
+	{
+		std::string resStr;
+		switch ( result )
+		{
+		case EConnectResult::Succes:
+			connSucc++;
+			break;
+		case EConnectResult::Timedout:
+			connTimeout++;
+			break;
+		case EConnectResult::InvalidPassword:
+			connInvalidPw++;
+			break;
+		case EConnectResult::MaxConnectionsReached:
+			connMaxConnReached++;
+			break;
+		}
+	}
+
+	void MassConnectTest::onNewConnection( bool directLink, const struct ZEndpoint& remoteEtp,  const std::map<std::string, std::string>& metaData )
+	{
+		connNewIncomingConns++;
+	}
+
+	void MassConnectTest::onDisconnect( bool directLink, const struct ZEndpoint& remoteEtp, EDisconnectReason reason ) 
+	{
+		if ( reason == EDisconnectReason::Closed )
+			numDisconnects++;
+		else
+			numLost++;
+	}
 
 	void MassConnectTest::initialize()
 	{
@@ -181,46 +221,13 @@ namespace UnitTests
 
 	void MassConnectTest::run()
 	{
-		int connSucc = 0;
-		int connTimeout = 0;
-		int connInvalidPw = 0;
-		int connMaxConnReached = 0;
-		int connNewIncomingConns = 0;
-		int numDisconnects = 0;
-		int numLost = 0;
-
-		auto onConnectLamda =  [&] (auto etp, auto res) 
-		{
-			std::string resStr;
-			switch ( res )
-			{
-			case EConnectResult::Succes:
-				connSucc++;
-			break;
-			case EConnectResult::Timedout:
-				connTimeout++;
-			break;
-			case EConnectResult::InvalidPassword:
-				connInvalidPw++;
-			break;
-			case EConnectResult::MaxConnectionsReached:
-				connMaxConnReached++;
-			break;
-			}
-		};
-
-		auto onNewConnLamda = [&] (bool directLink, auto etp, auto& metaData)
-		{
-			connNewIncomingConns++;
-		};
-
-		auto onDisconnectLamda = [&] (bool isThisConn, auto etp, auto eReason)
-		{
-			if ( eReason == EDisconnectReason::Closed )
-				numDisconnects++;
-			else
-				numLost++;
-		};
+		connSucc = 0;
+		connTimeout = 0;
+		connInvalidPw = 0;
+		connMaxConnReached = 0;
+		connNewIncomingConns = 0;
+		numDisconnects = 0;
+		numLost = 0;
 
 		int connsPerNode = NumConns / NumNodes;
 		ZNode** connNodes = new ZNode*[NumNodes];
@@ -229,9 +236,7 @@ namespace UnitTests
 		{
 			connNodes[j] = new ZNode();
 			auto* n = connNodes[j];
-			n->bindOnConnectResult( onConnectLamda );
-			n->bindOnDisconnect( onDisconnectLamda );
-			n->bindOnNewConnection( onNewConnLamda );
+			n->addConnectionListener(this);
 			for ( int i=0; i<connsPerNode; ++i )
 			{
 				const char* pw_ptr = pw.c_str(); 
@@ -279,6 +284,7 @@ namespace UnitTests
 		for (int i = 0; i < NumNodes ; i++)
 		{
 			auto* n = connNodes[i];
+			n->removeConnectionListener(this);
 			delete n;
 		}
 		delete [] connNodes;
